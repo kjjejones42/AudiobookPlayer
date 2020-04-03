@@ -7,29 +7,29 @@
     tools:context=".PlayActivity">
 
     <Button
-        android:id="@+id/button6"
+        android:id="@+id/playButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:onClick="play"
-        android:text="Play"
+        android:text="@string/play"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/button7"
+        app:layout_constraintEnd_toStartOf="@+id/pauseButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/seekBar" />
 
     <Button
-        android:id="@+id/button7"
+        android:id="@+id/pauseButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:onClick="pause"
-        android:text="Pause"
+        android:text="@string/pause"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/button6"
+        app:layout_constraintStart_toEndOf="@+id/playButton"
         app:layout_constraintTop_toBottomOf="@+id/seekBar" />
 
     <SeekBar
@@ -39,11 +39,11 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/button6"
+        app:layout_constraintBottom_toTopOf="@+id/playButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/songInfo" />
+        app:layout_constraintTop_toBottomOf="@id/trackChooser" />
 
     <TextView
         android:id="@+id/songInfo"
@@ -51,7 +51,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/seekBar"
+        app:layout_constraintBottom_toTopOf="@id/trackChooser"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
@@ -63,11 +63,24 @@
         android:layout_height="0dp"
         android:layout_marginBottom="16dp"
         android:scaleType="fitCenter"
+        android:contentDescription="@string/album_art"
         app:layout_constraintBottom_toTopOf="@+id/songInfo"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.50"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:src="@drawable/ic_launcher_foreground" />
+
+    <Spinner
+        android:id="@+id/trackChooser"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintBottom_toTopOf="@+id/seekBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/songInfo" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

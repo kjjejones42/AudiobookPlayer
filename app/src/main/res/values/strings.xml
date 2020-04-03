@@ -2,4 +2,7 @@
     <string name="app_name">My First app</string>
     <string name="edit_message">Enter a message</string>
     <string name="button_choose">Choose Directory</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="album_art">Album Art</string>
 </resources>

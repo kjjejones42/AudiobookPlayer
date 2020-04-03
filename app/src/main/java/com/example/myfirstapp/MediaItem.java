@@ -8,8 +8,9 @@ import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+
 import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
 import java.io.Serializable;
 
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
@@ -36,6 +37,12 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     private MediaItem(Parcel in) {
         documentUri = in.readString();
         displayName = in.readString();
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return displayName;
     }
 
     public static final Creator<MediaItem> CREATOR = new Creator<MediaItem>() {

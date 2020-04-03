@@ -2,6 +2,7 @@ package com.example.myfirstapp;
 
 import android.content.Intent;
 import android.os.Parcelable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 
@@ -40,10 +42,11 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     public void onClick(View v) {
         int itemPosition = rcv.getChildLayoutPosition(v);
         AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(itemPosition);
+        Log.d("ASD", ""+item.toString());
         selectedPos = itemPosition;
         notifyItemChanged(selectedPos);
         Intent intent = new Intent(v.getContext(), PlayActivity.class);
-        intent.putExtra(MainActivity.PLAY_FILE, (Parcelable) item.files.get(0));
+        intent.putExtra(MainActivity.PLAY_FILE, item);
         v.getContext().startActivity(intent);
     }
 
