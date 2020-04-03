@@ -14,7 +14,6 @@ import androidx.work.WorkManager;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
@@ -39,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == SELECT_DIRECTORY && data != null && data.getData() != null) {
             try {
-                Uri result = data.getData();
                 Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
                 WorkManager.getInstance(this).enqueue(request);

@@ -9,16 +9,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.List;
+import java.util.Objects;
+
 
 public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
 
     static class MyViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
         ImageView image;
+
         MyViewHolder(View v) {
             super(v);
             textView = v.findViewById(R.id.listItemText);
@@ -26,14 +27,14 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     }
 
-    static private List<AudioBook> mDataset;
+    private DisplayListViewModel model;
     private int selectedPos = RecyclerView.NO_POSITION;
     private final RecyclerView rcv;
     private final View.OnClickListener mOnClickListener = new View.OnClickListener(){
         @Override
         public void onClick(View v) {
         int itemPosition = rcv.getChildLayoutPosition(v);
-        AudioBook item = mDataset.get(itemPosition);
+        AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(itemPosition);
         notifyItemChanged(selectedPos);
         selectedPos = itemPosition;
         notifyItemChanged(selectedPos);
@@ -43,10 +44,8 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     };
 
-    DisplayListAdapter(List<AudioBook> myDataset, RecyclerView rcv) {
-        if (myDataset != null){
-            mDataset = myDataset;
-        }
+    DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv) {
+        this.model = model;
         this.rcv = rcv;
     }
 
@@ -63,7 +62,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {
-        AudioBook item = mDataset.get(position);
+        AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(position);
         holder.textView.setText(item.name);
         holder.image.setImageBitmap(item.getAlbumArt(rcv.getContext()));
         holder.textView.setSelected(selectedPos == position);
@@ -71,6 +70,6 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     @Override
     public int getItemCount() {
-        return mDataset.size();
+        return Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).size();
     }
 }
