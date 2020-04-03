@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.List;
 
-class DisplayListViewModel extends ViewModel {
+public class DisplayListViewModel extends ViewModel {
         private MutableLiveData<List<AudioBook>> users;
 
         LiveData<List<AudioBook>> getUsers(Context context) {

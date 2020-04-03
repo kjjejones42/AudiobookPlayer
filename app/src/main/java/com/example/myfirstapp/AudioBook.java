@@ -21,7 +21,7 @@ public class AudioBook implements Serializable {
     final String imageUri;
 
     public Bitmap getAlbumArt(Context context){
-        Bitmap result;
+        Bitmap result = null;
         try {
             if (imageUri != null) {
                 result = BitmapFactory.decodeStream(context.getContentResolver().openInputStream(Uri.parse(imageUri)));
@@ -41,8 +41,10 @@ public class AudioBook implements Serializable {
                 break;
             }
         }
-        ByteArrayInputStream bis = new ByteArrayInputStream(image);
-        result = BitmapFactory.decodeStream(bis);
+        if (image != null) {
+            ByteArrayInputStream bis = new ByteArrayInputStream(image);
+            result = BitmapFactory.decodeStream(bis);
+        }
         return result;
     }
 

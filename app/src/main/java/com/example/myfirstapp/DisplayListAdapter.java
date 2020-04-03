@@ -14,9 +14,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.Objects;
 
 
-public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
+public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> implements View.OnClickListener {
 
-    static class MyViewHolder extends RecyclerView.ViewHolder {
+    class MyViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
         ImageView image;
 
@@ -27,26 +27,24 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     }
 
-    private DisplayListViewModel model;
-    private int selectedPos = RecyclerView.NO_POSITION;
+    private final DisplayListViewModel model;
     private final RecyclerView rcv;
-    private final View.OnClickListener mOnClickListener = new View.OnClickListener(){
-        @Override
-        public void onClick(View v) {
+    private int selectedPos = RecyclerView.NO_POSITION;
+
+    DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv) {
+        this.model = model;
+        this.rcv = rcv;
+    }
+
+    @Override
+    public void onClick(View v) {
         int itemPosition = rcv.getChildLayoutPosition(v);
         AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(itemPosition);
-        notifyItemChanged(selectedPos);
         selectedPos = itemPosition;
         notifyItemChanged(selectedPos);
         Intent intent = new Intent(v.getContext(), PlayActivity.class);
         intent.putExtra(MainActivity.PLAY_FILE, (Parcelable) item.files.get(0));
         v.getContext().startActivity(intent);
-        }
-    };
-
-    DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv) {
-        this.model = model;
-        this.rcv = rcv;
     }
 
     @NonNull
@@ -54,11 +52,9 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.display_list_item, parent, false);
-        v.setOnClickListener(mOnClickListener);
+        v.setOnClickListener(this);
         return new MyViewHolder(v);
-
     }
-
 
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {

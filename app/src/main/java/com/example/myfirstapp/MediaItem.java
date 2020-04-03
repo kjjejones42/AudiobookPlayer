@@ -21,6 +21,9 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
         mmr.setDataSource(context, Uri.parse(documentUri));
         byte[] image = mmr.getEmbeddedPicture();
+        if (image == null){
+            return null;
+        }
         ByteArrayInputStream bis = new ByteArrayInputStream(image);
         return BitmapFactory.decodeStream(bis);
     }

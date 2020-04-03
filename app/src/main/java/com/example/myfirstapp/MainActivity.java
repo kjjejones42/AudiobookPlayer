@@ -12,10 +12,14 @@ import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.transition.Explode;
 import android.view.View;
+import android.view.Window;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
@@ -40,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
+                final ProgressDialog dialog = ProgressDialog.show(this, "",
+                        "Loading. Please wait...", true);
                 WorkManager.getInstance(this).enqueue(request);
                 WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.getId())
                     .observe(this, new Observer<WorkInfo>() {
@@ -48,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
                             if (workInfo != null && workInfo.getState().isFinished()) {
                                 try {
                                     Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
+                                    dialog.dismiss();
                                     startActivity(intent);
                                 } catch (Exception e) {
                                     e.printStackTrace();
@@ -64,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
