@@ -6,31 +6,76 @@
     android:layout_height="match_parent"
     tools:context=".PlayActivity">
 
-    <Button
-        android:id="@+id/playButton"
+    <FrameLayout
+        android:id="@+id/prevButtonContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
-        android:onClick="play"
-        android:text="@string/play"
+        android:background="@drawable/round_button"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/pauseButton"
+        app:layout_constraintEnd_toEndOf="@id/toggleButtonContainer"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/seekBar" />
+        app:layout_constraintTop_toBottomOf="@+id/seekBar" >
 
-    <Button
-        android:id="@+id/pauseButton"
+        <ImageButton
+            android:id="@+id/prevButton"
+            style="@style/Widget.AppCompat.ImageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:onClick="prev"
+            android:src="@android:drawable/ic_media_previous"
+            android:text="@string/play" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/toggleButtonContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
-        android:onClick="pause"
-        android:text="@string/pause"
+        android:background="@drawable/round_button"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/nextButtonContainer"
+        app:layout_constraintStart_toStartOf="@id/prevButtonContainer"
+        app:layout_constraintTop_toBottomOf="@+id/seekBar" >
+        <ImageButton
+            android:id="@+id/toggleButton"
+            style="@style/Widget.AppCompat.ImageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:onClick="toggle"
+            android:src="@android:drawable/ic_media_play"
+            android:text="@string/play" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/nextButtonContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/round_button"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/playButton"
-        app:layout_constraintTop_toBottomOf="@+id/seekBar" />
+        app:layout_constraintStart_toStartOf="@id/toggleButtonContainer"
+        app:layout_constraintTop_toBottomOf="@+id/seekBar" >
+
+        <ImageButton
+            android:id="@+id/nextButton"
+            style="@style/Widget.AppCompat.ImageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:onClick="next"
+            android:src="@android:drawable/ic_media_next"
+            android:text="@string/play" />
+    </FrameLayout>
 
     <SeekBar
         android:id="@+id/seekBar"
@@ -39,7 +84,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/playButton"
+        app:layout_constraintBottom_toTopOf="@+id/nextButtonContainer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"

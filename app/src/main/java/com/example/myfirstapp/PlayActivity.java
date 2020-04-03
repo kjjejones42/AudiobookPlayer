@@ -11,10 +11,10 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -34,19 +34,50 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     private int positionInTrackList = 0;
     private AudioBook audioBook;
     private boolean isMediaPlayerPrepared;
+    private Spinner spinner;
 
-    public void pause(View view) {
+    public void toggle(View view) {
+        if (isMediaPlayerPrepared) {
+            if (mediaPlayer.isPlaying()){
+                pause();
+            } else {
+                play();
+            }
+        }
+    }
+
+    public void prev(View view) {
+        if (isMediaPlayerPrepared) {
+            if (mediaPlayer.getCurrentPosition() > 10 * 1000) {
+                mediaPlayer.seekTo(0);
+            } else {
+                playTrack(positionInTrackList - 1);
+            }
+        }
+    }
+
+    public void next(View view) {
+        if (isMediaPlayerPrepared) {
+            playTrack(positionInTrackList + 1);
+        }
+    }
+
+    public void pause() {
         if (isMediaPlayerPrepared && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
         }
         updateSeekBar();
+        ImageButton button = findViewById(R.id.toggleButton);
+        button.setImageResource(android.R.drawable.ic_media_play);
     }
 
-    public void play(View view) {
+    public void play() {
         if (isMediaPlayerPrepared && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
         }
         updateSeekBar();
+        ImageButton button = findViewById(R.id.toggleButton);
+        button.setImageResource(android.R.drawable.ic_media_pause);
     }
 
     private void getMetaData(Uri uri) {
@@ -70,7 +101,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     @SuppressLint("StaticFieldLeak")
     private void playTrack(int position) {
-        if (position >= audioBook.files.size()){
+        if (position < 0 || position > audioBook.files.size() - 1){
             return;
         }
         final MediaItem track = audioBook.files.get(position);
@@ -112,7 +143,14 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         } catch (IOException e) {
             e.printStackTrace();
         }
-        positionInTrackList = position;
+        setPositionInTrackList(position);
+    }
+
+    private void setPositionInTrackList(int positionInTrackList){
+        this.positionInTrackList = positionInTrackList;
+        if (spinner != null){
+            spinner.setSelection(positionInTrackList);
+        }
     }
 
     public void updateSeekBar() {
@@ -136,14 +174,14 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) {
             positionInTrack = savedInstanceState.getInt("TRACK_PROGRESS");
-            positionInTrackList = savedInstanceState.getInt("TRACK_LIST_PROGRESS");
+            setPositionInTrackList(savedInstanceState.getInt("TRACK_LIST_PROGRESS"));
         }
         setContentView(R.layout.activity_play);
 
         audioBook = (AudioBook) getIntent().getSerializableExtra(MainActivity.PLAY_FILE);
         Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.name);
 
-        Spinner spinner = findViewById(R.id.trackChooser);
+        spinner = findViewById(R.id.trackChooser);
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
@@ -153,9 +191,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
-            pause(seekBar);
             mediaPlayer.seekTo(progress);
-            play(seekBar);
         }
     }
 
@@ -184,9 +220,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        if (isMediaPlayerPrepared) {
-            playTrack(positionInTrackList + 1);
-        }
+        next(seekBar);
     }
 
     @Override
@@ -197,7 +231,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
         seekBar.setMax(mediaPlayer.getDuration());
         task.execute();
-        play(seekBar);
+        play();
 //        LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
 //        ef.setTargetGain(10000);
 //        ef.setEnabled(true);
