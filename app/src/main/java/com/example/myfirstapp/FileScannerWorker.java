@@ -5,24 +5,17 @@ import android.content.Context;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
 import android.media.MediaFormat;
-import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.util.Log;
-import android.webkit.MimeTypeMap;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.MimeTypeFilter;
-import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import java.io.FileFilter;
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,7 +27,7 @@ public class FileScannerWorker extends Worker {
         List<MediaItem> media;
     }
 
-    private final List<String> formats = Arrays.asList(
+    private final List<String> audioFormats = Arrays.asList(
             MediaFormat.MIMETYPE_AUDIO_AAC, MediaFormat.MIMETYPE_AUDIO_AC3,
             MediaFormat.MIMETYPE_AUDIO_AMR_NB, MediaFormat.MIMETYPE_AUDIO_AMR_WB,
             MediaFormat.MIMETYPE_AUDIO_FLAC, MediaFormat.MIMETYPE_AUDIO_G711_ALAW,
@@ -47,16 +40,17 @@ public class FileScannerWorker extends Worker {
 
     static final String INPUT = "INPUT";
     static final String LIST_OF_DIRS = "LIST_OF_DIRS";
+    private Context context;
 
     private boolean isAudio(String input){
-        return formats.contains(input);
+        return audioFormats.contains(input);
     }
     private boolean isDirectory(String input){
         return input.equals(DocumentsContract.Document.MIME_TYPE_DIR);
     }
 
     private AudioBookResult getAudioInDirectory(Uri root, String id) {
-        ArrayList<MediaItem> list = new ArrayList<>();
+        List<MediaItem> list = new ArrayList<>();
         String imageUri = null;
         Uri uri = DocumentsContract.buildChildDocumentsUriUsingTree(root, id);
         Cursor cursor = resolver.query(uri, null, null, null, null);
@@ -85,8 +79,8 @@ public class FileScannerWorker extends Worker {
         return result;
     }
 
-    private ArrayList<AudioBook> recurse(Uri root, String id) {
-        ArrayList<AudioBook> list = new ArrayList<>();
+    private List<AudioBook> recurse(Uri root, String id) {
+        List<AudioBook> list = new ArrayList<>();
         Uri uri = DocumentsContract.buildChildDocumentsUriUsingTree(root, id);
         Cursor cursor = resolver.query(uri, null, null, null, null);
         if (cursor != null){
@@ -102,8 +96,7 @@ public class FileScannerWorker extends Worker {
                         AudioBook newBook = new AudioBook(name, newUri.toString(), result.imageUri, childAudio);
                         list.add(newBook);
                     }
-                    ArrayList<AudioBook> books = recurse(root, childId);
-                    list.addAll(books);
+                    list.addAll(recurse(root, childId));
                 }
             }
             cursor.close();
@@ -113,6 +106,7 @@ public class FileScannerWorker extends Worker {
 
     public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        this.context = context;
     }
 
     @NonNull
@@ -120,7 +114,7 @@ public class FileScannerWorker extends Worker {
     public Result doWork() {
         try {
             final Uri data = Uri.parse(getInputData().getString(INPUT));
-            ArrayList<AudioBook> result = recurse(data,  DocumentsContract.getTreeDocumentId(data));
+            List<AudioBook> result = recurse(data,  DocumentsContract.getTreeDocumentId(data));
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(result);

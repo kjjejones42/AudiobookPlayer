@@ -5,4 +5,5 @@
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="album_art">Album Art</string>
+    <string name="no_data_available">NO DATA AVAILABLE</string>
 </resources>

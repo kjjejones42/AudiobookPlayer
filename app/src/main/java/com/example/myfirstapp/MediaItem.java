@@ -17,7 +17,6 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     String documentUri;
     String displayName;
 
-
     public Bitmap getAlbumArt(Context context){
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
         mmr.setDataSource(context, Uri.parse(documentUri));

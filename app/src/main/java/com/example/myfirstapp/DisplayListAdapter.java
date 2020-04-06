@@ -1,7 +1,6 @@
 package com.example.myfirstapp;
 
 import android.content.Intent;
-import android.os.Parcelable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,7 +11,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 
@@ -46,7 +44,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         selectedPos = itemPosition;
         notifyItemChanged(selectedPos);
         Intent intent = new Intent(v.getContext(), PlayActivity.class);
-        intent.putExtra(MainActivity.PLAY_FILE, item);
+        intent.putExtra(DisplayListActivity.PLAY_FILE, item);
         v.getContext().startActivity(intent);
     }
 
@@ -62,7 +60,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {
         AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(position);
-        holder.textView.setText(item.name);
+        holder.textView.setText(item.displayName);
         holder.image.setImageBitmap(item.getAlbumArt(rcv.getContext()));
         holder.textView.setSelected(selectedPos == position);
     }

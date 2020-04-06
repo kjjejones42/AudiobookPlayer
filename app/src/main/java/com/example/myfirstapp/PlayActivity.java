@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
+import android.content.ComponentName;
 import android.graphics.Bitmap;
 import android.media.AudioAttributes;
 import android.media.MediaMetadataRetriever;
@@ -11,6 +12,10 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.RemoteException;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -23,9 +28,37 @@ import android.widget.TextView;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener, AdapterView.OnItemSelectedListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
+
+    @SuppressLint("StaticFieldLeak")
+    class PlayerUpdate extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            super.onProgressUpdate(values);
+            updateSeekBar();
+        }
+
+        @Override
+        protected Void doInBackground(Void... objects) {
+            try {
+                int lastSecond = 0;
+                int second;
+                while (!isCancelled()) {
+                    if (isMediaPlayerPrepared && lastSecond != (second = mediaPlayer.getCurrentPosition() / 1000)) {
+                        publishProgress();
+                        lastSecond = second;
+                    }
+                }
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
 
     private final MediaPlayer mediaPlayer = new MediaPlayer();
     private SeekBar seekBar;
@@ -68,7 +101,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
         updateSeekBar();
         ImageButton button = findViewById(R.id.toggleButton);
-        button.setImageResource(android.R.drawable.ic_media_play);
+        button.setImageResource(R.drawable.ic_play_arrow_white_24dp);
     }
 
     public void play() {
@@ -77,7 +110,13 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
         updateSeekBar();
         ImageButton button = findViewById(R.id.toggleButton);
-        button.setImageResource(android.R.drawable.ic_media_pause);
+        button.setImageResource(R.drawable.ic_pause_white_24dp);
+    }
+
+    private String msToMMSS(int ms){
+        int minutes = ms /(1000 * 60);
+        int seconds = ms / 1000 % 60;
+        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
     }
 
     private void getMetaData(Uri uri) {
@@ -99,7 +138,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         text.setText(sb.toString());
     }
 
-    @SuppressLint("StaticFieldLeak")
     private void playTrack(int position) {
         if (position < 0 || position > audioBook.files.size() - 1){
             return;
@@ -127,19 +165,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(track.documentUri));
             isMediaPlayerPrepared = false;
             mediaPlayer.prepare();
-            task = new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected Void doInBackground(Void... objects) {
-                    try {
-                        while (!isCancelled()) {
-                            if (mediaPlayer.isPlaying()) updateSeekBar();
-                        }
-                    } catch (IllegalStateException e) {
-                        e.printStackTrace();
-                    }
-                    return null;
-                }
-            };
+            task = new PlayerUpdate();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -155,7 +181,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     public void updateSeekBar() {
         if (isMediaPlayerPrepared) {
-            seekBar.setProgress(mediaPlayer.getCurrentPosition());
+            int position = mediaPlayer.getCurrentPosition();
+            seekBar.setProgress(position);
+            ((TextView) findViewById(R.id.progress_text)).setText(msToMMSS(position));
         }
     }
 
@@ -178,8 +206,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
         setContentView(R.layout.activity_play);
 
-        audioBook = (AudioBook) getIntent().getSerializableExtra(MainActivity.PLAY_FILE);
-        Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.name);
+        audioBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
+        Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.displayName);
+        audioBook.saveConfig(this);
 
         spinner = findViewById(R.id.trackChooser);
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
@@ -192,6 +221,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
             mediaPlayer.seekTo(progress);
+            ((TextView) findViewById(R.id.progress_text)).setText(msToMMSS(progress));
         }
     }
 
@@ -212,10 +242,10 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mediaPlayer.release();
         if (task != null) {
             task.cancel(true);
         }
+        mediaPlayer.release();
     }
 
     @Override
@@ -230,6 +260,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             mediaPlayer.seekTo(positionInTrack);
         }
         seekBar.setMax(mediaPlayer.getDuration());
+        ((TextView) findViewById(R.id.duration_text)).setText(msToMMSS(mediaPlayer.getDuration()));
         task.execute();
         play();
 //        LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());

@@ -11,29 +11,23 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
         <activity
             android:name=".PlayActivity"
             android:parentActivityName=".DisplayListActivity">
-        <meta-data
-            android:name="android.support.PARENT_ACTIVITY"
-            android:value=".DisplayListActivity"
-            />
         </activity>
         <activity
             android:name=".DisplayListActivity"
-            android:parentActivityName=".MainActivity"
-            android:label="">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".MainActivity"
-                />
-        </activity>
-        <activity android:name=".MainActivity">
+            android:label="Audiobook Player">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainActivity" />
+        <activity android:name=".MediaPlayerActivity" />
+
+
     </application>
 
 </manifest>
