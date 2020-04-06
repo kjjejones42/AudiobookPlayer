@@ -40,7 +40,6 @@ public class DisplayListViewModel extends ViewModel {
     }
 
     LiveData<List<AudioBook>> getUsers(Context context) {
-        Log.d("ASD","Load " + users.getValue());
         if (users.getValue() == null) {
             loadFromDisk(context);
         }

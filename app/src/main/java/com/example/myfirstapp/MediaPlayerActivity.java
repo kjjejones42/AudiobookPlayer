@@ -98,12 +98,11 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
         setContentView(R.layout.media_player_activity);
 
-        // ...
-        // Create MediaBrowserServiceCompat
-//        mediaBrowser = new MediaBrowserCompat(this,
-//                new ComponentName(this, MediaPlaybackService.class),
-//                connectionCallbacks,
-//                null); // optional Bundle
+        mediaBrowser = new MediaBrowserCompat(this,
+                new ComponentName(this, MediaPlaybackService.class),
+                connectionCallbacks,
+                null); // optional Bundle
+
     }
 
     @Override

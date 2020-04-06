@@ -5,8 +5,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -14,8 +16,11 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -26,6 +31,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -99,6 +105,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         if (isMediaPlayerPrepared && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
         }
+        MediaControllerCompat.getMediaController(PlayActivity.this).getTransportControls().pause();
         updateSeekBar();
         ImageButton button = findViewById(R.id.toggleButton);
         button.setImageResource(R.drawable.ic_play_arrow_white_24dp);
@@ -109,6 +116,13 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             mediaPlayer.start();
         }
         updateSeekBar();
+        MediaControllerCompat controller;
+        if ((controller = MediaControllerCompat.getMediaController(PlayActivity.this)) != null) {
+            int pbState = controller.getPlaybackState().getState();
+            if (pbState != PlaybackStateCompat.STATE_PLAYING) {
+                controller.getTransportControls().play();
+            }
+        }
         ImageButton button = findViewById(R.id.toggleButton);
         button.setImageResource(R.drawable.ic_pause_white_24dp);
     }
@@ -143,6 +157,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             return;
         }
         final MediaItem track = audioBook.files.get(position);
+        Intent intent = new Intent(this, MediaPlaybackService.class);
+        intent.putExtra("URI", (Serializable) track);
+        startService(intent);
 
         getMetaData(Uri.parse(track.documentUri));
         Bitmap art = audioBook.getAlbumArt(getApplicationContext());
@@ -170,6 +187,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             e.printStackTrace();
         }
         setPositionInTrackList(position);
+        play();
     }
 
     private void setPositionInTrackList(int positionInTrackList){
@@ -200,6 +218,12 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mediaBrowser = new MediaBrowserCompat(this,
+                new ComponentName(this, MediaPlaybackService.class),
+                connectionCallbacks,
+                null);
+
         if (savedInstanceState != null) {
             positionInTrack = savedInstanceState.getInt("TRACK_PROGRESS");
             setPositionInTrackList(savedInstanceState.getInt("TRACK_LIST_PROGRESS"));
@@ -214,7 +238,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        spinner.setSelection(0,false);
         spinner.setOnItemSelectedListener(this);
+        playTrack(0);
     }
 
     @Override
@@ -268,4 +294,107 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 //        ef.setEnabled(true);
 //        mediaPlayer.setAuxEffectSendLevel(1f);
     }
+
+
+    private MediaBrowserCompat mediaBrowser;
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mediaBrowser.connect();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // (see "stay in sync with the MediaSession")
+        if (MediaControllerCompat.getMediaController(PlayActivity.this) != null) {
+            MediaControllerCompat.getMediaController(PlayActivity.this).unregisterCallback(controllerCallback);
+        }
+        mediaBrowser.disconnect();
+    }
+
+    private final MediaBrowserCompat.ConnectionCallback connectionCallbacks =
+            new MediaBrowserCompat.ConnectionCallback() {
+                @Override
+                public void onConnected() {
+
+                    // Get the token for the MediaSession
+                    MediaSessionCompat.Token token = mediaBrowser.getSessionToken();
+
+                    // Create a MediaControllerCompat
+                    MediaControllerCompat mediaController = null;
+                    try {
+                        mediaController = new MediaControllerCompat(PlayActivity.this, // Context
+                                token);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+
+
+                    // Save the controller
+                    MediaControllerCompat.setMediaController(PlayActivity.this, mediaController);
+
+                    // Finish building the UI
+                    buildTransportControls();
+                    play();
+                }
+
+                void buildTransportControls() {
+                    // Grab the view for the play/pause button
+//                    ImageView playPause = findViewById(R.id.play_pause);
+//
+//                    // Attach a listener to the button
+//                    playPause.setOnClickListener(new View.OnClickListener() {
+//                        @Override
+//                        public void onClick(View v) {
+//                            // Since this is a play/pause button, you'll need to test the current state
+//                            // and choose the action accordingly
+//
+//                            int pbState = MediaControllerCompat.getMediaController(PlayActivity.this).getPlaybackState().getState();
+//                            if (pbState == PlaybackStateCompat.STATE_PLAYING) {
+//                                MediaControllerCompat.getMediaController(PlayActivity.this).getTransportControls().pause();
+//                            } else {
+//                                MediaControllerCompat.getMediaController(PlayActivity.this).getTransportControls().play();
+//                            }
+//                        }});
+
+                    MediaControllerCompat mediaController = MediaControllerCompat.getMediaController(PlayActivity.this);
+
+                    // Display the initial state
+                    MediaMetadataCompat metadata = mediaController.getMetadata();
+                    PlaybackStateCompat pbState = mediaController.getPlaybackState();
+
+                    // Register a Callback to stay in sync
+                    mediaController.registerCallback(controllerCallback);
+                }
+
+
+
+                @Override
+                public void onConnectionSuspended() {
+                    Log.d("ASD", "onConnectionSuspended");
+                    // The Service has crashed. Disable transport controls until it automatically reconnects
+                }
+
+                @Override
+                public void onConnectionFailed() {
+                    Log.d("ASD", "onConnectionFailed");
+                    // The Service has refused our connection
+                }
+            };
+
+    MediaControllerCompat.Callback controllerCallback = new MediaControllerCompat.Callback() {
+        @Override
+        public void onMetadataChanged(MediaMetadataCompat metadata) {}
+
+        @Override
+        public void onPlaybackStateChanged(PlaybackStateCompat state) {                }
+    };
 }

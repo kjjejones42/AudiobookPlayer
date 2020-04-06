@@ -40,7 +40,6 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     public void onClick(View v) {
         int itemPosition = rcv.getChildLayoutPosition(v);
         AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(itemPosition);
-        Log.d("ASD", ""+item.toString());
         selectedPos = itemPosition;
         notifyItemChanged(selectedPos);
         Intent intent = new Intent(v.getContext(), PlayActivity.class);

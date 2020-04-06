@@ -6,4 +6,6 @@
     <string name="pause">Pause</string>
     <string name="album_art">Album Art</string>
     <string name="no_data_available">NO DATA AVAILABLE</string>
+    <string name="channel_name">Audiobook Player</string>
+    <string name="channel_description">Descript blah</string>
 </resources>

@@ -100,11 +100,7 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        startActivity(new Intent(this, MediaPlayerActivity.class));
-
         setContentView(R.layout.activity_display_list);
-
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
