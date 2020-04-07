@@ -61,10 +61,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
                         MediaControllerCompat mediaController = MediaControllerCompat.getMediaController(MediaPlayerActivity.this);
 
-                        // Display the initial state
-                        MediaMetadataCompat metadata = mediaController.getMetadata();
-                        PlaybackStateCompat pbState = mediaController.getPlaybackState();
-
                         // Register a Callback to stay in sync
                         mediaController.registerCallback(controllerCallback);
                     }

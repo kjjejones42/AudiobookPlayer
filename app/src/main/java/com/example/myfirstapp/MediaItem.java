@@ -16,17 +16,33 @@ import java.io.Serializable;
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
     String documentUri;
     String displayName;
+    private transient MediaMetadataRetriever mmr;
+    private transient String title;
+
+    private MediaMetadataRetriever getMMR(Context context){
+        if (mmr == null) {
+            mmr = new MediaMetadataRetriever();
+            mmr.setDataSource(context, Uri.parse(documentUri));
+        }
+        return mmr;
+    }
+
 
     public Bitmap getAlbumArt(Context context){
-        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        mmr.setDataSource(context, Uri.parse(documentUri));
-        byte[] image = mmr.getEmbeddedPicture();
+        byte[] image = getMMR(context).getEmbeddedPicture();
         if (image == null){
             return null;
         }
         ByteArrayInputStream bis = new ByteArrayInputStream(image);
         return BitmapFactory.decodeStream(bis);
     }
+
+    public void generateTitle(Context context) {
+        if (title == null) {
+            title = getMMR(context).extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+        }
+    }
+
 
     MediaItem(String documentUri, String displayName) {
         this.documentUri = documentUri;
@@ -41,7 +57,7 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     @NonNull
     @Override
     public String toString() {
-        return displayName;
+        return (title == null) ? displayName.substring(0, displayName.lastIndexOf('.')) : title;
     }
 
     public static final Creator<MediaItem> CREATOR = new Creator<MediaItem>() {
