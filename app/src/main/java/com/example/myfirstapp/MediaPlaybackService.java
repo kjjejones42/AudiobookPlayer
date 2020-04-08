@@ -34,8 +34,50 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
 
     private class MySessionCallback extends MediaSessionCompat.Callback {
 
-        private void createNotification() {
+        private void initializeNotification(){
             String CHANNEL_ID = "com.example.myfirstapp";
+            Context context = getApplicationContext();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                CharSequence name = getString(R.string.channel_name);
+                int importance = NotificationManager.IMPORTANCE_DEFAULT;
+                NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+                channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+                channel.setDescription(getString(R.string.channel_description));
+                getSystemService(NotificationManager.class).createNotificationChannel(channel);
+            }
+            notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
+            notificationBuilder
+                    .setContentIntent(mediaSession.getController().getSessionActivity())
+                    .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                            PlaybackStateCompat.ACTION_STOP))
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setSmallIcon(R.drawable.ic_play)
+                    .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                            .setMediaSession(mediaSession.getSessionToken())
+                            .setShowActionsInCompactView(1, 2, 3)
+                            .setShowCancelButton(true)
+                            .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                    PlaybackStateCompat.ACTION_STOP)))
+                    .addAction(new NotificationCompat.Action(R.drawable.ic_skip_prev,
+                            "Prev", MediaButtonReceiver.buildMediaButtonPendingIntent(
+                            context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
+                    .addAction(new NotificationCompat.Action(R.drawable.ic_replay_30,
+                            "Rewind", MediaButtonReceiver.buildMediaButtonPendingIntent(
+                            context, PlaybackStateCompat.ACTION_REWIND)))
+                    .addAction(new NotificationCompat.Action(
+                            R.drawable.ic_play, "Play",
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                    PlaybackStateCompat.ACTION_PLAY_PAUSE)))
+                    .addAction(new NotificationCompat.Action(R.drawable.ic_forward_30,
+                            "Forward", MediaButtonReceiver.buildMediaButtonPendingIntent(
+                            context, PlaybackStateCompat.ACTION_FAST_FORWARD)))
+                    .addAction(new NotificationCompat.Action(R.drawable.ic_skip_next,
+                            "Next", MediaButtonReceiver.buildMediaButtonPendingIntent(
+                            context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)));
+
+        }
+
+        private void updateNotification() {
 
             MediaControllerCompat controller = mediaSession.getController();
 
@@ -44,58 +86,22 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             String playPauseText = playing ? "Pause" : "Play";
 
             Context context = getApplicationContext();
-            notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                CharSequence name = getString(R.string.channel_name);
-                int importance = NotificationManager.IMPORTANCE_LOW;
-                NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-                channel.setDescription(getString(R.string.channel_description));
-                getSystemService(NotificationManager.class).createNotificationChannel(channel);
+            if (notificationBuilder == null){
+                initializeNotification();
             }
-            MediaMetadataCompat mediaMetadata = controller.getMetadata();
-            MediaDescriptionCompat description = mediaMetadata.getDescription();
+            MediaDescriptionCompat description = controller.getMetadata().getDescription();
 
             notificationBuilder
                     .setContentTitle(audioBook.displayName)
+                    .setContentText(description.getTitle())
                     .setLargeIcon(description.getIconBitmap())
-                    .setOngoing(playing)
-                    .setContentIntent(controller.getSessionActivity())
-                    .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                            PlaybackStateCompat.ACTION_STOP))
+                    .setOngoing(playing);
 
-                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-
-                    .setSmallIcon(R.drawable.ic_play)
-
-                    .addAction(new NotificationCompat.Action(R.drawable.ic_skip_prev,
-                            "Prev", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                                    context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
-
-                    .addAction(new NotificationCompat.Action(R.drawable.ic_replay_30,
-                            "Rewind", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                            context, PlaybackStateCompat.ACTION_REWIND)))
-
-                    .addAction(new NotificationCompat.Action(
-                            playPauseIcon, playPauseText,
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                    PlaybackStateCompat.ACTION_PLAY_PAUSE)))
-
-                    .addAction(new NotificationCompat.Action(R.drawable.ic_forward_30,
-                            "Forward", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                            context, PlaybackStateCompat.ACTION_FAST_FORWARD)))
-
-                    .addAction(new NotificationCompat.Action(R.drawable.ic_skip_next,
-                            "Next", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                            context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
-
-                    .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-                            .setMediaSession(mediaSession.getSessionToken())
-                            .setShowActionsInCompactView(1, 2, 3)
-                            .setShowCancelButton(true)
-                            .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                    PlaybackStateCompat.ACTION_STOP)));
             notification = notificationBuilder.build();
+            notification.actions[2] = new Notification.Action(
+                    playPauseIcon, playPauseText,
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                            PlaybackStateCompat.ACTION_PLAY_PAUSE));
             startForeground(2, notification);
         }
 
@@ -108,7 +114,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                 mediaSession.setPlaybackState(newState);
                 mediaPlayer.start();
             }
-            createNotification();
+            updateNotification();
         }
 
         @Override
@@ -143,7 +149,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                 mediaSession.setPlaybackState(newState);
                 mediaPlayer.pause();
             }
-            createNotification();
+            updateNotification();
             stopForeground(false);
         }
 
@@ -279,7 +285,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         mmr.setDataSource(this, Uri.parse(item.documentUri));
         long duration = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         return metadataBuilder
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.displayName)
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, item.getAlbumArt(this))
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                 .putLong("AUDIOBOOK_ID", audioBook.files.indexOf(item))

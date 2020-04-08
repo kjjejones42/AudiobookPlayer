@@ -1,10 +1,21 @@
 package com.example.myfirstapp;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.graphics.ColorUtils;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.palette.graphics.Palette;
 
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -14,7 +25,11 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.text.Html;
+import android.text.style.StyleSpan;
+import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
@@ -130,6 +145,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             track.generateTitle(this);
         }
         Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.displayName);
+        setColor(audioBook.getAlbumArt(this));
 
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -142,6 +158,31 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         playTrack(positionInTrackList);
         updateMetadata(positionInTrackList);
    }
+
+   private void setColor(Bitmap bitmap){
+        if (bitmap == null) {
+            return;
+        }
+        try {
+            Palette.from(bitmap).generate(new Palette.PaletteAsyncListener() {
+                @Override
+                public void onGenerated(@Nullable Palette palette) {
+                    int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
+                    List<ImageButton> list = Arrays.asList(prevButton, rewindButton, toggleButton, nextButton, forwardButton);
+                    for (ImageButton b : list) {
+                        b.getBackground().setTint(color);
+                    }
+                    ActionBar bar = getSupportActionBar();
+                    bar.setBackgroundDrawable(new ColorDrawable(color));
+                    getWindow().setStatusBarColor(color);
+                    seekBar.getThumb().setTint(color);
+                    seekBar.getProgressDrawable().setTint(color);
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
