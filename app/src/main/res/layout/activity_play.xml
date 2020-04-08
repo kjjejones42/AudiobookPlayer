@@ -13,27 +13,58 @@
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:background="@drawable/round_button_ripple"
+        android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/toggleButton"
+        app:layout_constraintEnd_toStartOf="@id/rewindButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/seekBar"
         style="@style/Widget.AppCompat.ImageButton"
         android:layout_gravity="center"
-        android:src="@drawable/ic_skip_previous_white_24dp"/>
+        android:src="@drawable/ic_skip_prev"/>
 
     <ImageButton
-        android:id="@+id/toggleButton"
+        android:id="@+id/rewindButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:background="@drawable/round_button_ripple"
+        android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/prevButton"
+        app:layout_constraintEnd_toStartOf="@id/toggleButton"
+        app:layout_constraintTop_toBottomOf="@+id/seekBar"
+        style="@style/Widget.AppCompat.ImageButton"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_replay_30"/>
+
+    <ImageButton
+        android:id="@+id/toggleButton"
+        android:layout_width="@android:dimen/notification_large_icon_width"
+        android:layout_height="@android:dimen/notification_large_icon_height"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/round_button_ripple"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_play"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/forwardButton"
+        app:layout_constraintStart_toEndOf="@id/rewindButton"
+        app:layout_constraintTop_toBottomOf="@+id/seekBar" />
+
+    <ImageButton
+        android:id="@+id/forwardButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/round_button_ripple"
+        android:scaleType="fitCenter"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/toggleButton"
         app:layout_constraintEnd_toStartOf="@id/nextButton"
         app:layout_constraintTop_toBottomOf="@+id/seekBar"
-        android:layout_gravity="center"
-        android:scaleType="centerInside" />
+        android:src="@drawable/ic_forward_30"/>
 
     <ImageButton
         android:id="@+id/nextButton"
@@ -42,11 +73,12 @@
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:background="@drawable/round_button_ripple"
+        android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/toggleButton"
+        app:layout_constraintStart_toEndOf="@id/forwardButton"
         app:layout_constraintTop_toBottomOf="@+id/seekBar"
-        android:src="@drawable/ic_skip_next_white_24dp"/>
+        android:src="@drawable/ic_skip_next"/>
 
     <TextView
         android:id="@+id/progress_text"
