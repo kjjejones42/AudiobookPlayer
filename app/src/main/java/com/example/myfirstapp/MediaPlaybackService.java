@@ -252,9 +252,13 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
-        positionInTrackList = intent.getIntExtra("INDEX", 0);
-        playTrack(positionInTrackList);
+        try {
+            audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
+            positionInTrackList = intent.getIntExtra("INDEX", 0);
+            playTrack(positionInTrackList);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
         return super.onStartCommand(intent, flags, startId);
     }
 

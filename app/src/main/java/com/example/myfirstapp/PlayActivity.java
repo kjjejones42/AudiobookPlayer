@@ -110,7 +110,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
     }
 
-
     public void updatePosition(long position) {
         seekBar.setMax((int) getDuration());
         seekBar.setProgress((int) position);
@@ -122,7 +121,8 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mediaBrowser = new MediaBrowserCompat(this,
+        mediaBrowser = new MediaBrowserCompat(
+                this,
                 new ComponentName(this, MediaPlaybackService.class),
                 connectionCallbacks,
                 null);
@@ -295,12 +295,11 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             new MediaBrowserCompat.ConnectionCallback() {
                 @Override
                 public void onConnected() {
-                    MediaControllerCompat mediaController = null;
                     try {
-                        mediaController = new MediaControllerCompat(PlayActivity.this,
+                        controller = new MediaControllerCompat(
+                                PlayActivity.this,
                                 mediaBrowser.getSessionToken());
-                        MediaControllerCompat.setMediaController(PlayActivity.this, mediaController);
-                        controller = mediaController;
+                        MediaControllerCompat.setMediaController(PlayActivity.this, controller);
                         updateMetadata(positionInTrackList);
                         buildTransportControls();
                         playTrack(positionInTrackList);
