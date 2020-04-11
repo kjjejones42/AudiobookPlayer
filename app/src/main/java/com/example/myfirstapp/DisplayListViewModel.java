@@ -32,6 +32,9 @@ public class DisplayListViewModel extends ViewModel {
             ObjectInputStream ois = new ObjectInputStream(fis);
             users.setValue((List<AudioBook>) ois.readObject());
             ois.close();
+            for (AudioBook user : users.getValue()){
+                user.loadFromFile(context);
+            }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
             users.setValue(new ArrayList<AudioBook>());

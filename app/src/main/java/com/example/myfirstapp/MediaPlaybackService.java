@@ -3,9 +3,13 @@ package com.example.myfirstapp;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -17,7 +21,9 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
+import androidx.annotation.LongDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -31,8 +37,30 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MediaPlaybackService extends MediaBrowserServiceCompat implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener  {
-
     private class MySessionCallback extends MediaSessionCompat.Callback {
+
+        private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+
+        AudioManager.OnAudioFocusChangeListener oufcl = new AudioManager.OnAudioFocusChangeListener() {
+            @Override
+            public void onAudioFocusChange(int focusChange) {
+                if (focusChange != AudioManager.AUDIOFOCUS_GAIN) {
+                    mediaSession.getController().getTransportControls().pause();
+                } else {
+                    mediaSession.getController().getTransportControls().play();
+                }
+            }
+        };
+
+
+        private BroadcastReceiver myNoisyAudioStreamReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                    mediaSession.getController().getTransportControls().pause();
+                }
+            }
+        };
 
         private void initializeNotification(){
             String CHANNEL_ID = "com.example.myfirstapp";
@@ -102,24 +130,25 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                     playPauseIcon, playPauseText,
                     MediaButtonReceiver.buildMediaButtonPendingIntent(context,
                             PlaybackStateCompat.ACTION_PLAY_PAUSE));
-            startForeground(2, notification);
         }
 
         @Override
         public void onPlay() {
-            if (isMediaPlayerPrepared && !mediaPlayer.isPlaying()) {
+            AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
+            int result = am.requestAudioFocus(oufcl, AudioAttributes.CONTENT_TYPE_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                registerReceiver(myNoisyAudioStreamReceiver, intentFilter);
+                mediaSession.setActive(true);
                 PlaybackStateCompat newState = stateBuilder
-                        .setState(PlaybackStateCompat.STATE_PLAYING, mediaPlayer.getCurrentPosition() , 1)
+                        .setState(PlaybackStateCompat.STATE_PLAYING, mediaPlayer.getCurrentPosition(), 1)
                         .build();
                 mediaSession.setPlaybackState(newState);
-                mediaPlayer.start();
+                if (isMediaPlayerPrepared && !mediaPlayer.isPlaying()) {
+                    mediaPlayer.start();
+                }
+                updateNotification();
+                startForeground(2, notification);
             }
-            updateNotification();
-        }
-
-        @Override
-        public void onSkipToQueueItem(long id) {
-            playTrack((int) id);
         }
 
         @Override
@@ -132,12 +161,14 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                     pos = duration;
                 }
             }
-            mediaSession.setPlaybackState(
-            stateBuilder
-                    .setState(mediaSession.getController().getPlaybackState().getState(), pos, 1)
-                    .build()
-            );
-            mediaPlayer.seekTo((int) pos);
+            if (isMediaPlayerPrepared) {
+                mediaSession.setPlaybackState(
+                        stateBuilder
+                                .setState(mediaSession.getController().getPlaybackState().getState(), pos, 1)
+                                .build()
+                );
+                mediaPlayer.seekTo((int) pos);
+            }
         }
 
         @Override
@@ -148,17 +179,25 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                         .build();
                 mediaSession.setPlaybackState(newState);
                 mediaPlayer.pause();
+                updateNotification();
+                ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(2 , notification);
+                stopForeground(false);
             }
-            updateNotification();
-            stopForeground(false);
+            saveProgress();
         }
 
         @Override
         public void onStop() {
+            AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
+            am.abandonAudioFocus(oufcl);
+            mediaSession.setActive(false);
             PlaybackStateCompat newState = stateBuilder
                     .setState(PlaybackStateCompat.STATE_STOPPED, 0 , 1)
                     .build();
             mediaSession.setPlaybackState(newState);
+            unregisterReceiver(myNoisyAudioStreamReceiver);
+            saveProgress();
+            stopForeground(false);
         }
 
         @Override
@@ -203,9 +242,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         }
     }
 
-    private static final String MY_MEDIA_ROOT_ID = "media_root_id";
-    private final String TAG = "ASD";
-
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder stateBuilder;
     private MediaMetadataCompat.Builder metadataBuilder;
@@ -217,6 +253,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     private Timer updateTask;
     private int positionInTrackList;
     private Notification notification;
+    private int startingPosition;
 
     private boolean isPlaying() {
         if (mediaSession == null){
@@ -243,8 +280,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             mediaPlayer.setOnPreparedListener(this);
             mediaPlayer.setOnCompletionListener(this);
             mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
-            mediaPlayer.prepare();
             positionInTrackList = position;
+            startingPosition = audioBook.getPositionInTrack();
+            mediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -255,7 +293,10 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         try {
             audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
             positionInTrackList = intent.getIntExtra("INDEX", 0);
-            playTrack(positionInTrackList);
+            if (audioBook != null){
+                audioBook.loadFromFile(this);
+                playTrack(positionInTrackList);
+            }
         } catch (Exception e){
             e.printStackTrace();
         }
@@ -296,6 +337,12 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                 .build();
     }
 
+    private void saveProgress(){
+        long duration = mediaSession.getController().getMetadata().getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        audioBook.saveConfig(this, positionInTrackList,
+                (int) mediaSession.getController().getPlaybackState().getPosition(), duration);
+    }
+
     @Override
     public void onCompletion(MediaPlayer mp) {
         int state = mediaSession.getController().getPlaybackState().getState();
@@ -310,6 +357,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         if (updateTask != null) {
             updateTask.cancel();
         }
+        saveProgress();
         mediaPlayer.release();
         mediaSession.release();
     }
@@ -318,7 +366,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     public void onPrepared(MediaPlayer mp) {
         isMediaPlayerPrepared = true;
         mediaSession.setMetadata(trackToMetaData(audioBook.files.get(positionInTrackList)));
-        mediaSession.getController().getTransportControls().play();
+        mediaSession.getController().getTransportControls().seekTo(startingPosition);
         updateTask = new Timer();
         updateTask.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -326,6 +374,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             PlaybackStateCompat state = mediaSession.getController().getPlaybackState();
             stateBuilder.setState(state.getState(), mediaPlayer.getCurrentPosition(), 1);
             mediaSession.setPlaybackState(stateBuilder.build());
+            saveProgress();
             }
         }, 0, 1000);
 //        task.execute();
@@ -339,23 +388,10 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     @Nullable
     @Override
     public BrowserRoot onGetRoot(@NonNull String clientPackageName, int clientUid, @Nullable Bundle rootHints) {
-        return new BrowserRoot(MY_MEDIA_ROOT_ID, null);
+        return new BrowserRoot("", null);
     }
 
     @Override
-    public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
-
-        List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
-        // Check if this is the root menu:
-        if (MY_MEDIA_ROOT_ID.equals(parentId)) {
-            // Build the MediaItem objects for the top level,
-            // and put them in the mediaItems list...
-        } else {
-            // Examine the passed parentMediaId to see which submenu we're at,
-            // and put the children of that menu in the mediaItems list...
-        }
-        result.sendResult(mediaItems);
-    }
-
+    public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {}
 
 }
