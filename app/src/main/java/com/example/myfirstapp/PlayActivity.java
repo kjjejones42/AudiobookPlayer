@@ -13,8 +13,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.ColorDrawable;
 import android.media.AudioManager;
-import android.media.MediaMetadataRetriever;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
@@ -65,32 +63,18 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
     }
 
-    private String getMetaData(Uri uri) {
-        if (uri == null) return "";
-        MediaMetadataRetriever mmr =  new MediaMetadataRetriever();
-        mmr.setDataSource(getApplicationContext(), uri);
-        List<String> list = Arrays.asList("METADATA_KEY_CD_TRACK_NUMBER", "METADATA_KEY_ALBUM", "METADATA_KEY_ARTIST", "METADATA_KEY_AUTHOR", "METADATA_KEY_COMPOSER", "METADATA_KEY_DATE", "METADATA_KEY_GENRE", "METADATA_KEY_TITLE", "METADATA_KEY_YEAR", "METADATA_KEY_DURATION", "METADATA_KEY_NUM_TRACKS", "METADATA_KEY_WRITER", "METADATA_KEY_MIMETYPE", "METADATA_KEY_ALBUMARTIST", "METADATA_KEY_DISC_NUMBER", "METADATA_KEY_COMPILATION", "METADATA_KEY_HAS_AUDIO", "METADATA_KEY_HAS_VIDEO", "METADATA_KEY_VIDEO_WIDTH", "METADATA_KEY_VIDEO_HEIGHT", "METADATA_KEY_BITRATE", "METADATA_KEY_TIMED_TEXT_LANGUAGES", "METADATA_KEY_IS_DRM", "METADATA_KEY_LOCATION", "METADATA_KEY_VIDEO_ROTATION", "METADATA_KEY_CAPTURE_FRAMERATE", "METADATA_KEY_HAS_IMAGE", "METADATA_KEY_IMAGE_COUNT", "METADATA_KEY_IMAGE_PRIMARY", "METADATA_KEY_IMAGE_WIDTH", "METADATA_KEY_IMAGE_HEIGHT", "METADATA_KEY_IMAGE_ROTATION", "METADATA_KEY_VIDEO_FRAME_COUNT", "METADATA_KEY_EXIF_OFFSET", "METADATA_KEY_EXIF_LENGTH");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < list.size(); i++) {
-            try {
-                String meta;
-                if ((meta = mmr.extractMetadata(i)) != null) {
-                    sb.append(list.get(i)).append(" | ").append(meta).append(System.lineSeparator());
-                }
-            } catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-        return sb.toString();
+    private void setPositionInTrackList(int position) {
+        positionInTrackList = position;
+        spinner.setSelection(position);
+        setControlsEnabled(true);
     }
 
     private void initialiseMediaSession(int position) {
         if (controller != null) {
             try {
-                if (spinner != null) {
-                    spinner.setSelection(position);
-                }
-                positionInTrackList = position;
+                controller.getTransportControls().stop();
+//                model.setPosition(0);
+                setPositionInTrackList(position);
                 Intent intent = new Intent(this, MediaPlaybackService.class);
                 intent.putExtra("AUDIOBOOK", audioBook);
                 intent.putExtra("INDEX", position);
@@ -101,14 +85,19 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
     }
 
-    public void updatePosition(long position) {
-        if (position > 0) {
-            seekBar.setProgress((int) position);
-            progressText.setText(msToMMSS(position));
+    void setMetaData(MediaMetadataCompat metadata){
+        Long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        if (duration > 0) {
+            seekBar.setMax(duration.intValue());
+            durationText.setText(msToMMSS(duration));
         }
+        setPositionInTrackList((int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER));
+        imView.setImageBitmap(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
+        metadataText.setText(metadata.getString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION));
+        spinner.setTag(positionInTrackList);
+        spinner.setSelection(positionInTrackList);
     }
 
-    @SuppressLint("StaticFieldLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -118,26 +107,36 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                 new ComponentName(this, MediaPlaybackService.class),
                 connectionCallbacks,
                 null);
-
         setContentView(R.layout.activity_play);
-
+        audioBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
+        for (MediaItem track : audioBook.files) {
+            track.generateTitle(this);
+        }
         model = new ViewModelProvider(this).get(PlayerViewModel.class);
+        model.clear();
         model.getIsPlaying().observe(this, new Observer<Boolean>() {
             @Override
-            public void onChanged(Boolean aBoolean) {
-                Log.d("ASD", "getIsPlaying " + aBoolean);
+            public void onChanged(Boolean isPlaying) {
+                if (isPlaying) {
+                    toggleButton.setImageResource(R.drawable.ic_pause);
+                } else {
+                    toggleButton.setImageResource(R.drawable.ic_play);
+                }
             }
         });
         model.getPosition().observe(this, new Observer<Long>() {
             @Override
-            public void onChanged(Long aLong) {
-                Log.d("ASD", "getPosition " + aLong);
+            public void onChanged(Long position) {
+                if (position > 0) {
+                    seekBar.setProgress(position.intValue());
+                    progressText.setText(msToMMSS(position));
+                }
             }
         });
-        model.getDuration().observe(this, new Observer<Long>() {
+        model.getMetadata().observe(this, new Observer<MediaMetadataCompat>() {
             @Override
-            public void onChanged(Long aLong) {
-                Log.d("ASD", "getDuration " + aLong);
+            public void onChanged(MediaMetadataCompat metadata) {
+                setMetaData(metadata);
             }
         });
 
@@ -153,18 +152,11 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         metadataText = findViewById(R.id.songInfo);
         imView = findViewById(R.id.albumArtView);
 
+        setControlsEnabled(false);
         seekBar.setOnSeekBarChangeListener(this);
 
-        audioBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
-        positionInTrackList = audioBook.getPositionInTrackList();
-        for (MediaItem track : audioBook.files) {
-            track.generateTitle(this);
-        }
         Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.displayName);
         setColorFromAlbumArt(audioBook.getAlbumArt(this));
-
-        setDuration(audioBook.getDurationOfTrack());
-        updatePosition(audioBook.files.get(positionInTrackList).getPositionInTrack());
 
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -173,7 +165,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         spinner.setSelection(positionInTrackList);
         spinner.setOnItemSelectedListener(this);
 
-        setControlsEnabled(false);
+        setPositionInTrackList(audioBook.getPositionInTrackList());
    }
 
    private void setColorFromAlbumArt(Bitmap bitmap){
@@ -247,14 +239,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         mediaBrowser.disconnect();
     }
 
-    private void setDuration(long duration){
-        if (duration > 0) {
-            model.setDuration(duration);
-            seekBar.setMax((int) duration);
-            durationText.setText(msToMMSS(duration));
-        }
-    }
-
     void buildTransportControls() {
         controller.registerCallback(controllerCallback);
         toggleButton.setOnClickListener(new View.OnClickListener() {
@@ -291,11 +275,12 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                 controller.getTransportControls().fastForward();
             }
         });
-        setControlsEnabled(true);
     }
 
     void setControlsEnabled(boolean on){
+        int visibility = on ? View.VISIBLE : View.INVISIBLE;
         seekBar.setEnabled(on);
+        seekBar.setVisibility(visibility);
         nextButton.setEnabled(on);
         prevButton.setEnabled(on);
         toggleButton.setEnabled(on);
@@ -312,8 +297,12 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                                 PlayActivity.this,
                                 mediaBrowser.getSessionToken());
                         MediaControllerCompat.setMediaController(PlayActivity.this, controller);
+                        model.setMetadata(controller.getMetadata());
+                        model.setPosition(controller.getPlaybackState().getPosition());
+                        model.setIsPlaying(controller.getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING);
                         buildTransportControls();
-                        if (controller.getPlaybackState().getState() != PlaybackStateCompat.STATE_PLAYING) {
+                        if (!audioBook.displayName.equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
+                            model.clear();
                             initialiseMediaSession(positionInTrackList);
                         }
                     } catch (RemoteException e) {
@@ -324,6 +313,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                 @Override
                 public void onConnectionSuspended() {
                     setControlsEnabled(false);
+                    Log.d("ASD", "STOP");
                 }
 
                 @Override
@@ -335,30 +325,14 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     MediaControllerCompat.Callback controllerCallback = new MediaControllerCompat.Callback() {
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
-            positionInTrackList = (int) metadata.getLong("AUDIOBOOK_ID");
-            imView.setImageBitmap(audioBook.getAlbumArt(PlayActivity.this));
-            metadataText.setText(getMetaData(Uri.parse(audioBook.files.get(positionInTrackList).documentUri)));
-            spinner.setTag(positionInTrackList);
-            spinner.setSelection(positionInTrackList);
-            if (controller != null) {
-                MediaMetadataCompat m = controller.getMetadata();
-                updatePosition(controller.getPlaybackState().getPosition());
-                setDuration(m.getLong(MediaMetadataCompat.METADATA_KEY_DURATION));
-            }
+            model.setMetadata(metadata);
         }
 
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
             if (state.getState() != PlaybackStateCompat.STATE_STOPPED) {
-                updatePosition(state.getPosition());
                 model.setPosition(state.getPosition());
-                boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-                if (isPlaying) {
-                    toggleButton.setImageResource(R.drawable.ic_pause);
-                } else {
-                    toggleButton.setImageResource(R.drawable.ic_play);
-                }
-                model.setIsPlaying(isPlaying);
+                model.setIsPlaying(state.getState() == PlaybackStateCompat.STATE_PLAYING);
             }
         }
     };
