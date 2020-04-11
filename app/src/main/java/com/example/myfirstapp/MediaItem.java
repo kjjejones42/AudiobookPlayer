@@ -16,6 +16,7 @@ import java.io.Serializable;
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
     String documentUri;
     String displayName;
+    private int positionInTrack = 0;
     private transient MediaMetadataRetriever mmr;
     private transient String title;
 
@@ -41,6 +42,14 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         if (title == null) {
             title = getMMR(context).extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
         }
+    }
+
+    public int getPositionInTrack() {
+        return positionInTrack;
+    }
+
+    public void setPositionInTrack(int positionInTrack) {
+        this.positionInTrack = positionInTrack;
     }
 
 

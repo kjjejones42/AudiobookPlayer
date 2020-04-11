@@ -281,7 +281,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             mediaPlayer.setOnCompletionListener(this);
             mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
             positionInTrackList = position;
-            startingPosition = audioBook.getPositionInTrack();
+            startingPosition = audioBook.files.get(positionInTrackList).getPositionInTrack();
             mediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
@@ -292,6 +292,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
             audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
+            Log.d("ASD", "onStartCommand: " + audioBook);
             positionInTrackList = intent.getIntExtra("INDEX", 0);
             if (audioBook != null){
                 audioBook.loadFromFile(this);
@@ -339,8 +340,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
 
     private void saveProgress(){
         long duration = mediaSession.getController().getMetadata().getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
-        audioBook.saveConfig(this, positionInTrackList,
-                (int) mediaSession.getController().getPlaybackState().getPosition(), duration);
+        audioBook.files.get(positionInTrackList).setPositionInTrack((int) mediaSession.getController().getPlaybackState().getPosition());
+        audioBook.saveConfig(this, positionInTrackList, duration);
     }
 
     @Override
@@ -367,6 +368,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         isMediaPlayerPrepared = true;
         mediaSession.setMetadata(trackToMetaData(audioBook.files.get(positionInTrackList)));
         mediaSession.getController().getTransportControls().seekTo(startingPosition);
+        mediaSession.getController().getTransportControls().play();
         updateTask = new Timer();
         updateTask.scheduleAtFixedRate(new TimerTask() {
             @Override

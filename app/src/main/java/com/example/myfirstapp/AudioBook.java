@@ -23,7 +23,6 @@ public class AudioBook implements Serializable {
     final List<MediaItem> files;
     final String displayName;
     private final String imageUri;
-    private int positionInTrack;
     private int positionInTrackList;
     private long durationOfTrack;
     private transient Bitmap art;
@@ -34,7 +33,6 @@ public class AudioBook implements Serializable {
             AudioBook book = (AudioBook) ois.readObject();
             ois.close();
             this.positionInTrackList = book.positionInTrackList;
-            this.positionInTrack = book.positionInTrack;
             this.durationOfTrack = book.durationOfTrack;
         } catch (IOException | ClassNotFoundException e){
             e.printStackTrace();
@@ -74,21 +72,12 @@ public class AudioBook implements Serializable {
         return result;
     }
 
-    public int getPositionInTrack(){
-        if (positionInTrack == 0) {
-            new RuntimeException().printStackTrace();
-        }
-        return positionInTrack;
-    }
 
     public int getPositionInTrackList(){
         return positionInTrackList;
     }
 
     public long getDurationOfTrack(){
-        if (durationOfTrack == 0) {
-            new RuntimeException().printStackTrace();
-        }
         return durationOfTrack;
     }
 
@@ -102,9 +91,8 @@ public class AudioBook implements Serializable {
         this.rootUri = rootUri;
     }
 
-    public void saveConfig(Context context, int positionInTrackList, int positionInTrack, long durationOfTrack) {
+    public void saveConfig(Context context, int positionInTrackList, long durationOfTrack) {
         try {
-            this.positionInTrack = positionInTrack;
             this.positionInTrackList = positionInTrackList;
             this.durationOfTrack = durationOfTrack;
             ObjectOutputStream oos = new ObjectOutputStream(context.openFileOutput(displayName, Context.MODE_PRIVATE));
