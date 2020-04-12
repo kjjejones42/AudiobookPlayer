@@ -35,8 +35,9 @@ public class DisplayListViewModel extends ViewModel {
             for (AudioBook user : users.getValue()){
                 user.loadFromFile(context);
             }
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+            context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
             users.setValue(new ArrayList<AudioBook>());
             saveToDisk(context);
         }

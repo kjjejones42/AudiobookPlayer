@@ -35,8 +35,12 @@ public class AudioBook implements Serializable {
             ois.close();
             this.positionInTrackList = book.positionInTrackList;
             this.positionInTrack = book.positionInTrack;
-        } catch (IOException | ClassNotFoundException e){
+        } catch (ClassNotFoundException e) {
             context.deleteFile(displayName);
+            Log.d("ASD", "File found for previous version");
+        } catch (FileNotFoundException e){
+            Log.d("ASD", "No File Found");
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -102,12 +106,13 @@ public class AudioBook implements Serializable {
             oos.close();
         } catch (IOException e){
             e.printStackTrace();
+            throw new RuntimeException();
         }
     }
 
     @NonNull
     @Override
     public String toString() {
-        return rootUri + " | " + files;
+        return displayName;
     }
 }

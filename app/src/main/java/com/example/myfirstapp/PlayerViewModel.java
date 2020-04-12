@@ -8,13 +8,19 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 public class PlayerViewModel extends ViewModel {
-    private MutableLiveData<Boolean> isPlaying = new MutableLiveData<>(false);
-//    private MutableLiveData<Long> duration = new MutableLiveData<>(0L);
+
+    private MutableLiveData<Boolean> isPlaying = new MutableLiveData<>(true);
     private MutableLiveData<Long> position = new MutableLiveData<>(0L);
     private MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>(new MediaMetadataCompat.Builder().build());
 
+    public PlayerViewModel(){
+        Log.d("ASD", "PlayerViewModel: ");
+    }
+
     public void clear(){
-        metadata.setValue(new MediaMetadataCompat.Builder().build());
+        metadata.setValue(new MediaMetadataCompat.Builder()
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 100)
+                .build());
         position.setValue(0L);
     }
 
@@ -24,6 +30,7 @@ public class PlayerViewModel extends ViewModel {
 
     public void setIsPlaying(boolean isPlaying){
         if (this.isPlaying.getValue() != isPlaying){
+            Log.d("ASD", "setIsPlaying: " + isPlaying);
             this.isPlaying.setValue(isPlaying);
         }
     }
@@ -43,9 +50,7 @@ public class PlayerViewModel extends ViewModel {
     }
 
     public void setMetadata(MediaMetadataCompat metadata) {
-        if (this.metadata.getValue() != metadata){
-            this.metadata.setValue(metadata);
-        }
+        this.metadata.setValue(metadata);
     }
 
 }

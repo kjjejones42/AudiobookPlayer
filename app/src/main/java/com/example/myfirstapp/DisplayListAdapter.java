@@ -15,10 +15,14 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 
-public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> implements View.OnClickListener, View.OnLongClickListener {
+public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> implements View.OnClickListener, View.OnLongClickListener{
+
 
     class MyViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
@@ -31,12 +35,12 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     }
 
-    private final DisplayListViewModel model;
+    private final List<AudioBook> model;
     private final RecyclerView rcv;
     private int selectedPos = RecyclerView.NO_POSITION;
 
     DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv) {
-        this.model = model;
+        this.model = model.getUsers(rcv.getContext()).getValue();
         this.rcv = rcv;
     }
 
@@ -53,11 +57,11 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     @Override
     public void onClick(View v) {
         int itemPosition = rcv.getChildLayoutPosition(v);
-        AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(itemPosition);
+        AudioBook book = model.get(itemPosition);
         selectedPos = itemPosition;
         notifyItemChanged(selectedPos);
         Intent intent = new Intent(v.getContext(), PlayActivity.class);
-        intent.putExtra(DisplayListActivity.PLAY_FILE, item);
+        intent.putExtra(DisplayListActivity.PLAY_FILE, book);
         v.getContext().startActivity(intent);
     }
 
@@ -86,14 +90,22 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {
-        AudioBook item = Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).get(position);
-        holder.textView.setText(item.displayName);
-        holder.image.setImageBitmap(item.getAlbumArt(rcv.getContext()));
-        holder.textView.setSelected(selectedPos == position);
+//        ListItem item = model.get(position);
+//        switch (item.getType()) {
+//            case ListItem.TYPE_ITEM:
+                AudioBook book = model.get(position);
+                holder.textView.setText(book.displayName);
+                holder.image.setImageBitmap(book.getAlbumArt(rcv.getContext()));
+                holder.textView.setSelected(selectedPos == position);
+//                break;
+//
+//            case ListItem.TYPE_HEADING:
+//                holder.textView.setText("HEADING");
+//        }
     }
 
     @Override
     public int getItemCount() {
-        return Objects.requireNonNull(model.getUsers(rcv.getContext()).getValue()).size();
+        return model.size();
     }
 }
