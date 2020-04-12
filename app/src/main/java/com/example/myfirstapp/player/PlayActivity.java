@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -58,6 +59,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     private SeekBar seekBar;
     private PlayerViewModel model;
     private ImageView imView;
+    private ProgressDialog dialog;
 
     private String msToMMSS(long ms){
         long seconds = ms / 1000 % 60;
@@ -93,6 +95,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         metadataText.setText(metadata.getString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION));
         spinner.setTag(position);
         spinner.setSelection(position);
+
     }
 
     @Override
@@ -114,7 +117,10 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         imView = findViewById(R.id.albumArtView);
 
         mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks,null);
-        audioBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
+        AudioBook newbook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
+        if (newbook != null) {
+            audioBook = newbook;
+        }
         audioBook.loadFromFile(this);
         setColorFromAlbumArt(audioBook.getAlbumArt(this));
         for (MediaItem track : audioBook.files) {
@@ -293,6 +299,13 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     }
 
     void setControlsEnabled(boolean on){
+        if (!on) {
+            dialog = ProgressDialog.show(this, "","Loading. Please wait...", true);
+        } else {
+            if (dialog != null) {
+                dialog.cancel();
+            }
+        }
         int visibility = on ? View.VISIBLE : View.INVISIBLE;
         seekBar.setEnabled(on);
         seekBar.setVisibility(visibility);
@@ -337,6 +350,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                 onBackPressed();
             }
         }
+
 
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {

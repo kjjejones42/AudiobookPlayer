@@ -3,6 +3,7 @@ package com.example.myfirstapp.player;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -31,8 +32,10 @@ import androidx.media.session.MediaButtonReceiver;
 import com.example.myfirstapp.R;
 import com.example.myfirstapp.defs.AudioBook;
 import com.example.myfirstapp.defs.MediaItem;
+import com.example.myfirstapp.display.DisplayListActivity;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -132,6 +135,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                     playPauseIcon, playPauseText,
                     MediaButtonReceiver.buildMediaButtonPendingIntent(context,
                             PlaybackStateCompat.ACTION_PLAY_PAUSE));
+
         }
 
         @Override
@@ -285,6 +289,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     private int positionInTrack;
     private Notification notification;
     private MediaItem mediaItem;
+    private Intent resumeIntent;
 
     private boolean isPlaying() {
         if (mediaSession == null){
@@ -328,25 +333,30 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        try {
-            audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
-            audioBook.loadFromFile(this);
-            if (audioBook.getStatus() == AudioBook.STATUS_FINISHED) {
-                positionInTrackList = 0;
-                positionInTrack = 0;
-                audioBook.setStatus(AudioBook.STATUS_IN_PROGRESS);
-                audioBook.saveConfig(this);
-            } else {
-                positionInTrackList = intent.getIntExtra("INDEX", 0);
-                if (positionInTrackList == audioBook.getPositionInTrackList()) {
-                    positionInTrack = audioBook.getPositionInTrack();
-                } else {
+        if (intent != null) {
+            try {
+                audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
+                resumeIntent = new Intent(this, PlayActivity.class);
+                resumeIntent.putExtra(DisplayListActivity.PLAY_FILE, audioBook);
+                mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                audioBook.loadFromFile(this);
+                if (audioBook.getStatus() == AudioBook.STATUS_FINISHED) {
+                    positionInTrackList = 0;
                     positionInTrack = 0;
+                    audioBook.setStatus(AudioBook.STATUS_IN_PROGRESS);
+                    audioBook.saveConfig(this);
+                } else {
+                    positionInTrackList = intent.getIntExtra("INDEX", 0);
+                    if (positionInTrackList == audioBook.getPositionInTrackList()) {
+                        positionInTrack = audioBook.getPositionInTrack();
+                    } else {
+                        positionInTrack = 0;
+                    }
                 }
+                playTrack(positionInTrackList);
+            } catch(Exception e){
+                e.printStackTrace();
             }
-            playTrack(positionInTrackList);
-        } catch (Exception e){
-            e.printStackTrace();
         }
         return super.onStartCommand(intent, flags, startId);
     }

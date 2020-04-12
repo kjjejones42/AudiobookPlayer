@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.text.InputType;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.RecyclerView;
@@ -62,12 +64,10 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             }
         });
         this.rcv = rcv;
-        getGroups( model.getUsers(rcv.getContext()).getValue());
         registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onChanged() {
                 super.onChanged();
-                Log.d("ASD", "onChanged: ");
                 getGroups(DisplayListAdapter.this.model.getUsers(context).getValue());
             }
         });
@@ -109,6 +109,18 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             }
         });
         this.finalList = list;
+    }
+
+    public void filter(String filterTerm){
+        List<AudioBook> books = model.getUsers(context).getValue();
+        List<AudioBook> filtered = new ArrayList<>();
+        for (AudioBook book : books) {
+            if (book.displayName.toUpperCase().contains(filterTerm.toUpperCase())){
+                filtered.add(book);
+            }
+        }
+        Log.d("ASD", "filter: " + filtered.size());
+        getGroups(filtered);
     }
 
     @NonNull
@@ -174,7 +186,6 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             case ListItems.TYPE_ITEM:
                 AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
                 holder.textView.setText(book.displayName);
-                Log.d("ASD", "onBindViewHolder: " + book.getAlbumArt(context) + " " + book.getFileName());
                 holder.image.setImageBitmap(book.getAlbumArt(context));
                 holder.image.setVisibility(View.VISIBLE);
                 holder.textView.setSelected(selectedPos == position);
@@ -183,7 +194,6 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             case ListItems.TYPE_HEADING:
                 String title = ((ListItems.Heading) finalList.get(position)).getTitle();
                 holder.textView.setText(title);
-//                holder.image.setVisibility(View.GONE);
                 break;
         }
     }

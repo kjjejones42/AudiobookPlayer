@@ -21,7 +21,9 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,7 +41,7 @@ public class DisplayListActivity extends AppCompatActivity {
     public static final int SELECT_DIRECTORY = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
     private DisplayListViewModel model;
-    RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> mAdapter;
+    DisplayListAdapter mAdapter;
 
     public void chooseDirectory(View view) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -90,14 +92,30 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
+        final SearchView s = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
+        s.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                mAdapter.filter(query);
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
         return true;
     }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_display_list);
-        Log.d("ASD", "onCreate: ");
+        final RecyclerView recyclerView = findViewById(R.id.recyclerView);
+        final TextView emptyView = findViewById(R.id.empty_view);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -112,8 +130,6 @@ public class DisplayListActivity extends AppCompatActivity {
         }
 
         model = new ViewModelProvider(this).get(DisplayListViewModel.class);
-        final RecyclerView recyclerView = findViewById(R.id.recyclerView);
-        final TextView emptyView = findViewById(R.id.empty_view);
 
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
@@ -134,8 +150,8 @@ public class DisplayListActivity extends AppCompatActivity {
         super.onResume();
         for (AudioBook book : model.getUsers(this).getValue()){
             book.loadFromFile(this);
+
         }
-        Log.d(TAG, "onResume: ");
         mAdapter.notifyDataSetChanged();
     }
 
