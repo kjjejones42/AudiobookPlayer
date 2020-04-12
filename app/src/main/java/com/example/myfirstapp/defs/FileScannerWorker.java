@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.defs;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -13,7 +13,6 @@ import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
@@ -38,8 +37,8 @@ public class FileScannerWorker extends Worker {
 
     private final ContentResolver resolver = getApplicationContext().getContentResolver();
 
-    static final String INPUT = "INPUT";
-    static final String LIST_OF_DIRS = "LIST_OF_DIRS";
+    public static final String INPUT = "INPUT";
+    public static final String LIST_OF_DIRS = "LIST_OF_DIRS";
     private Context context;
 
     private boolean isAudio(String input){

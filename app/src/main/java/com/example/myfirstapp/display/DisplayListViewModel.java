@@ -1,19 +1,15 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.display;
 
 import android.content.Context;
-import android.os.Bundle;
-import android.os.Parcelable;
-import android.util.Log;
-import android.widget.TextView;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
 
-import java.io.File;
+import com.example.myfirstapp.defs.AudioBook;
+import com.example.myfirstapp.defs.FileScannerWorker;
+
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;

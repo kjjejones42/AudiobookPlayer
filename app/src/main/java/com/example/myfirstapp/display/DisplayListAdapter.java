@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.display;
 
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -15,10 +15,11 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.Serializable;
-import java.util.ArrayList;
+import com.example.myfirstapp.player.PlayActivity;
+import com.example.myfirstapp.R;
+import com.example.myfirstapp.defs.AudioBook;
+
 import java.util.List;
-import java.util.Objects;
 
 
 public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> implements View.OnClickListener, View.OnLongClickListener{

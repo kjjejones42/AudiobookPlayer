@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.defs;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -16,8 +16,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
-    String documentUri;
-    String displayName;
+    public String documentUri;
+    public String displayName;
     private transient MediaMetadataRetriever mmr;
     private transient String title;
 

@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.player;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
@@ -7,7 +7,6 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
-import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -28,6 +27,11 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
+
+import com.example.myfirstapp.R;
+import com.example.myfirstapp.defs.AudioBook;
+import com.example.myfirstapp.defs.MediaItem;
+import com.example.myfirstapp.display.DisplayListActivity;
 
 import java.util.Arrays;
 import java.util.List;

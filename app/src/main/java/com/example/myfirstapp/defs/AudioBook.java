@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.defs;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -19,9 +19,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class AudioBook implements Serializable {
-    final String rootUri;
-    final List<MediaItem> files;
-    final String displayName;
+    public final String rootUri;
+    public final List<MediaItem> files;
+    public final String displayName;
     private final String imageUri;
     private int positionInTrack;
     private int positionInTrackList;

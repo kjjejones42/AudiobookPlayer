@@ -11,21 +11,20 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".PlayActivity"
-            android:parentActivityName=".DisplayListActivity">
+            android:name=".player.PlayActivity"
+            android:parentActivityName=".display.DisplayListActivity">
         </activity>
         <activity
-            android:name=".DisplayListActivity"
+            android:name=".display.DisplayListActivity"
             android:label="Audiobook Player">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MainActivity" />
-        <activity android:name=".MediaPlayerActivity" />
+        <activity android:name=".player.MediaPlayerActivity" />
 
-        <service android:name=".MediaPlaybackService">
+        <service android:name=".player.MediaPlaybackService">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>

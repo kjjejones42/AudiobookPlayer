@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.display;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,6 +23,9 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.myfirstapp.R;
+import com.example.myfirstapp.defs.FileScannerWorker;
 
 import java.util.Objects;
 

@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.player;
 
 import android.content.ComponentName;
 import android.media.AudioManager;
@@ -13,6 +13,8 @@ import android.view.View;
 import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.myfirstapp.R;
 
 public class MediaPlayerActivity extends AppCompatActivity {
     private MediaBrowserCompat mediaBrowser;

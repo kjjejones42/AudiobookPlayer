@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.example.myfirstapp.player;
 
 import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
