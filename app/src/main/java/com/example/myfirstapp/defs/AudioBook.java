@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
@@ -19,30 +20,48 @@ import java.util.Collections;
 import java.util.List;
 
 public class AudioBook implements Serializable {
+    public static int STATUS_IN_PROGRESS = 0;
+    public static int STATUS_NOT_BEGUN = 1;
+    public static int STATUS_FINISHED = 2;
+
     public final String rootUri;
     public final List<MediaItem> files;
     public final String displayName;
     private final String imageUri;
     private int positionInTrack;
     private int positionInTrackList;
+    private int status;
     private transient Bitmap art;
-
 
     public void loadFromFile(Context context) {
         try {
-            ObjectInputStream ois = new ObjectInputStream(context.openFileInput(displayName));
+            ObjectInputStream ois = new ObjectInputStream(context.openFileInput(getFileName()));
             AudioBook book = (AudioBook) ois.readObject();
             ois.close();
             this.positionInTrackList = book.positionInTrackList;
             this.positionInTrack = book.positionInTrack;
-        } catch (ClassNotFoundException e) {
-            context.deleteFile(displayName);
+            this.status = book.status;
+            getAlbumArt(context);
+        } catch (ClassNotFoundException | InvalidClassException e) {
+            context.deleteFile(getFileName());
             Log.d("ASD", "File found for previous version");
         } catch (FileNotFoundException e){
             Log.d("ASD", "No File Found");
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public int getStatus(){
+        return status;
+    }
+
+    public String getFileName(){
+        return displayName.replaceAll("\\W", "");
     }
 
     public Bitmap getAlbumArt(Context context){
@@ -95,13 +114,27 @@ public class AudioBook implements Serializable {
         this.displayName = name;
         this.files = files;
         this.rootUri = rootUri;
+        this.status = STATUS_NOT_BEGUN;
     }
 
-    public void saveConfig(Context context, int positionInTrackList, int positionInTrack) {
+    public void setPositionInTrack(int positionInTrack) {
+        this.positionInTrack = positionInTrack;
+    }
+
+    public void setPositionInTrackList(int positionInTrackList){
+        this.positionInTrackList = positionInTrackList;
+    }
+
+    public void setFinished(Context context){
+        setPositionInTrack(0);
+        setPositionInTrackList(0);
+        setStatus(AudioBook.STATUS_FINISHED);
+        saveConfig(context);
+    }
+
+    public void saveConfig(Context context) {
         try {
-            this.positionInTrackList = positionInTrackList;
-            this.positionInTrack = positionInTrack;
-            ObjectOutputStream oos = new ObjectOutputStream(context.openFileOutput(displayName, Context.MODE_PRIVATE));
+            ObjectOutputStream oos = new ObjectOutputStream(context.openFileOutput(getFileName(), Context.MODE_PRIVATE));
             oos.writeObject(this);
             oos.close();
         } catch (IOException e){

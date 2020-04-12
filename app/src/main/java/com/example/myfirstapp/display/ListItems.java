@@ -2,13 +2,26 @@ package com.example.myfirstapp.display;
 
 import com.example.myfirstapp.defs.AudioBook;
 
+import java.util.HashMap;
+
 class ListItems {
     final static int TYPE_HEADING = 0;
     final static int TYPE_ITEM = 1;
+    private static HashMap<Integer, String> map;
+
+    private static HashMap<Integer, String> getMap(){
+        if (map == null) {
+            map = new HashMap<>();
+            map.put(AudioBook.STATUS_FINISHED, "Finished");
+            map.put(AudioBook.STATUS_IN_PROGRESS, "In Progress");
+            map.put(AudioBook.STATUS_NOT_BEGUN, "Not Begun");
+        }
+        return map;
+    }
 
     public static abstract class ListItem  {
         public abstract int getType();
-        public abstract String getSnippet();
+        public abstract int getSnippet();
     }
 
     public static class AudioBookContainer extends ListItem {
@@ -22,15 +35,16 @@ class ListItems {
         }
 
         @Override
-        public String getSnippet() {
-            return book.displayName.substring(0,1);
+        public int getSnippet() {
+            return book.getStatus();
+//            return getMap().get(book.getStatus());
         }
 
     }
 
     public static class Heading extends ListItem {
-        final String title;
-        Heading(String title) {
+        final int title;
+        Heading(int title) {
             this.title = title;
         }
         @Override
@@ -39,8 +53,12 @@ class ListItems {
         }
 
         @Override
-        public String getSnippet() {
+        public int getSnippet() {
             return title;
+        }
+
+        public String getTitle(){
+            return getMap().get(title);
         }
     }
 }

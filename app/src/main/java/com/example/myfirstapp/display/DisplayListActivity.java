@@ -19,22 +19,27 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.myfirstapp.R;
+import com.example.myfirstapp.defs.AudioBook;
 import com.example.myfirstapp.defs.FileScannerWorker;
 
 import java.util.Objects;
 
 public class DisplayListActivity extends AppCompatActivity {
 
+    private static String TAG = "ASD";
+
     public static final String PLAY_FILE = "com.example.myfirstapp.PLAY";
     public static final int SELECT_DIRECTORY = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
     private DisplayListViewModel model;
+    RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> mAdapter;
 
     public void chooseDirectory(View view) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -92,6 +97,7 @@ public class DisplayListActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display_list);
+        Log.d("ASD", "onCreate: ");
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -111,8 +117,7 @@ public class DisplayListActivity extends AppCompatActivity {
 
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
-        RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> mAdapter =
-                new DisplayListAdapter(model, recyclerView);
+        mAdapter = new DisplayListAdapter(model, recyclerView, this);
         recyclerView.setAdapter(mAdapter);
 
         if (Objects.requireNonNull(model.getUsers(this)).getValue().isEmpty()){
@@ -122,6 +127,16 @@ public class DisplayListActivity extends AppCompatActivity {
             recyclerView.setVisibility(View.VISIBLE);
             emptyView.setVisibility(View.GONE);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        for (AudioBook book : model.getUsers(this).getValue()){
+            book.loadFromFile(this);
+        }
+        Log.d(TAG, "onResume: ");
+        mAdapter.notifyDataSetChanged();
     }
 
     @Override
