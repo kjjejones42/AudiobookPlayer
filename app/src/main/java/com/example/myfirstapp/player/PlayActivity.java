@@ -1,11 +1,9 @@
 package com.example.myfirstapp.player;
 
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.ColorUtils;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
@@ -22,7 +20,6 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.animation.Animation;
@@ -48,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener, AdapterView.OnItemSelectedListener {
 
-    private static String TAG = "ASD";
+//    private static String TAG = "ASD";
 
     private Spinner spinner;
     private ImageButton prevButton;
@@ -112,6 +109,24 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     }
 
+    private void initializeModelObservers(){
+        model.getIsPlaying().observe(this, isPlaying -> {
+            if (isPlaying) {
+                toggleButton.setImageResource(R.drawable.ic_pause);
+            } else {
+                toggleButton.setImageResource(R.drawable.ic_play);
+            }
+        });
+        model.getPosition().observe(this, position -> {
+            if (position > 0) {
+                seekBar.setProgress(position.intValue());
+                progressText.setText(msToMMSS(position));
+            }
+        });
+        model.getMetadata().observe(this, this::setMetaData);
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -140,36 +155,8 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         audioBook.loadFromFile(this);
         int position = audioBook.getPositionInTrackList();
         setColorFromAlbumArt(audioBook.getAlbumArt(this));
-        for (MediaItem track : audioBook.files) {
-            track.generateTitle(this);
-        }
         model = new ViewModelProvider(this).get(PlayerViewModel.class);
-        model.getIsPlaying().observe(this, new Observer<Boolean>() {
-            @Override
-            public void onChanged(Boolean isPlaying) {
-                if (isPlaying) {
-                    toggleButton.setImageResource(R.drawable.ic_pause);
-                } else {
-                    toggleButton.setImageResource(R.drawable.ic_play);
-                }
-            }
-        });
-        model.getPosition().observe(this, new Observer<Long>() {
-            @Override
-            public void onChanged(Long position) {
-                if (position > 0) {
-                    seekBar.setProgress(position.intValue());
-                    progressText.setText(msToMMSS(position));
-                }
-            }
-        });
-        model.getMetadata().observe(this, new Observer<MediaMetadataCompat>() {
-            @Override
-            public void onChanged(MediaMetadataCompat metadata) {
-                setMetaData(metadata);
-            }
-        });
-
+        initializeModelObservers();
 
         setControlsEnabled(false);
         seekBar.setOnSeekBarChangeListener(this);
@@ -216,7 +203,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
            b.getBackground().setTint(color);
        }
        ActionBar bar = getSupportActionBar();
-       bar.setBackgroundDrawable(new ColorDrawable(color));
+       if (bar != null) {
+           bar.setBackgroundDrawable(new ColorDrawable(color));
+       }
        getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
        seekBar.getThumb().setTint(color);
        seekBar.getProgressDrawable().setTint(color);
@@ -224,7 +213,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
    private void updateStatusBarColor(int color){
        ActionBar bar = getSupportActionBar();
-       bar.setBackgroundDrawable(new ColorDrawable(color));
+       if (bar != null) {
+           bar.setBackgroundDrawable(new ColorDrawable(color));
+       }
        getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
    }
 
@@ -233,23 +224,20 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             return;
         }
         try {
-            Palette.from(bitmap).generate(new Palette.PaletteAsyncListener() {
-                @Override
-                public void onGenerated(@Nullable Palette palette) {
-                    if (palette != null && !audioBook.isArtGenerated()) {
-                        boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-                        int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
-                        PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
-                        int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
-                        updateButtonColor(color);
-                        updateStatusBarColor(color);
-                    } else {
-                        TypedValue tv = new TypedValue();
-                        getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
-                        updateButtonColor(tv.data);
-                        getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
-                        updateStatusBarColor(tv.data);
-                    }
+            Palette.from(bitmap).generate(palette -> {
+                if (palette != null && !audioBook.isArtGenerated()) {
+                    boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+                    int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
+                    PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
+                    int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
+                    updateButtonColor(color);
+                    updateStatusBarColor(color);
+                } else {
+                    TypedValue tv = new TypedValue();
+                    getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
+                    updateButtonColor(tv.data);
+                    getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
+                    updateStatusBarColor(tv.data);
                 }
             });
         } catch (Exception e) {
@@ -306,41 +294,21 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     void buildTransportControls() {
         controller.registerCallback(controllerCallback);
-        toggleButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                int pbState = controller.getPlaybackState().getState();
-                if (pbState == PlaybackStateCompat.STATE_PLAYING) {
-                    controller.getTransportControls().pause();
-                } else {
-                    controller.getTransportControls().play();
-                }
-            }});
-        prevButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                controller.getTransportControls().skipToPrevious();
+        toggleButton.setOnClickListener(v -> {
+            int pbState = controller.getPlaybackState().getState();
+            if (pbState == PlaybackStateCompat.STATE_PLAYING) {
+                controller.getTransportControls().pause();
+            } else {
+                controller.getTransportControls().play();
             }
         });
-        nextButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                controller.getTransportControls().skipToNext();
-                model.setPosition(0);
-            }
+        prevButton.setOnClickListener(v -> controller.getTransportControls().skipToPrevious());
+        nextButton.setOnClickListener(v -> {
+            controller.getTransportControls().skipToNext();
+            model.setPosition(0);
         });
-        rewindButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                controller.getTransportControls().rewind();
-            }
-        });
-        forwardButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                controller.getTransportControls().fastForward();
-            }
-        });
+        rewindButton.setOnClickListener(v -> controller.getTransportControls().rewind());
+        forwardButton.setOnClickListener(v -> controller.getTransportControls().fastForward());
     }
 
     void setControlsEnabled(boolean on){
@@ -390,14 +358,14 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             }
         }
 
-
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
             if (state.getState() != PlaybackStateCompat.STATE_STOPPED) {
                 setControlsEnabled(true);
                 model.setPosition(state.getPosition());
                 boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-                if (isPlaying != model.getIsPlaying().getValue()) {
+                Boolean b = model.getIsPlaying().getValue();
+                if (b != null && isPlaying != b) {
                     model.setIsPlaying(isPlaying);
                 }
             }

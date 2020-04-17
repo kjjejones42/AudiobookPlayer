@@ -9,41 +9,49 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.List;
 
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
     public String documentUri;
-    public String displayName;
+    private String displayName;
     private transient MediaMetadataRetriever mmr;
-    private transient String title;
 
-    MediaMetadataRetriever getMMR(Context context){
-        if (mmr == null) {
-            mmr = new MediaMetadataRetriever();
-            mmr.setDataSource(context, Uri.parse(documentUri));
-        }
-        return mmr;
-    }
-
-    public Bitmap getAlbumArt(Context context){
-        byte[] image = getMMR(context).getEmbeddedPicture();
-        if (image == null){
+    @Nullable
+    private MediaMetadataRetriever getMMR(Context context){
+        try {
+            if (mmr == null) {
+                mmr = new MediaMetadataRetriever();
+                mmr.setDataSource(context, Uri.parse(documentUri));
+            }
+            return mmr;
+        } catch (Exception e) {
             return null;
         }
-        ByteArrayInputStream bis = new ByteArrayInputStream(image);
-        return BitmapFactory.decodeStream(bis);
     }
 
-    public void generateTitle(Context context) {
-        if (title == null) {
-            title = getMMR(context).extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
-        }
+    String extractMetadata(Context context, int keycode){
+        try {
+            mmr = getMMR(context);
+            if (mmr != null) {
+                return mmr.extractMetadata(keycode);
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
+    Bitmap getEmbeddedPicture(Context context){
+        try {
+            mmr = getMMR(context);
+            if (mmr != null) {
+                ByteArrayInputStream bis = new ByteArrayInputStream(mmr.getEmbeddedPicture());
+                return BitmapFactory.decodeStream(bis);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
 
     MediaItem(String documentUri, String displayName) {
         this.documentUri = documentUri;
@@ -58,7 +66,11 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     @NonNull
     @Override
     public String toString() {
-        return (title == null) ? displayName.substring(0, displayName.lastIndexOf('.')) : title;
+        int index = displayName.lastIndexOf('.');
+        if (index == -1) {
+            return displayName;
+        }
+        return displayName.substring(0, index);
     }
 
     public static final Creator<MediaItem> CREATOR = new Creator<MediaItem>() {

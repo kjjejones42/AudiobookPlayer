@@ -1,5 +1,7 @@
 package com.example.myfirstapp.display;
 
+import android.util.Log;
+
 import com.example.myfirstapp.defs.AudioBook;
 
 import java.util.HashMap;
@@ -20,8 +22,9 @@ class ListItems {
     }
 
     public static abstract class ListItem  {
-        public abstract int getType();
-        public abstract int getSnippet();
+        public abstract int getCategory();
+        public abstract long getTimeStamp();
+        public abstract int getHeadingOrItem();
     }
 
     public static class AudioBookContainer extends ListItem {
@@ -29,36 +32,48 @@ class ListItems {
         AudioBookContainer(AudioBook book){
             this.book = book;
         }
+
         @Override
-        public int getType() {
-            return TYPE_ITEM;
+        public int getCategory() {
+            return book.getStatus();
         }
 
         @Override
-        public int getSnippet() {
-            return book.getStatus();
-//            return getMap().get(book.getStatus());
+        public int getHeadingOrItem() {
+            return TYPE_ITEM;
+        }
+
+
+        @Override
+        public long getTimeStamp() {
+            return book.lastSavedTimestamp;
         }
 
     }
 
     public static class Heading extends ListItem {
-        final int title;
+        final int category;
         Heading(int title) {
-            this.title = title;
+            this.category = title;
         }
+
         @Override
-        public int getType() {
+        public int getCategory() {
+            return category;
+        }
+
+        @Override
+        public int getHeadingOrItem() {
             return TYPE_HEADING;
         }
 
         @Override
-        public int getSnippet() {
-            return title;
+        public long getTimeStamp() {
+            return 0;
         }
 
-        public String getTitle(){
-            return getMap().get(title);
+        String getHeadingTitle(){
+            return getMap().get(category);
         }
     }
 }

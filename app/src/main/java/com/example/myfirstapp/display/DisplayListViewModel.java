@@ -16,7 +16,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+
+@SuppressWarnings("WeakerAccess")
 public class DisplayListViewModel extends ViewModel {
 
     private MutableLiveData<List<AudioBook>> users = new MutableLiveData<>();
@@ -28,13 +31,13 @@ public class DisplayListViewModel extends ViewModel {
             ObjectInputStream ois = new ObjectInputStream(fis);
             users.setValue((List<AudioBook>) ois.readObject());
             ois.close();
-            for (AudioBook user : users.getValue()){
+            for (AudioBook user : Objects.requireNonNull(users.getValue())){
                 user.loadFromFile(context);
             }
         } catch (Exception e) {
             e.printStackTrace();
             context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
-            users.setValue(new ArrayList<AudioBook>());
+            users.setValue(new ArrayList<>());
             saveToDisk(context);
         }
     }

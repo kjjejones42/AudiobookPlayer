@@ -5,13 +5,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
 import android.Manifest;
@@ -19,10 +17,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
-import android.util.TypedValue;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.SearchView;
 import android.widget.TextView;
@@ -32,11 +27,11 @@ import com.example.myfirstapp.R;
 import com.example.myfirstapp.defs.AudioBook;
 import com.example.myfirstapp.defs.FileScannerWorker;
 
-import java.util.Objects;
+import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
 
-    private static String TAG = "ASD";
+//    private static String TAG = "ASD";
 
     public static final String PLAY_FILE = "com.example.myfirstapp.PLAY";
     public static final int SELECT_DIRECTORY = 1;
@@ -70,17 +65,14 @@ public class DisplayListActivity extends AppCompatActivity {
                         "Loading. Please wait...", true);
                 WorkManager.getInstance(this).enqueue(request);
                 WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.getId())
-                        .observe(this, new Observer<WorkInfo>() {
-                            @Override
-                            public void onChanged(WorkInfo workInfo) {
-                                if (workInfo != null && workInfo.getState().isFinished()) {
-                                    try {
-                                        Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
-                                        dialog.cancel();
-                                        startActivity(intent);
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
+                        .observe(this, workInfo -> {
+                            if (workInfo != null && workInfo.getState().isFinished()) {
+                                try {
+                                    Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
+                                    dialog.cancel();
+                                    startActivity(intent);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
                             }
                         });
@@ -111,7 +103,8 @@ public class DisplayListActivity extends AppCompatActivity {
 
     void updateScreen(){
         mAdapter.notifyDataSetChanged();
-        if (Objects.requireNonNull(model.getUsers(this)).getValue().isEmpty()){
+        List<AudioBook> list = model.getUsers(this).getValue();
+        if (list!= null && list.isEmpty()){
             recyclerView.setVisibility(View.GONE);
             emptyView.setVisibility(View.VISIBLE);
         } else {
@@ -163,8 +156,11 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        for (AudioBook book : model.getUsers(this).getValue()){
-            book.loadFromFile(this);
+        List<AudioBook> list = model.getUsers(this).getValue();
+        if (list != null) {
+            for (AudioBook book : list) {
+                book.loadFromFile(this);
+            }
         }
         updateScreen();
     }

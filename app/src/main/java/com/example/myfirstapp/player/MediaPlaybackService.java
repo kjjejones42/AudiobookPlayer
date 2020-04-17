@@ -21,7 +21,6 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -35,13 +34,11 @@ import com.example.myfirstapp.defs.MediaItem;
 import com.example.myfirstapp.display.DisplayListActivity;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class MediaPlaybackService extends MediaBrowserServiceCompat implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener  {
-    private static String TAG = "ASD";
     private class MySessionCallback extends MediaSessionCompat.Callback {
 
         private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
@@ -143,11 +140,14 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             super.onCustomAction(action, extras);
             saveProgress();
             mediaSession.sendSessionEvent(action, extras);
-            onStop();
-            MediaPlaybackService.this.stopForeground(true);
-            MediaPlaybackService.this.stopSelf();
+            if ("REACHED_END".equals(action)) {
+                onStop();
+                MediaPlaybackService.this.stopForeground(true);
+                MediaPlaybackService.this.stopSelf();
+            }
         }
 
+        @SuppressWarnings("SynchronizeOnNonFinalField")
         @Override
         public void onPlay() {
             AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
@@ -169,6 +169,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             }
         }
 
+        @SuppressWarnings("SynchronizeOnNonFinalField")
         @Override
         public void onSeekTo(long pos) {
             if (isMediaPlayerPrepared) {
@@ -191,6 +192,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             }
         }
 
+        @SuppressWarnings("SynchronizeOnNonFinalField")
         @Override
         public void onPause() {
             if (isMediaPlayerPrepared && mediaPlayer.isPlaying()) {
@@ -208,6 +210,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             saveProgress();
         }
 
+        @SuppressWarnings("SynchronizeOnNonFinalField")
         @Override
         public void onStop() {
             if (isMediaPlayerPrepared) {
@@ -244,6 +247,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
                     mediaPlayer.getCurrentPosition() - 30 * 1000);
         }
 
+        @SuppressWarnings("SynchronizeOnNonFinalField")
         @Override
         public void onSkipToPrevious() {
             super.onSkipToPrevious();
@@ -261,6 +265,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             }
         }
 
+        @SuppressWarnings("SynchronizeOnNonFinalField")
         @Override
         public void onSkipToNext() {
             super.onSkipToNext();
@@ -288,8 +293,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     private int positionInTrackList;
     private int positionInTrack;
     private Notification notification;
-    private MediaItem mediaItem;
-    private Intent resumeIntent;
 
     private boolean isPlaying() {
         if (mediaSession == null){
@@ -312,7 +315,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             audioBook.setStatus(AudioBook.STATUS_IN_PROGRESS);
             saveProgress();
         }
-        mediaItem = audioBook.files.get(position);
+        MediaItem mediaItem = audioBook.files.get(position);
         mediaPlayer.reset();
         isMediaPlayerPrepared = false;
         if (updateTask != null){
@@ -325,6 +328,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             mediaPlayer.setOnPreparedListener(this);
             mediaPlayer.setOnCompletionListener(this);
             mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
+//            LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
+//            ef.setTargetGain(10000);
+//            ef.setEnabled(true);
+//            mediaPlayer.attachAuxEffect(ef.getId());
+//            mediaPlayer.setAuxEffectSendLevel(1f);
             mediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
@@ -337,7 +345,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             try {
                 saveProgress();
                 audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
-                resumeIntent = new Intent(this, PlayActivity.class);
+                Intent resumeIntent = new Intent(this, PlayActivity.class);
                 resumeIntent.putExtra(DisplayListActivity.PLAY_FILE, audioBook);
                 mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_UPDATE_CURRENT));
                 audioBook.loadFromFile(this);
@@ -425,6 +433,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         mediaSession.release();
     }
 
+    @SuppressWarnings("SynchronizeOnNonFinalField")
     @Override
     public void onPrepared(MediaPlayer mp) {
         isMediaPlayerPrepared = true;
@@ -444,11 +453,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             }
             }
         }, 0, 1000);
-//        task.execute();
-//        LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
-//        ef.setTargetGain(10000);
-//        ef.setEnabled(true);
-//        mediaPlayer.setAuxEffectSendLevel(1f);
     }
 
 

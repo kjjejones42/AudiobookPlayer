@@ -21,7 +21,7 @@ import java.util.List;
 
 public class FileScannerWorker extends Worker {
 
-    private class AudioBookResult {
+    private static class AudioBookResult {
         String imageUri;
         List<MediaItem> media;
     }
