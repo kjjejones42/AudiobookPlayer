@@ -335,6 +335,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             try {
+                saveProgress();
                 audioBook = (AudioBook) intent.getSerializableExtra("AUDIOBOOK");
                 resumeIntent = new Intent(this, PlayActivity.class);
                 resumeIntent.putExtra(DisplayListActivity.PLAY_FILE, audioBook);
@@ -389,7 +390,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         long duration = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         return metadataBuilder
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, item.getMetaDataString(this))
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, item.getAlbumArt(this))
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
             .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, audioBook.files.indexOf(item))

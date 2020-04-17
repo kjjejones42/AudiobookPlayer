@@ -16,6 +16,7 @@ import java.io.InvalidClassException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -27,11 +28,39 @@ public class AudioBook implements Serializable {
     public final String rootUri;
     public final List<MediaItem> files;
     public final String displayName;
+    public final String author;
     private final String imageUri;
     private int positionInTrack;
     private int positionInTrackList;
     private int status;
     private transient Bitmap art;
+
+    AudioBook(String name, String rootUri, String imageUri, List<MediaItem> files, Context context){
+        if (files != null){
+            Collections.sort(files);
+        }
+        this.imageUri = imageUri;
+        this.displayName = name;
+        this.files = files;
+        this.rootUri = rootUri;
+        this.status = STATUS_NOT_BEGUN;
+        List<Integer> keys = Arrays.asList(MediaMetadataRetriever.METADATA_KEY_ARTIST, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST, MediaMetadataRetriever.METADATA_KEY_AUTHOR, MediaMetadataRetriever.METADATA_KEY_COMPOSER, MediaMetadataRetriever.METADATA_KEY_WRITER);
+        String tempAuthor = null;
+        for (MediaItem item : files) {
+            MediaMetadataRetriever mmr = item.getMMR(context);
+            for (Integer i : keys) {
+                tempAuthor = mmr.extractMetadata(i);
+                if (tempAuthor != null) {
+                    break;
+                }
+            }
+            if (tempAuthor != null) {
+                break;
+            }
+        }
+        author = tempAuthor == null ? "" : tempAuthor;
+        Log.d("ASD", author + " " + displayName);
+    }
 
     public void loadFromFile(Context context) {
         try {
@@ -106,16 +135,6 @@ public class AudioBook implements Serializable {
         return positionInTrack;
     }
 
-    AudioBook(String name, String rootUri, String imageUri, List<MediaItem> files){
-        if (files != null){
-            Collections.sort(files);
-        }
-        this.imageUri = imageUri;
-        this.displayName = name;
-        this.files = files;
-        this.rootUri = rootUri;
-        this.status = STATUS_NOT_BEGUN;
-    }
 
     public void setPositionInTrack(int positionInTrack) {
         this.positionInTrack = positionInTrack;

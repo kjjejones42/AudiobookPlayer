@@ -3,12 +3,11 @@ package com.example.myfirstapp.player;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
-import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -20,8 +19,9 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
@@ -52,14 +52,13 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     private ImageButton nextButton;
     private TextView progressText;
     private TextView durationText;
-    private TextView metadataText;
     private MediaBrowserCompat mediaBrowser;
     private MediaControllerCompat controller;
     private AudioBook audioBook;
     private SeekBar seekBar;
     private PlayerViewModel model;
     private ImageView imView;
-    private ProgressDialog dialog;
+    private ConstraintLayout buttonContainer;
 
     private String msToMMSS(long ms){
         long seconds = ms / 1000 % 60;
@@ -84,15 +83,24 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
     }
 
-    void setMetaData(MediaMetadataCompat metadata){
-        Long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+    void setDuration(Long duration){
         if (duration > 0) {
             seekBar.setMax(duration.intValue());
             durationText.setText(msToMMSS(duration));
         }
-        imView.setImageBitmap(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
+    }
+
+    void setImage(Bitmap bitmap){
+        if (bitmap != null) {
+            imView.setImageBitmap(bitmap);
+        }
+
+    }
+
+    void setMetaData(MediaMetadataCompat metadata){
+        setDuration(metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION));
+        setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
         int position = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER);
-        metadataText.setText(metadata.getString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION));
         spinner.setTag(position);
         spinner.setSelection(position);
 
@@ -113,8 +121,10 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         durationText = findViewById(R.id.duration_text);
         seekBar = findViewById(R.id.seekBar);
         spinner = findViewById(R.id.trackChooser);
-        metadataText = findViewById(R.id.songInfo);
         imView = findViewById(R.id.albumArtView);
+        buttonContainer = findViewById(R.id.buttonContainer);
+
+        buttonContainer.setVisibility(View.INVISIBLE);
 
         mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks,null);
         AudioBook newbook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
@@ -122,6 +132,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             audioBook = newbook;
         }
         audioBook.loadFromFile(this);
+        int position = audioBook.getPositionInTrackList();
         setColorFromAlbumArt(audioBook.getAlbumArt(this));
         for (MediaItem track : audioBook.files) {
             track.generateTitle(this);
@@ -159,7 +170,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
         Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.displayName);
 
-        int position = audioBook.getPositionInTrackList();
 
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -167,20 +177,28 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         spinner.setTag(position);
         spinner.setSelection(position);
         spinner.setOnItemSelectedListener(this);
+
+
    }
 
    private void onConnected(){
        try {
+           Animation bottomUp = AnimationUtils.loadAnimation(this,
+                   R.anim.bottom_up);
+           buttonContainer.startAnimation(bottomUp);
+           buttonContainer.setVisibility(View.VISIBLE);
+
            controller = new MediaControllerCompat(
                    PlayActivity.this,
                    mediaBrowser.getSessionToken());
            MediaControllerCompat.setMediaController(PlayActivity.this, controller);
-           model.setMetadata(controller.getMetadata());
-           model.setPosition(controller.getPlaybackState().getPosition());
            buildTransportControls();
            if (!audioBook.displayName.equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
                model.clear();
                initialiseMediaSession(audioBook.getPositionInTrackList());
+           } else {
+               model.setMetadata(controller.getMetadata());
+               model.setPosition(controller.getPlaybackState().getPosition());
            }
        } catch (RemoteException e) {
            e.printStackTrace();
@@ -299,13 +317,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     }
 
     void setControlsEnabled(boolean on){
-        if (!on) {
-            dialog = ProgressDialog.show(this, "","Loading. Please wait...", true);
-        } else {
-            if (dialog != null) {
-                dialog.cancel();
-            }
-        }
         int visibility = on ? View.VISIBLE : View.INVISIBLE;
         seekBar.setEnabled(on);
         seekBar.setVisibility(visibility);
@@ -347,6 +358,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             if ("REACHED_END".equals(event)) {
                 mediaBrowser.disconnect();
                 audioBook.setFinished(PlayActivity.this);
+                audioBook.saveConfig(PlayActivity.this);
                 onBackPressed();
             }
         }

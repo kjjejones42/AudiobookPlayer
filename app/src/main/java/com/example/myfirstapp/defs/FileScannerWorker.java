@@ -92,7 +92,7 @@ public class FileScannerWorker extends Worker {
                     List<MediaItem> childAudio = result.media;
                     String name = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME));
                     if (!childAudio.isEmpty()) {
-                        AudioBook newBook = new AudioBook(name, newUri.toString(), result.imageUri, childAudio);
+                        AudioBook newBook = new AudioBook(name, newUri.toString(), result.imageUri, childAudio, context);
                         list.add(newBook);
                     }
                     list.addAll(recurse(root, childId));
