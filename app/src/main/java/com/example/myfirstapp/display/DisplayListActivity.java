@@ -20,6 +20,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -53,7 +54,7 @@ public class DisplayListActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == MY_PERMISSIONS_REQUEST_READ_STORAGE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "granted", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -75,7 +76,7 @@ public class DisplayListActivity extends AppCompatActivity {
                                 if (workInfo != null && workInfo.getState().isFinished()) {
                                     try {
                                         Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
-                                        dialog.dismiss();
+                                        dialog.cancel();
                                         startActivity(intent);
                                     } catch (Exception e) {
                                         e.printStackTrace();
@@ -108,14 +109,36 @@ public class DisplayListActivity extends AppCompatActivity {
         return true;
     }
 
+    void updateScreen(){
+        mAdapter.notifyDataSetChanged();
+        if (Objects.requireNonNull(model.getUsers(this)).getValue().isEmpty()){
+            recyclerView.setVisibility(View.GONE);
+            emptyView.setVisibility(View.VISIBLE);
+        } else {
+            recyclerView.setVisibility(View.VISIBLE);
+            emptyView.setVisibility(View.GONE);
+        }
+
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        model.loadFromDisk(this);
+        updateScreen();
+    }
+
+    RecyclerView recyclerView;
+    TextView emptyView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_display_list);
-        final RecyclerView recyclerView = findViewById(R.id.recyclerView);
-        final TextView emptyView = findViewById(R.id.empty_view);
+
+        recyclerView = findViewById(R.id.recyclerView);
+        emptyView = findViewById(R.id.empty_view);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -134,14 +157,7 @@ public class DisplayListActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new DisplayListAdapter(model, recyclerView, this);
         recyclerView.setAdapter(mAdapter);
-
-        if (Objects.requireNonNull(model.getUsers(this)).getValue().isEmpty()){
-            recyclerView.setVisibility(View.GONE);
-            emptyView.setVisibility(View.VISIBLE);
-        } else {
-            recyclerView.setVisibility(View.VISIBLE);
-            emptyView.setVisibility(View.GONE);
-        }
+        updateScreen();
     }
 
     @Override
@@ -149,9 +165,8 @@ public class DisplayListActivity extends AppCompatActivity {
         super.onResume();
         for (AudioBook book : model.getUsers(this).getValue()){
             book.loadFromFile(this);
-
         }
-        mAdapter.notifyDataSetChanged();
+        updateScreen();
     }
 
     @Override

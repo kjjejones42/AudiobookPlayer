@@ -4,13 +4,16 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -19,6 +22,8 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -39,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener, AdapterView.OnItemSelectedListener {
 
@@ -61,9 +67,9 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     private ConstraintLayout buttonContainer;
 
     private String msToMMSS(long ms){
-        long seconds = ms / 1000 % 60;
-        long minutes = ms / (60 * 1000);
-        long hours = ms / (60 * 60 * 1000);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60;
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
+        long hours = TimeUnit.MILLISECONDS.toHours(ms);
         if (hours > 0) {
             return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
         }
@@ -183,11 +189,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
    private void onConnected(){
        try {
-           Animation bottomUp = AnimationUtils.loadAnimation(this,
-                   R.anim.bottom_up);
-           buttonContainer.startAnimation(bottomUp);
-           buttonContainer.setVisibility(View.VISIBLE);
-
            controller = new MediaControllerCompat(
                    PlayActivity.this,
                    mediaBrowser.getSessionToken());
@@ -200,9 +201,31 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                model.setMetadata(controller.getMetadata());
                model.setPosition(controller.getPlaybackState().getPosition());
            }
+           Animation bottomUp = AnimationUtils.loadAnimation(this,
+                   R.anim.bottom_up);
+           buttonContainer.startAnimation(bottomUp);
+           buttonContainer.setVisibility(View.VISIBLE);
        } catch (RemoteException e) {
            e.printStackTrace();
        }
+   }
+
+   private void updateButtonColor(int color){
+       List<ImageButton> list = Arrays.asList(prevButton, rewindButton, toggleButton, nextButton, forwardButton);
+       for (ImageButton b : list) {
+           b.getBackground().setTint(color);
+       }
+       ActionBar bar = getSupportActionBar();
+       bar.setBackgroundDrawable(new ColorDrawable(color));
+       getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
+       seekBar.getThumb().setTint(color);
+       seekBar.getProgressDrawable().setTint(color);
+   }
+
+   private void updateStatusBarColor(int color){
+       ActionBar bar = getSupportActionBar();
+       bar.setBackgroundDrawable(new ColorDrawable(color));
+       getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
    }
 
    private void setColorFromAlbumArt(Bitmap bitmap){
@@ -213,16 +236,20 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             Palette.from(bitmap).generate(new Palette.PaletteAsyncListener() {
                 @Override
                 public void onGenerated(@Nullable Palette palette) {
-                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
-                List<ImageButton> list = Arrays.asList(prevButton, rewindButton, toggleButton, nextButton, forwardButton);
-                for (ImageButton b : list) {
-                    b.getBackground().setTint(color);
-                }
-                ActionBar bar = getSupportActionBar();
-                bar.setBackgroundDrawable(new ColorDrawable(color));
-                getWindow().setStatusBarColor(palette.getMutedColor(color));
-                seekBar.getThumb().setTint(color);
-                seekBar.getProgressDrawable().setTint(color);
+                    if (palette != null && !audioBook.isArtGenerated()) {
+                        boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+                        int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
+                        PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
+                        int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
+                        updateButtonColor(color);
+                        updateStatusBarColor(color);
+                    } else {
+                        TypedValue tv = new TypedValue();
+                        getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
+                        updateButtonColor(tv.data);
+                        getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
+                        updateStatusBarColor(tv.data);
+                    }
                 }
             });
         } catch (Exception e) {

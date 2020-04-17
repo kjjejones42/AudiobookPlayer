@@ -72,7 +72,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
             Context context = getApplicationContext();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 CharSequence name = getString(R.string.channel_name);
-                int importance = NotificationManager.IMPORTANCE_DEFAULT;
+                int importance = NotificationManager.IMPORTANCE_LOW;
                 NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
                 channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 channel.setDescription(getString(R.string.channel_description));
@@ -310,7 +310,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         positionInTrackList = position;
         if (audioBook.getStatus() == AudioBook.STATUS_NOT_BEGUN) {
             audioBook.setStatus(AudioBook.STATUS_IN_PROGRESS);
-            audioBook.saveConfig(this);
+            saveProgress();
         }
         mediaItem = audioBook.files.get(position);
         mediaPlayer.reset();
@@ -390,7 +390,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat implements M
         long duration = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         return metadataBuilder
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, item.getAlbumArt(this))
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, audioBook.getAlbumArt(this))
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
             .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, audioBook.files.indexOf(item))
             .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, audioBook.displayName)

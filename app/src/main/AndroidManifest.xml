@@ -13,11 +13,12 @@
         <activity
             android:name=".player.PlayActivity"
             android:parentActivityName=".display.DisplayListActivity"
-            android:launchMode="singleTop">
+            android:launchMode="singleTask">
         </activity>
         <activity
             android:name=".display.DisplayListActivity"
-            android:label="Audiobook Player">
+            android:label="Audiobook Player"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

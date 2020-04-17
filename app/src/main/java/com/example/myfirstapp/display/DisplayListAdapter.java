@@ -1,5 +1,6 @@
 package com.example.myfirstapp.display;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -70,9 +71,13 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             @Override
             public void onChanged() {
                 super.onChanged();
-                getGroups(DisplayListAdapter.this.model.getUsers(context).getValue());
+                updateFromDisk();
             }
         });
+    }
+
+    void updateFromDisk(){
+        getGroups(DisplayListAdapter.this.model.getUsers(context).getValue());
     }
 
     @Override
@@ -188,7 +193,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
                 holder.textView.setText(book.displayName);
                 holder.artist.setText(book.author);
-                holder.image.setImageBitmap(book.getAlbumArt(context));
+                holder.image.setImageBitmap(book.getThumbnail((Activity) rcv.getContext()));
                 holder.image.setVisibility(View.VISIBLE);
                 holder.textView.setSelected(selectedPos == position);
                 break;

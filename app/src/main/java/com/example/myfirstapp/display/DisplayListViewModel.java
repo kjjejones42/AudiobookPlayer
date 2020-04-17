@@ -22,7 +22,7 @@ public class DisplayListViewModel extends ViewModel {
     private MutableLiveData<List<AudioBook>> users = new MutableLiveData<>();
 
     @SuppressWarnings("unchecked")
-    private void loadFromDisk(Context context) {
+    void loadFromDisk(Context context) {
         try {
             FileInputStream fis = context.openFileInput(FileScannerWorker.LIST_OF_DIRS);
             ObjectInputStream ois = new ObjectInputStream(fis);

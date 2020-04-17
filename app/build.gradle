@@ -1,6 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        debug {
+            storeFile file('D:\\My Libraries\\Google Drive\\Dropbox\\AudioBook.jks')
+            storePassword 'Padd1ngt0n'
+            keyAlias = 'audiobookkey'
+            keyPassword 'Padd1ngt0n'
+        }
+    }
     compileSdkVersion 28
     buildToolsVersion "29.0.3"
 
@@ -12,6 +20,11 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        signingConfig signingConfigs.debug
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     buildTypes {
