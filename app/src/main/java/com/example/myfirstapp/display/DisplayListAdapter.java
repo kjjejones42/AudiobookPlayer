@@ -35,6 +35,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     class MyViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
+        TextView artist;
         ImageView image;
 
         MyViewHolder(View v, boolean isItem) {
@@ -42,6 +43,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             if (isItem) {
                 textView = v.findViewById(R.id.listItemText);
                 image = v.findViewById(R.id.listImageView);
+                artist = v.findViewById(R.id.artist);
             } else {
                 textView = (TextView) v;
             }
@@ -115,11 +117,10 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         List<AudioBook> books = model.getUsers(context).getValue();
         List<AudioBook> filtered = new ArrayList<>();
         for (AudioBook book : books) {
-            if (book.displayName.toUpperCase().contains(filterTerm.toUpperCase())){
+            if (book.toString().toUpperCase().contains(filterTerm.toUpperCase())){
                 filtered.add(book);
             }
         }
-        Log.d("ASD", "filter: " + filtered.size());
         getGroups(filtered);
     }
 
@@ -148,7 +149,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
             AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
             selectedPos = position;
-            notifyItemChanged(selectedPos);
+            notifyItemChanged(position);
             Intent intent = new Intent(v.getContext(), PlayActivity.class);
             intent.putExtra(DisplayListActivity.PLAY_FILE, book);
             v.getContext().startActivity(intent);
@@ -157,26 +158,26 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     @Override
     public boolean onLongClick(View v) {
-        final int position = rcv.getChildLayoutPosition(v);
-        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
-            final EditText et = new EditText(v.getContext());
-            et.setInputType(InputType.TYPE_CLASS_TEXT);
-            new AlertDialog.Builder(v.getContext()).setMessage("Enter title")
-                    .setView(et)
-                    .setPositiveButton("Change", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            Log.d("ASD", "onClick: " + et.getText());
-                        }
-                    })
-                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.cancel();
-                        }
-                    })
-                    .show();
-        }
+//        final int position = rcv.getChildLayoutPosition(v);
+//        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
+//            final EditText et = new EditText(v.getContext());
+//            et.setInputType(InputType.TYPE_CLASS_TEXT);
+//            new AlertDialog.Builder(v.getContext()).setMessage("Enter title")
+//                    .setView(et)
+//                    .setPositiveButton("Change", new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            Log.d("ASD", "onClick: " + et.getText());
+//                        }
+//                    })
+//                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            dialog.cancel();
+//                        }
+//                    })
+//                    .show();
+//        }
         return false;
     }
 
@@ -186,6 +187,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             case ListItems.TYPE_ITEM:
                 AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
                 holder.textView.setText(book.displayName);
+                holder.artist.setText(book.author);
                 holder.image.setImageBitmap(book.getAlbumArt(context));
                 holder.image.setVisibility(View.VISIBLE);
                 holder.textView.setSelected(selectedPos == position);

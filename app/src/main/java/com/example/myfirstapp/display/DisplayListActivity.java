@@ -131,8 +131,7 @@ public class DisplayListActivity extends AppCompatActivity {
 
         model = new ViewModelProvider(this).get(DisplayListViewModel.class);
 
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new DisplayListAdapter(model, recyclerView, this);
         recyclerView.setAdapter(mAdapter);
 

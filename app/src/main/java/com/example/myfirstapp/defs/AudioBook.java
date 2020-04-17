@@ -59,7 +59,6 @@ public class AudioBook implements Serializable {
             }
         }
         author = tempAuthor == null ? "" : tempAuthor;
-        Log.d("ASD", author + " " + displayName);
     }
 
     public void loadFromFile(Context context) {
@@ -73,9 +72,9 @@ public class AudioBook implements Serializable {
             getAlbumArt(context);
         } catch (ClassNotFoundException | InvalidClassException e) {
             context.deleteFile(getFileName());
-            Log.d("ASD", "File found for previous version");
+//            Log.d("ASD", "File found for previous version");
         } catch (FileNotFoundException e){
-            Log.d("ASD", "No File Found");
+//            Log.d("ASD", "No File Found");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -165,6 +164,6 @@ public class AudioBook implements Serializable {
     @NonNull
     @Override
     public String toString() {
-        return displayName;
+        return displayName + " "+ author;
     }
 }
