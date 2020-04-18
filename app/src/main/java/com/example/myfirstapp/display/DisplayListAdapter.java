@@ -23,7 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 
 
-public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> implements View.OnClickListener, View.OnLongClickListener{
+public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
 
     static class MyViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
@@ -48,6 +48,49 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     private int selectedPos = RecyclerView.NO_POSITION;
     private Context context;
 
+
+    private View.OnClickListener ocl = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            int position = rcv.getChildLayoutPosition(v);
+            if (finalList.get(position).getHeadingOrItem() == ListItems.TYPE_ITEM) {
+                AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
+                selectedPos = position;
+                notifyItemChanged(position);
+                Intent intent = new Intent(v.getContext(), PlayActivity.class);
+                intent.putExtra(DisplayListActivity.PLAY_FILE, book);
+                v.getContext().startActivity(intent);
+            }
+        }
+    };
+
+    private View.OnLongClickListener olcl = new View.OnLongClickListener() {
+        @Override
+        public boolean onLongClick(View v) {
+//        final int position = rcv.getChildLayoutPosition(v);
+//        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
+//            final EditText et = new EditText(v.getContext());
+//            et.setInputType(InputType.TYPE_CLASS_TEXT);
+//            new AlertDialog.Builder(v.getContext()).setMessage("Enter title")
+//                    .setView(et)
+//                    .setPositiveButton("Change", new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            Log.d(TAG, "onClick: " + et.getText());
+//                        }
+//                    })
+//                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                            dialog.cancel();
+//                        }
+//                    })
+//                    .show();
+//        }
+            return false;
+        }
+    };
+
     DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv, LifecycleOwner lco) {
         this.model = model;
         this.context = rcv.getContext();
@@ -62,7 +105,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         });
     }
 
-    private void updateFromDisk(){
+    private void updateFromDisk() {
         getGroups(DisplayListAdapter.this.model.getUsers(context).getValue());
     }
 
@@ -74,12 +117,12 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     private void getGroups(List<AudioBook> books) {
         List<ListItems.ListItem> list = new ArrayList<>();
         Collections.sort(books, (o1, o2) -> o1.displayName.compareTo(o2.displayName));
-        for (AudioBook book : books){
+        for (AudioBook book : books) {
             book.loadFromFile(context);
             list.add(new ListItems.AudioBookContainer(book));
         }
         List<Integer> letters = new ArrayList<>();
-        for (ListItems.ListItem item : list){
+        for (ListItems.ListItem item : list) {
             letters.add(item.getCategory());
         }
         letters = new ArrayList<>(new HashSet<>(letters));
@@ -90,17 +133,17 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             int i = o1.getCategory() - o2.getCategory();
             if (i == 0) {
                 int j = o1.getHeadingOrItem() - o2.getHeadingOrItem();
-                if (j == 0){
+                if (j == 0) {
                     return (int) (o2.getTimeStamp() - o1.getTimeStamp());
                 }
-                return  j;
+                return j;
             }
             return i;
         });
         this.finalList = list;
     }
 
-    void filter(String filterTerm){
+    void filter(String filterTerm) {
         List<AudioBook> books = model.getUsers(context).getValue();
         if (books != null) {
             List<AudioBook> filtered = new ArrayList<>();
@@ -124,48 +167,11 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
         v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.display_list_item, parent, false);
-        v.setOnClickListener(this);
-        v.setOnLongClickListener(this);
+        v.setOnClickListener(ocl);
+        v.setOnLongClickListener(olcl);
         return new MyViewHolder(v, true);
     }
 
-    @Override
-    public void onClick(View v) {
-        int position = rcv.getChildLayoutPosition(v);
-        if (finalList.get(position).getHeadingOrItem() == ListItems.TYPE_ITEM) {
-            AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
-            selectedPos = position;
-            notifyItemChanged(position);
-            Intent intent = new Intent(v.getContext(), PlayActivity.class);
-            intent.putExtra(DisplayListActivity.PLAY_FILE, book);
-            v.getContext().startActivity(intent);
-        }
-    }
-
-    @Override
-    public boolean onLongClick(View v) {
-//        final int position = rcv.getChildLayoutPosition(v);
-//        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
-//            final EditText et = new EditText(v.getContext());
-//            et.setInputType(InputType.TYPE_CLASS_TEXT);
-//            new AlertDialog.Builder(v.getContext()).setMessage("Enter title")
-//                    .setView(et)
-//                    .setPositiveButton("Change", new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialog, int which) {
-//                            Log.d("ASD", "onClick: " + et.getText());
-//                        }
-//                    })
-//                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialog, int which) {
-//                            dialog.cancel();
-//                        }
-//                    })
-//                    .show();
-//        }
-        return false;
-    }
 
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {

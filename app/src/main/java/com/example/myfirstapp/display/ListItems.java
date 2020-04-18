@@ -1,7 +1,5 @@
 package com.example.myfirstapp.display;
 
-import android.util.Log;
-
 import com.example.myfirstapp.defs.AudioBook;
 
 import java.util.HashMap;
@@ -11,7 +9,7 @@ class ListItems {
     final static int TYPE_ITEM = 1;
     private static HashMap<Integer, String> map;
 
-    private static HashMap<Integer, String> getMap(){
+    private static HashMap<Integer, String> getMap() {
         if (map == null) {
             map = new HashMap<>();
             map.put(AudioBook.STATUS_FINISHED, "Finished");
@@ -21,15 +19,18 @@ class ListItems {
         return map;
     }
 
-    public static abstract class ListItem  {
+    public static abstract class ListItem {
         public abstract int getCategory();
+
         public abstract long getTimeStamp();
+
         public abstract int getHeadingOrItem();
     }
 
     public static class AudioBookContainer extends ListItem {
         final AudioBook book;
-        AudioBookContainer(AudioBook book){
+
+        AudioBookContainer(AudioBook book) {
             this.book = book;
         }
 
@@ -53,6 +54,7 @@ class ListItems {
 
     public static class Heading extends ListItem {
         final int category;
+
         Heading(int title) {
             this.category = title;
         }
@@ -72,7 +74,7 @@ class ListItems {
             return 0;
         }
 
-        String getHeadingTitle(){
+        String getHeadingTitle() {
             return getMap().get(category);
         }
     }

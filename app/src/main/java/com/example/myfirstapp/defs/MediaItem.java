@@ -20,7 +20,7 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     private transient MediaMetadataRetriever mmr;
 
     @Nullable
-    private MediaMetadataRetriever getMMR(Context context){
+    private MediaMetadataRetriever getMMR(Context context) {
         try {
             if (mmr == null) {
                 mmr = new MediaMetadataRetriever();
@@ -32,24 +32,26 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         }
     }
 
-    String extractMetadata(Context context, int keycode){
+    String extractMetadata(Context context, int keycode) {
         try {
             mmr = getMMR(context);
             if (mmr != null) {
                 return mmr.extractMetadata(keycode);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return null;
     }
 
-    Bitmap getEmbeddedPicture(Context context){
+    Bitmap getEmbeddedPicture(Context context) {
         try {
             mmr = getMMR(context);
             if (mmr != null) {
                 ByteArrayInputStream bis = new ByteArrayInputStream(mmr.getEmbeddedPicture());
                 return BitmapFactory.decodeStream(bis);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return null;
     }
 

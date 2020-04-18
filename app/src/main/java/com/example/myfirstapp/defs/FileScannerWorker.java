@@ -21,6 +21,12 @@ import java.util.List;
 
 public class FileScannerWorker extends Worker {
 
+    public static final String INPUT = "INPUT";
+    public static final String LIST_OF_DIRS = "LIST_OF_DIRS";
+
+    private final ContentResolver resolver = getApplicationContext().getContentResolver();
+    private Context context;
+
     private static class AudioBookResult {
         String imageUri;
         List<MediaItem> media;
@@ -35,16 +41,12 @@ public class FileScannerWorker extends Worker {
             MediaFormat.MIMETYPE_AUDIO_QCELP, MediaFormat.MIMETYPE_AUDIO_RAW,
             MediaFormat.MIMETYPE_AUDIO_VORBIS);
 
-    private final ContentResolver resolver = getApplicationContext().getContentResolver();
 
-    public static final String INPUT = "INPUT";
-    public static final String LIST_OF_DIRS = "LIST_OF_DIRS";
-    private Context context;
-
-    private boolean isAudio(String input){
+    private boolean isAudio(String input) {
         return audioFormats.contains(input);
     }
-    private boolean isDirectory(String input){
+
+    private boolean isDirectory(String input) {
         return input.equals(DocumentsContract.Document.MIME_TYPE_DIR);
     }
 
@@ -64,10 +66,11 @@ public class FileScannerWorker extends Worker {
                     list.add(newItem);
                 } else if (!isDirectory(type)) {
                     try {
-                        if (BitmapFactory.decodeStream(resolver.openInputStream(newUri)) != null){
-                            imageUri= newUri.toString();
+                        if (BitmapFactory.decodeStream(resolver.openInputStream(newUri)) != null) {
+                            imageUri = newUri.toString();
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             }
             cursor.close();
@@ -82,7 +85,7 @@ public class FileScannerWorker extends Worker {
         List<AudioBook> list = new ArrayList<>();
         Uri uri = DocumentsContract.buildChildDocumentsUriUsingTree(root, id);
         Cursor cursor = resolver.query(uri, null, null, null, null);
-        if (cursor != null){
+        if (cursor != null) {
             while (cursor.moveToNext()) {
                 String childId = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID));
                 String type = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE));
@@ -113,7 +116,7 @@ public class FileScannerWorker extends Worker {
     public Result doWork() {
         try {
             final Uri data = Uri.parse(getInputData().getString(INPUT));
-            List<AudioBook> result = recurse(data,  DocumentsContract.getTreeDocumentId(data));
+            List<AudioBook> result = recurse(data, DocumentsContract.getTreeDocumentId(data));
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(result);

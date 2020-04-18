@@ -14,7 +14,7 @@ public class PlayerViewModel extends ViewModel {
     private MutableLiveData<Long> position = new MutableLiveData<>(0L);
     private MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>(new MediaMetadataCompat.Builder().build());
 
-    void clear(){
+    void clear() {
         metadata.setValue(new MediaMetadataCompat.Builder()
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 100)
                 .build());
@@ -22,13 +22,13 @@ public class PlayerViewModel extends ViewModel {
     }
 
     @NonNull
-    LiveData<Boolean> getIsPlaying(){
+    LiveData<Boolean> getIsPlaying() {
         return isPlaying;
     }
 
-    void setIsPlaying(boolean isPlaying){
+    void setIsPlaying(boolean isPlaying) {
         Boolean b = this.isPlaying.getValue();
-        if (b != null && b != isPlaying){
+        if (b != null && b != isPlaying) {
             this.isPlaying.setValue(isPlaying);
         }
     }
@@ -40,7 +40,7 @@ public class PlayerViewModel extends ViewModel {
 
     void setPosition(long position) {
         Long l = this.position.getValue();
-        if (l != null  && l != position) {
+        if (l != null && l != position) {
             this.position.setValue(position);
         }
     }

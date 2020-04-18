@@ -33,6 +33,8 @@ public class DisplayListActivity extends AppCompatActivity {
 
 //    private static String TAG = "ASD";
 
+    public static final String INTENT_UPDATE_MODEL = "UPDATE";
+
     public static final String PLAY_FILE = "com.example.myfirstapp.PLAY";
     public static final int SELECT_DIRECTORY = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
@@ -69,6 +71,7 @@ public class DisplayListActivity extends AppCompatActivity {
                             if (workInfo != null && workInfo.getState().isFinished()) {
                                 try {
                                     Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
+                                    intent.putExtra(INTENT_UPDATE_MODEL, true);
                                     dialog.cancel();
                                     startActivity(intent);
                                 } catch (Exception e) {
@@ -101,10 +104,10 @@ public class DisplayListActivity extends AppCompatActivity {
         return true;
     }
 
-    void updateScreen(){
+    void updateScreen() {
         mAdapter.notifyDataSetChanged();
         List<AudioBook> list = model.getUsers(this).getValue();
-        if (list!= null && list.isEmpty()){
+        if (list != null && list.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
             emptyView.setVisibility(View.VISIBLE);
         } else {
@@ -117,7 +120,9 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        model.loadFromDisk(this);
+        if (intent.getBooleanExtra(INTENT_UPDATE_MODEL, false)) {
+            model.loadFromDisk(this);
+        }
         updateScreen();
     }
 

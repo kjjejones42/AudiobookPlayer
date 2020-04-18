@@ -7,6 +7,7 @@ import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -31,6 +32,7 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.myfirstapp.R;
 import com.example.myfirstapp.defs.AudioBook;
@@ -43,9 +45,11 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener, AdapterView.OnItemSelectedListener {
+public class PlayActivity extends AppCompatActivity {
 
-//    private static String TAG = "ASD";
+    //    private static String TAG = "ASD";
+    public static String INTENT_AUDIOBOOK = "AUDIOBOOK";
+    public static String INTENT_INDEX = "INDEX";
 
     private Spinner spinner;
     private ImageButton prevButton;
@@ -63,7 +67,40 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
     private ImageView imView;
     private ConstraintLayout buttonContainer;
 
-    private String msToMMSS(long ms){
+
+    SeekBar.OnSeekBarChangeListener osvcl = new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            if (fromUser) {
+                if (controller != null) {
+                    controller.getTransportControls().seekTo(progress);
+                }
+            }
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+        }
+    };
+
+    AdapterView.OnItemSelectedListener oisl = new AdapterView.OnItemSelectedListener() {
+        @Override
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            if ((Integer) spinner.getTag() != position) {
+                initialiseMediaSession(position);
+            }
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {
+        }
+    };
+
+    private String msToMMSS(long ms) {
         long seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
         long hours = TimeUnit.MILLISECONDS.toHours(ms);
@@ -77,8 +114,8 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         if (controller != null) {
             try {
                 Intent intent = new Intent(this, MediaPlaybackService.class);
-                intent.putExtra("AUDIOBOOK", audioBook);
-                intent.putExtra("INDEX", trackNo);
+                intent.putExtra(INTENT_AUDIOBOOK, audioBook);
+                intent.putExtra(INTENT_INDEX, trackNo);
                 startService(intent);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -86,21 +123,21 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
     }
 
-    void setDuration(Long duration){
+    void setDuration(Long duration) {
         if (duration > 0) {
             seekBar.setMax(duration.intValue());
             durationText.setText(msToMMSS(duration));
         }
     }
 
-    void setImage(Bitmap bitmap){
+    void setImage(Bitmap bitmap) {
         if (bitmap != null) {
             imView.setImageBitmap(bitmap);
         }
 
     }
 
-    void setMetaData(MediaMetadataCompat metadata){
+    void setMetaData(MediaMetadataCompat metadata) {
         setDuration(metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION));
         setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
         int position = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER);
@@ -109,7 +146,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     }
 
-    private void initializeModelObservers(){
+    private void initializeModelObservers() {
         model.getIsPlaying().observe(this, isPlaying -> {
             if (isPlaying) {
                 toggleButton.setImageResource(R.drawable.ic_pause);
@@ -147,7 +184,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
         buttonContainer.setVisibility(View.INVISIBLE);
 
-        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks,null);
+        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
         AudioBook newbook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
         if (newbook != null) {
             audioBook = newbook;
@@ -159,7 +196,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         initializeModelObservers();
 
         setControlsEnabled(false);
-        seekBar.setOnSeekBarChangeListener(this);
+        seekBar.setOnSeekBarChangeListener(osvcl);
 
         Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.displayName);
 
@@ -169,57 +206,57 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         spinner.setAdapter(adapter);
         spinner.setTag(position);
         spinner.setSelection(position);
-        spinner.setOnItemSelectedListener(this);
+        spinner.setOnItemSelectedListener(oisl);
 
 
-   }
+    }
 
-   private void onConnected(){
-       try {
-           controller = new MediaControllerCompat(
-                   PlayActivity.this,
-                   mediaBrowser.getSessionToken());
-           MediaControllerCompat.setMediaController(PlayActivity.this, controller);
-           buildTransportControls();
-           if (!audioBook.displayName.equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
-               model.clear();
-               initialiseMediaSession(audioBook.getPositionInTrackList());
-           } else {
-               model.setMetadata(controller.getMetadata());
-               model.setPosition(controller.getPlaybackState().getPosition());
-           }
-           Animation bottomUp = AnimationUtils.loadAnimation(this,
-                   R.anim.bottom_up);
-           buttonContainer.startAnimation(bottomUp);
-           buttonContainer.setVisibility(View.VISIBLE);
-       } catch (RemoteException e) {
-           e.printStackTrace();
-       }
-   }
+    private void onConnected() {
+        try {
+            controller = new MediaControllerCompat(
+                    PlayActivity.this,
+                    mediaBrowser.getSessionToken());
+            MediaControllerCompat.setMediaController(PlayActivity.this, controller);
+            buildTransportControls();
+            if (!audioBook.displayName.equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
+                model.clear();
+                initialiseMediaSession(audioBook.getPositionInTrackList());
+            } else {
+                model.setMetadata(controller.getMetadata());
+                model.setPosition(controller.getPlaybackState().getPosition());
+            }
+            Animation bottomUp = AnimationUtils.loadAnimation(this,
+                    R.anim.bottom_up);
+            buttonContainer.startAnimation(bottomUp);
+            buttonContainer.setVisibility(View.VISIBLE);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
 
-   private void updateButtonColor(int color){
-       List<ImageButton> list = Arrays.asList(prevButton, rewindButton, toggleButton, nextButton, forwardButton);
-       for (ImageButton b : list) {
-           b.getBackground().setTint(color);
-       }
-       ActionBar bar = getSupportActionBar();
-       if (bar != null) {
-           bar.setBackgroundDrawable(new ColorDrawable(color));
-       }
-       getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
-       seekBar.getThumb().setTint(color);
-       seekBar.getProgressDrawable().setTint(color);
-   }
+    private void updateButtonColor(int color) {
+        List<ImageButton> list = Arrays.asList(prevButton, rewindButton, toggleButton, nextButton, forwardButton);
+        for (ImageButton b : list) {
+            b.getBackground().setTint(color);
+        }
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) {
+            bar.setBackgroundDrawable(new ColorDrawable(color));
+        }
+        getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
+        seekBar.getThumb().setTint(color);
+        seekBar.getProgressDrawable().setTint(color);
+    }
 
-   private void updateStatusBarColor(int color){
-       ActionBar bar = getSupportActionBar();
-       if (bar != null) {
-           bar.setBackgroundDrawable(new ColorDrawable(color));
-       }
-       getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
-   }
+    private void updateStatusBarColor(int color) {
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) {
+            bar.setBackgroundDrawable(new ColorDrawable(color));
+        }
+        getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
+    }
 
-   private void setColorFromAlbumArt(Bitmap bitmap){
+    private void setColorFromAlbumArt(Bitmap bitmap) {
         if (bitmap == null) {
             return;
         }
@@ -245,30 +282,6 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         }
     }
 
-    @Override
-    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        if (fromUser) {
-            if (controller != null) {
-                controller.getTransportControls().seekTo(progress);
-            }
-        }
-    }
-
-    @Override
-    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        if ((Integer) spinner.getTag() != position) {
-            initialiseMediaSession(position);
-        }
-    }
-
-    @Override
-    public void onStartTrackingTouch(SeekBar seekBar) {}
-
-    @Override
-    public void onStopTrackingTouch(SeekBar seekBar) {}
-
-    @Override
-    public void onNothingSelected(AdapterView<?> parent) {}
 
     @Override
     protected void onStart() {
@@ -311,7 +324,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         forwardButton.setOnClickListener(v -> controller.getTransportControls().fastForward());
     }
 
-    void setControlsEnabled(boolean on){
+    void setControlsEnabled(boolean on) {
         int visibility = on ? View.VISIBLE : View.INVISIBLE;
         seekBar.setEnabled(on);
         seekBar.setVisibility(visibility);
@@ -350,7 +363,7 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         @Override
         public void onSessionEvent(String event, Bundle extras) {
             super.onSessionEvent(event, extras);
-            if ("REACHED_END".equals(event)) {
+            if (MediaPlaybackService.EVENT_REACHED_END.equals(event)) {
                 mediaBrowser.disconnect();
                 audioBook.setFinished(PlayActivity.this);
                 audioBook.saveConfig(PlayActivity.this);
@@ -358,16 +371,24 @@ public class PlayActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             }
         }
 
+        @SuppressLint("SwitchIntDef")
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
-            if (state.getState() != PlaybackStateCompat.STATE_STOPPED) {
-                setControlsEnabled(true);
-                model.setPosition(state.getPosition());
-                boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-                Boolean b = model.getIsPlaying().getValue();
-                if (b != null && isPlaying != b) {
-                    model.setIsPlaying(isPlaying);
-                }
+            switch (state.getState()) {
+                case PlaybackStateCompat.STATE_STOPPED:
+                case PlaybackStateCompat.STATE_NONE:
+                    break;
+                case PlaybackStateCompat.STATE_ERROR:
+                    Toast.makeText(PlayActivity.this, "Playback Error", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    setControlsEnabled(true);
+                    model.setPosition(state.getPosition());
+                    boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
+                    Boolean b = model.getIsPlaying().getValue();
+                    if (b != null && isPlaying != b) {
+                        model.setIsPlaying(isPlaying);
+                    }
             }
         }
     };
