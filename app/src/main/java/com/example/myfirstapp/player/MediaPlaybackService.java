@@ -43,7 +43,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     @SuppressWarnings("FieldCanBeLocal")
     private static String TAG = "ASD";
 
-    public static String EVENT_REACHED_END = "REACHED_END";
+    final public static String EVENT_REACHED_END = "REACHED_END";
+    final public static int STATE_PREPARED = 100;
 
     private class MySessionCallback extends MediaSessionCompat.Callback {
 
@@ -128,17 +129,19 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             MediaDescriptionCompat description = controller.getMetadata().getDescription();
 
             notificationBuilder
-                    .setContentTitle(audioBook.displayName)
                     .setContentText(description.getTitle())
                     .setLargeIcon(description.getIconBitmap())
                     .setOngoing(playing);
+
+            if (audioBook != null) {
+                notificationBuilder.setContentTitle(audioBook.displayName);
+            }
 
             notification = notificationBuilder.build();
             notification.actions[2] = new Notification.Action(
                     playPauseIcon, playPauseText,
                     MediaButtonReceiver.buildMediaButtonPendingIntent(context,
                             PlaybackStateCompat.ACTION_PLAY_PAUSE));
-
         }
 
         @Override
@@ -305,10 +308,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         @Override
         public void onPrepared(MediaPlayer mp) {
             isMediaPlayerPrepared = true;
-            mediaSession.setMetadata(trackToMetaData(audioBook.files.get(positionInTrackList)));
             audioBook.loadFromFile(MediaPlaybackService.this);
+            new Thread(() ->
+                    mediaSession.setMetadata(trackToMetaData(audioBook.files.get(positionInTrackList)))
+            ).start();
             mediaSession.getController().getTransportControls().seekTo(positionInTrack);
-            mediaSession.getController().getTransportControls().play();
             saveProgress();
             updateTask = new Timer();
             updateTask.scheduleAtFixedRate(new TimerTask() {
@@ -321,6 +325,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     }
                 }
             }, 0, 1000);
+            mediaSession.getController().getTransportControls().play();
         }
     };
 
@@ -391,25 +396,32 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         if (intent != null) {
             try {
                 saveProgress();
+
                 audioBook = (AudioBook) intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK);
+                audioBook.loadFromFile(this);
+
+                int position = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
+
                 Intent resumeIntent = new Intent(this, PlayActivity.class);
                 resumeIntent.putExtra(DisplayListActivity.PLAY_FILE, audioBook);
                 mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_UPDATE_CURRENT));
-                audioBook.loadFromFile(this);
+
                 if (audioBook.getStatus() == AudioBook.STATUS_FINISHED) {
                     positionInTrackList = 0;
                     positionInTrack = 0;
                     audioBook.setStatus(AudioBook.STATUS_IN_PROGRESS);
                     audioBook.saveConfig(this);
                 } else {
-                    positionInTrackList = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
+                    positionInTrackList = position;
                     if (positionInTrackList == audioBook.getPositionInTrackList()) {
                         positionInTrack = audioBook.getPositionInTrack();
                     } else {
                         positionInTrack = 0;
                     }
                 }
+
                 playTrack(positionInTrackList);
+
             } catch (Exception e) {
                 e.printStackTrace();
                 onError();
@@ -422,20 +434,24 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     public void onCreate() {
         super.onCreate();
         mediaSession = new MediaSessionCompat(getApplicationContext(), TAG);
+
         stateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(
                         PlaybackStateCompat.ACTION_PLAY |
-                                PlaybackStateCompat.ACTION_PLAY_PAUSE |
-                                PlaybackStateCompat.ACTION_STOP |
-                                PlaybackStateCompat.ACTION_PAUSE |
-                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
-                                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
-                                PlaybackStateCompat.ACTION_FAST_FORWARD |
-                                PlaybackStateCompat.ACTION_REWIND |
-                                PlaybackStateCompat.ACTION_SEEK_TO);
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                        PlaybackStateCompat.ACTION_STOP |
+                        PlaybackStateCompat.ACTION_PAUSE |
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                        PlaybackStateCompat.ACTION_FAST_FORWARD |
+                        PlaybackStateCompat.ACTION_REWIND |
+                        PlaybackStateCompat.ACTION_SEEK_TO
+                );
         mediaSession.setPlaybackState(stateBuilder.build());
+
         metadataBuilder = new MediaMetadataCompat.Builder();
         mediaSession.setMetadata(metadataBuilder.build());
+
         mediaSession.setCallback(new MySessionCallback());
         setSessionToken(mediaSession.getSessionToken());
     }
@@ -449,7 +465,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, audioBook.getAlbumArt(this))
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                 .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, audioBook.files.indexOf(item))
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, audioBook.displayName)
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, audioBook.getUniqueId())
                 .build();
     }
 

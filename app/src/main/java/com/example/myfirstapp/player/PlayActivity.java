@@ -42,7 +42,6 @@ import com.example.myfirstapp.display.DisplayListActivity;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class PlayActivity extends AppCompatActivity {
@@ -163,7 +162,6 @@ public class PlayActivity extends AppCompatActivity {
         model.getMetadata().observe(this, this::setMetaData);
     }
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -184,31 +182,37 @@ public class PlayActivity extends AppCompatActivity {
 
         buttonContainer.setVisibility(View.INVISIBLE);
 
-        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
-        AudioBook newbook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
-        if (newbook != null) {
-            audioBook = newbook;
+        if (getIntent() != null) {
+            AudioBook newBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
+            if (newBook != null) {
+                audioBook = newBook;
+            }
         }
         audioBook.loadFromFile(this);
-        int position = audioBook.getPositionInTrackList();
-        setColorFromAlbumArt(audioBook.getAlbumArt(this));
+        new Thread(() -> {
+            Bitmap cover = audioBook.getAlbumArt(this);
+            imView.post(() -> setColorFromAlbumArt(cover));
+        }).start();
+
+        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
         model = new ViewModelProvider(this).get(PlayerViewModel.class);
         initializeModelObservers();
 
         setControlsEnabled(false);
         seekBar.setOnSeekBarChangeListener(osvcl);
 
-        Objects.requireNonNull(getSupportActionBar()).setTitle(audioBook.displayName);
-
+        ActionBar bar =  getSupportActionBar();
+        if (bar != null) {
+            bar.setTitle(audioBook.displayName);
+        }
 
         ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(oisl);
+        int position = audioBook.getPositionInTrackList();
         spinner.setTag(position);
         spinner.setSelection(position);
-        spinner.setOnItemSelectedListener(oisl);
-
-
     }
 
     private void onConnected() {
@@ -218,7 +222,7 @@ public class PlayActivity extends AppCompatActivity {
                     mediaBrowser.getSessionToken());
             MediaControllerCompat.setMediaController(PlayActivity.this, controller);
             buildTransportControls();
-            if (!audioBook.displayName.equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
+            if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
                 model.clear();
                 initialiseMediaSession(audioBook.getPositionInTrackList());
             } else {
@@ -229,6 +233,7 @@ public class PlayActivity extends AppCompatActivity {
                     R.anim.bottom_up);
             buttonContainer.startAnimation(bottomUp);
             buttonContainer.setVisibility(View.VISIBLE);
+            controller.getTransportControls().play();
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -261,27 +266,26 @@ public class PlayActivity extends AppCompatActivity {
             return;
         }
         try {
-            Palette.from(bitmap).generate(palette -> {
-                if (palette != null && !audioBook.isArtGenerated()) {
-                    boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-                    int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
-                    PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
-                    int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
-                    updateButtonColor(color);
-                    updateStatusBarColor(color);
-                } else {
-                    TypedValue tv = new TypedValue();
-                    getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
-                    updateButtonColor(tv.data);
-                    getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
-                    updateStatusBarColor(tv.data);
-                }
-            });
+            setImage(bitmap);
+            Palette palette = Palette.from(bitmap).generate();
+            if (!audioBook.isArtGenerated()) {
+                boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+                int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
+                PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
+                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
+                updateButtonColor(color);
+                updateStatusBarColor(color);
+            } else {
+                TypedValue tv = new TypedValue();
+                getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
+                updateButtonColor(tv.data);
+                getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
+                updateStatusBarColor(tv.data);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
 
     @Override
     protected void onStart() {
@@ -353,7 +357,7 @@ public class PlayActivity extends AppCompatActivity {
                 }
             };
 
-    MediaControllerCompat.Callback controllerCallback = new MediaControllerCompat.Callback() {
+    private final MediaControllerCompat.Callback controllerCallback = new MediaControllerCompat.Callback() {
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
             model.setMetadata(metadata);

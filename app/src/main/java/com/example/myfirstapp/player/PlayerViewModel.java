@@ -7,18 +7,34 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-@SuppressWarnings("WeakerAccess")
 public class PlayerViewModel extends ViewModel {
 
-    private MutableLiveData<Boolean> isPlaying = new MutableLiveData<>(true);
-    private MutableLiveData<Long> position = new MutableLiveData<>(0L);
-    private MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>(new MediaMetadataCompat.Builder().build());
+    private MutableLiveData<Boolean> isPlaying = new MutableLiveData<>();
+    private MutableLiveData<Long> position = new MutableLiveData<>();
+    private MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>();
+    static private MediaMetadataCompat emptyMetadata;
+
+    public PlayerViewModel(){
+        isPlaying.setValue(true);
+        clear();
+    }
+
+    private MediaMetadataCompat getEmptyMetadata(){
+        if (emptyMetadata == null){
+            emptyMetadata = new MediaMetadataCompat.Builder()
+                            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "")
+                            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, null)
+                            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 100)
+                            .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, 0)
+                            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "")
+                            .build();
+        }
+        return emptyMetadata;
+    }
 
     void clear() {
-        metadata.setValue(new MediaMetadataCompat.Builder()
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 100)
-                .build());
         position.setValue(0L);
+        metadata.setValue(getEmptyMetadata());
     }
 
     @NonNull

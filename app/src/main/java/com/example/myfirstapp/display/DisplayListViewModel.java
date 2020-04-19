@@ -11,6 +11,7 @@ import com.example.myfirstapp.defs.AudioBook;
 import com.example.myfirstapp.defs.FileScannerWorker;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -37,7 +38,9 @@ public class DisplayListViewModel extends ViewModel {
                 user.loadFromFile(context);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (!(e instanceof FileNotFoundException)) {
+                e.printStackTrace();
+            }
             context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
             books.setValue(new ArrayList<>());
             saveToDisk(context);

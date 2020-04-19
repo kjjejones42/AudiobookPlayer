@@ -3,6 +3,7 @@ package com.example.myfirstapp.display;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,9 +30,11 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         TextView textView;
         TextView artist;
         ImageView image;
+        View v;
 
         MyViewHolder(View v, boolean isItem) {
             super(v);
+            this.v = v;
             if (isItem) {
                 textView = v.findViewById(R.id.listItemText);
                 image = v.findViewById(R.id.listImageView);
@@ -64,9 +67,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     };
 
-    private View.OnLongClickListener olcl = new View.OnLongClickListener() {
-        @Override
-        public boolean onLongClick(View v) {
+    private View.OnLongClickListener olcl = v -> {
 //        final int position = rcv.getChildLayoutPosition(v);
 //        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
 //            final EditText et = new EditText(v.getContext());
@@ -87,8 +88,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 //                    })
 //                    .show();
 //        }
-            return false;
-        }
+        return false;
     };
 
     DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv, LifecycleOwner lco) {
@@ -180,9 +180,14 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
                 holder.textView.setText(book.displayName);
                 holder.artist.setText(book.author);
-                holder.image.setImageBitmap(book.getThumbnail((Activity) rcv.getContext()));
-                holder.image.setVisibility(View.VISIBLE);
                 holder.textView.setSelected(selectedPos == position);
+                new Thread(() -> {
+                    Bitmap thumbnail = book.getThumbnail((Activity) rcv.getContext());
+                    holder.v.post(() -> {
+                        holder.image.setImageBitmap(thumbnail);
+                        holder.image.setVisibility(View.VISIBLE);
+                    });
+                }).start();
                 break;
 
             case ListItems.TYPE_HEADING:

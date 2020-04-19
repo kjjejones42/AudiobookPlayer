@@ -10,9 +10,19 @@ import android.graphics.Paint;
 import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
+import androidx.work.Data;
+import androidx.work.ListenableWorker;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.WorkRequest;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -128,7 +138,7 @@ public class AudioBook implements Serializable {
     }
 
     private File getThumbnailFile(Context context) {
-        return new File(context.getCacheDir(), rootUri.replaceAll("\\W", "") + "thumbnail");
+        return new File(context.getCacheDir(), rootUri.replaceAll("\\W", "") + ".thumbnail");
     }
 
     private void loadThumbnail(Context context) {
@@ -136,6 +146,8 @@ public class AudioBook implements Serializable {
             File file = getThumbnailFile(context);
             FileInputStream fis = new FileInputStream(file);
             thumbnail = BitmapFactory.decodeStream(fis);
+            fis.close();
+        } catch ( FileNotFoundException ignored){
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -154,7 +166,7 @@ public class AudioBook implements Serializable {
 
     public void loadFromFile(Context context) {
         try {
-            ObjectInputStream ois = new ObjectInputStream(context.openFileInput(getFileName()));
+            ObjectInputStream ois = new ObjectInputStream(context.openFileInput(getUniqueId()));
             AudioBook book = (AudioBook) ois.readObject();
             ois.close();
             this.positionInTrackList = book.positionInTrackList;
@@ -163,7 +175,7 @@ public class AudioBook implements Serializable {
             this.lastSavedTimestamp = book.lastSavedTimestamp;
             getAlbumArt(context);
         } catch (ClassNotFoundException | InvalidClassException e) {
-            context.deleteFile(getFileName());
+            context.deleteFile(getUniqueId());
 //            Log.d(TAG, "File found for previous version");
         } catch (FileNotFoundException e) {
 //            Log.d(TAG, "File not found for " + displayName);
@@ -180,32 +192,39 @@ public class AudioBook implements Serializable {
         return status;
     }
 
-    private String getFileName() {
-        return displayName.replaceAll("\\W", "");
-    }
-
     public Bitmap getAlbumArt(Context context) {
         if (art != null) {
             return art;
         }
-        Bitmap result;
+        Bitmap result = null;
         try {
             if (imageUri != null) {
                 result = BitmapFactory.decodeStream(context.getContentResolver().openInputStream(Uri.parse(imageUri)));
-                if (result != null) {
-                    art = result;
-                    return result;
-                }
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-        result = files.get(0).getEmbeddedPicture(context);
+        if (result == null) {
+            for (MediaItem file : files) {
+                result = file.getEmbeddedPicture(context);
+                if (result != null) {
+                    break;
+                }
+            }
+        }
         if (result == null) {
             result = textAsBitmap(displayName.substring(0, 1));
         }
         art = result;
-        return result;
+        return art;
+    }
+
+    public String getUniqueId(){
+        String path = Uri.parse(rootUri).getPath();
+        if (path != null) {
+            return path.replaceAll("\\W", "");
+        }
+        return "";
     }
 
 
@@ -236,7 +255,7 @@ public class AudioBook implements Serializable {
     public void saveConfig(Context context) {
         try {
             lastSavedTimestamp = new Date().getTime() / 1000L;
-            ObjectOutputStream oos = new ObjectOutputStream(context.openFileOutput(getFileName(), Context.MODE_PRIVATE));
+            ObjectOutputStream oos = new ObjectOutputStream(context.openFileOutput(getUniqueId(), Context.MODE_PRIVATE));
             oos.writeObject(this);
             oos.close();
         } catch (IOException e) {
