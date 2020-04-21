@@ -1,19 +1,18 @@
 package com.example.myfirstapp.display;
 
 import android.content.Context;
-import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.myfirstapp.defs.AudioBook;
-import com.example.myfirstapp.defs.FileScannerWorker;
+import com.example.myfirstapp.AudioBook;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
@@ -37,14 +36,16 @@ public class DisplayListViewModel extends ViewModel {
             for (AudioBook user : Objects.requireNonNull(books.getValue())) {
                 user.loadFromFile(context);
             }
+            return;
+        } catch (FileNotFoundException ignored) {
+        } catch (InvalidClassException e){
+            System.err.println(e.getMessage());
         } catch (Exception e) {
-            if (!(e instanceof FileNotFoundException)) {
-                e.printStackTrace();
-            }
-            context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
-            books.setValue(new ArrayList<>());
-            saveToDisk(context);
+            e.printStackTrace();
         }
+        context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
+        books.setValue(new ArrayList<>());
+        saveToDisk(context);
     }
 
     LiveData<List<AudioBook>> getUsers(Context context) {

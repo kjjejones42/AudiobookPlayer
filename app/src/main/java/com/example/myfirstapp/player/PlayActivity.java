@@ -21,10 +21,9 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
@@ -35,8 +34,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.myfirstapp.R;
-import com.example.myfirstapp.defs.AudioBook;
-import com.example.myfirstapp.defs.MediaItem;
+import com.example.myfirstapp.AudioBook;
+import com.example.myfirstapp.MediaItem;
 import com.example.myfirstapp.display.DisplayListActivity;
 
 import java.util.Arrays;
@@ -46,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PlayActivity extends AppCompatActivity {
 
-    //    private static String TAG = "ASD";
+    private static String TAG = "ASD";
     public static String INTENT_AUDIOBOOK = "AUDIOBOOK";
     public static String INTENT_INDEX = "INDEX";
 
@@ -60,11 +59,11 @@ public class PlayActivity extends AppCompatActivity {
     private TextView durationText;
     private MediaBrowserCompat mediaBrowser;
     private MediaControllerCompat controller;
-    private AudioBook audioBook;
     private SeekBar seekBar;
     private PlayerViewModel model;
     private ImageView imView;
     private ConstraintLayout buttonContainer;
+
 
 
     SeekBar.OnSeekBarChangeListener osvcl = new SeekBar.OnSeekBarChangeListener() {
@@ -99,12 +98,12 @@ public class PlayActivity extends AppCompatActivity {
         }
     };
 
-    private String msToMMSS(long ms) {
+    public static String msToMMSS(long ms) {
         long seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
         long hours = TimeUnit.MILLISECONDS.toHours(ms);
         if (hours > 0) {
-            return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
+            return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds);
         }
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
     }
@@ -113,7 +112,7 @@ public class PlayActivity extends AppCompatActivity {
         if (controller != null) {
             try {
                 Intent intent = new Intent(this, MediaPlaybackService.class);
-                intent.putExtra(INTENT_AUDIOBOOK, audioBook);
+                intent.putExtra(INTENT_AUDIOBOOK, model.getAudioBook().getValue());
                 intent.putExtra(INTENT_INDEX, trackNo);
                 startService(intent);
             } catch (Exception e) {
@@ -137,11 +136,14 @@ public class PlayActivity extends AppCompatActivity {
     }
 
     void setMetaData(MediaMetadataCompat metadata) {
-        setDuration(metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION));
-        setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
-        int position = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER);
-        spinner.setTag(position);
-        spinner.setSelection(position);
+        long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        if (duration != 0) {
+            setDuration(duration);
+            setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
+            int position = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER);
+            spinner.setTag(position);
+            spinner.setSelection(position);
+        }
 
     }
 
@@ -153,13 +155,15 @@ public class PlayActivity extends AppCompatActivity {
                 toggleButton.setImageResource(R.drawable.ic_play);
             }
         });
-        model.getPosition().observe(this, position -> {
-            if (position > 0) {
-                seekBar.setProgress(position.intValue());
-                progressText.setText(msToMMSS(position));
-            }
-        });
+        model.getPosition().observe(this, this::setPosition);
         model.getMetadata().observe(this, this::setMetaData);
+    }
+
+    private void setPosition(Long position) {
+        if (position > 0) {
+            seekBar.setProgress(position.intValue());
+            progressText.setText(msToMMSS(position));
+        }
     }
 
     @Override
@@ -180,26 +184,31 @@ public class PlayActivity extends AppCompatActivity {
         imView = findViewById(R.id.albumArtView);
         buttonContainer = findViewById(R.id.buttonContainer);
 
-        buttonContainer.setVisibility(View.INVISIBLE);
+//        buttonContainer.setVisibility(View.INVISIBLE);
+
+        model = new ViewModelProvider(this).get(PlayerViewModel.class);
+        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
+
+//        setControlsEnabled(false);
+        seekBar.setOnSeekBarChangeListener(osvcl);
 
         if (getIntent() != null) {
             AudioBook newBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
             if (newBook != null) {
-                audioBook = newBook;
+                model.setAudioBook(newBook);
             }
         }
+        AudioBook audioBook = model.getAudioBook().getValue();
         audioBook.loadFromFile(this);
+        setPosition((long) audioBook.getPositionInTrack());
+        setDuration(audioBook.getDurationOfMostRecentTrack());
+
         new Thread(() -> {
             Bitmap cover = audioBook.getAlbumArt(this);
             imView.post(() -> setColorFromAlbumArt(cover));
         }).start();
 
-        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
-        model = new ViewModelProvider(this).get(PlayerViewModel.class);
         initializeModelObservers();
-
-        setControlsEnabled(false);
-        seekBar.setOnSeekBarChangeListener(osvcl);
 
         ActionBar bar =  getSupportActionBar();
         if (bar != null) {
@@ -217,22 +226,23 @@ public class PlayActivity extends AppCompatActivity {
 
     private void onConnected() {
         try {
+            AudioBook audioBook = model.getAudioBook().getValue();
             controller = new MediaControllerCompat(
                     PlayActivity.this,
                     mediaBrowser.getSessionToken());
             MediaControllerCompat.setMediaController(PlayActivity.this, controller);
             buildTransportControls();
             if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
-                model.clear();
+//                model.clear();
                 initialiseMediaSession(audioBook.getPositionInTrackList());
             } else {
                 model.setMetadata(controller.getMetadata());
                 model.setPosition(controller.getPlaybackState().getPosition());
             }
-            Animation bottomUp = AnimationUtils.loadAnimation(this,
-                    R.anim.bottom_up);
-            buttonContainer.startAnimation(bottomUp);
-            buttonContainer.setVisibility(View.VISIBLE);
+//            Animation bottomUp = AnimationUtils.loadAnimation(this,
+//                    R.anim.bottom_up);
+//            buttonContainer.startAnimation(bottomUp);
+//            buttonContainer.setVisibility(View.VISIBLE);
             controller.getTransportControls().play();
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -268,7 +278,7 @@ public class PlayActivity extends AppCompatActivity {
         try {
             setImage(bitmap);
             Palette palette = Palette.from(bitmap).generate();
-            if (!audioBook.isArtGenerated()) {
+            if (!model.getAudioBook().getValue().isArtGenerated()) {
                 boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
                 int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
                 PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
@@ -291,12 +301,14 @@ public class PlayActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         mediaBrowser.connect();
+        setPosition(model.getPosition().getValue());
+        setDuration(model.getAudioBook().getValue().getDurationOfMostRecentTrack());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        audioBook.loadFromFile(this);
+        model.getAudioBook().getValue().loadFromFile(this);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
@@ -328,16 +340,16 @@ public class PlayActivity extends AppCompatActivity {
         forwardButton.setOnClickListener(v -> controller.getTransportControls().fastForward());
     }
 
-    void setControlsEnabled(boolean on) {
-        int visibility = on ? View.VISIBLE : View.INVISIBLE;
-        seekBar.setEnabled(on);
-        seekBar.setVisibility(visibility);
-        nextButton.setEnabled(on);
-        prevButton.setEnabled(on);
-        toggleButton.setEnabled(on);
-        rewindButton.setEnabled(on);
-        forwardButton.setEnabled(on);
-    }
+//    void setControlsEnabled(boolean on) {
+//        int visibility = on ? View.VISIBLE : View.INVISIBLE;
+//        seekBar.setEnabled(on);
+//        seekBar.setVisibility(visibility);
+//        nextButton.setEnabled(on);
+//        prevButton.setEnabled(on);
+//        toggleButton.setEnabled(on);
+//        rewindButton.setEnabled(on);
+//        forwardButton.setEnabled(on);
+//    }
 
     private final MediaBrowserCompat.ConnectionCallback connectionCallbacks =
             new MediaBrowserCompat.ConnectionCallback() {
@@ -348,12 +360,12 @@ public class PlayActivity extends AppCompatActivity {
 
                 @Override
                 public void onConnectionSuspended() {
-                    setControlsEnabled(false);
+//                    setControlsEnabled(false);
                 }
 
                 @Override
                 public void onConnectionFailed() {
-                    setControlsEnabled(false);
+//                    setControlsEnabled(false);
                 }
             };
 
@@ -368,6 +380,7 @@ public class PlayActivity extends AppCompatActivity {
         public void onSessionEvent(String event, Bundle extras) {
             super.onSessionEvent(event, extras);
             if (MediaPlaybackService.EVENT_REACHED_END.equals(event)) {
+                AudioBook audioBook = model.getAudioBook().getValue();
                 mediaBrowser.disconnect();
                 audioBook.setFinished(PlayActivity.this);
                 audioBook.saveConfig(PlayActivity.this);
@@ -386,7 +399,7 @@ public class PlayActivity extends AppCompatActivity {
                     Toast.makeText(PlayActivity.this, "Playback Error", Toast.LENGTH_SHORT).show();
                     break;
                 default:
-                    setControlsEnabled(true);
+//                    setControlsEnabled(true);
                     model.setPosition(state.getPosition());
                     boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
                     Boolean b = model.getIsPlaying().getValue();

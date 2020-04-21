@@ -1,6 +1,6 @@
 package com.example.myfirstapp.display;
 
-import com.example.myfirstapp.defs.AudioBook;
+import com.example.myfirstapp.AudioBook;
 
 import java.util.HashMap;
 

@@ -1,4 +1,4 @@
-package com.example.myfirstapp.defs;
+package com.example.myfirstapp;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -17,6 +17,12 @@ import java.io.Serializable;
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
     public String documentUri;
     private String displayName;
+
+    long getDuration() {
+        return duration;
+    }
+
+    private long duration;
     private transient MediaMetadataRetriever mmr;
 
     @Nullable
@@ -44,20 +50,22 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     }
 
     Bitmap getEmbeddedPicture(Context context) {
+        Bitmap result = null;
         try {
             mmr = getMMR(context);
             if (mmr != null) {
                 ByteArrayInputStream bis = new ByteArrayInputStream(mmr.getEmbeddedPicture());
-                return BitmapFactory.decodeStream(bis);
+                result = BitmapFactory.decodeStream(bis);
+                bis.close();
             }
-        } catch (Exception ignored) {
-        }
-        return null;
+        } catch (Exception ignored) {}
+        return result;
     }
 
-    MediaItem(String documentUri, String displayName) {
+    public MediaItem(String documentUri, String displayName, long duration) {
         this.documentUri = documentUri;
         this.displayName = displayName;
+        this.duration = duration;
     }
 
     private MediaItem(Parcel in) {

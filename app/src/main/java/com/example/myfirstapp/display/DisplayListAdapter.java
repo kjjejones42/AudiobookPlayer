@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myfirstapp.player.PlayActivity;
 import com.example.myfirstapp.R;
-import com.example.myfirstapp.defs.AudioBook;
+import com.example.myfirstapp.AudioBook;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -178,9 +178,10 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         switch (finalList.get(position).getHeadingOrItem()) {
             case ListItems.TYPE_ITEM:
                 AudioBook book = ((ListItems.AudioBookContainer) finalList.get(position)).book;
-                holder.textView.setText(book.displayName);
+                holder.textView.setText(book.displayName + " | " + PlayActivity.msToMMSS(book.getTotalDuration()));
                 holder.artist.setText(book.author);
                 holder.textView.setSelected(selectedPos == position);
+                holder.image.setVisibility(View.INVISIBLE);
                 new Thread(() -> {
                     Bitmap thumbnail = book.getThumbnail((Activity) rcv.getContext());
                     holder.v.post(() -> {

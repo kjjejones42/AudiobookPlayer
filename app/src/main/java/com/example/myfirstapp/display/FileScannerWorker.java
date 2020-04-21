@@ -1,10 +1,11 @@
-package com.example.myfirstapp.defs;
+package com.example.myfirstapp.display;
 
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
@@ -13,7 +14,11 @@ import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.example.myfirstapp.AudioBook;
+import com.example.myfirstapp.MediaItem;
+
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,13 +67,22 @@ public class FileScannerWorker extends Worker {
                 Uri newUri = DocumentsContract.buildDocumentUriUsingTree(root, childId);
                 if (isAudio(type)) {
                     String displayName = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME));
-                    MediaItem newItem = new MediaItem(newUri.toString(), displayName);
+                    long duration = 0L;
+                    try {
+                        MediaMetadataRetriever m = new MediaMetadataRetriever();
+                        m.setDataSource(context, newUri);
+                        duration = Long.parseLong(m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                    } catch (Exception ignored) {}
+                    MediaItem newItem = new MediaItem(newUri.toString(), displayName, duration);
                     list.add(newItem);
                 } else if (!isDirectory(type)) {
                     try {
-                        if (BitmapFactory.decodeStream(resolver.openInputStream(newUri)) != null) {
+                        InputStream inputStream = resolver.openInputStream(newUri);
+                        if (BitmapFactory.decodeStream(inputStream) != null) {
                             imageUri = newUri.toString();
                         }
+                        assert inputStream != null;
+                        inputStream.close();
                     } catch (Exception ignored) {
                     }
                 }
@@ -115,8 +129,8 @@ public class FileScannerWorker extends Worker {
     @Override
     public Result doWork() {
         try {
-            final Uri data = Uri.parse(getInputData().getString(INPUT));
-            List<AudioBook> result = recurse(data, DocumentsContract.getTreeDocumentId(data));
+            final Uri initialUri = Uri.parse(getInputData().getString(INPUT));
+            List<AudioBook> result = recurse(initialUri, DocumentsContract.getTreeDocumentId(initialUri));
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(result);

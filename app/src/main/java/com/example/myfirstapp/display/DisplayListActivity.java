@@ -24,8 +24,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.myfirstapp.R;
-import com.example.myfirstapp.defs.AudioBook;
-import com.example.myfirstapp.defs.FileScannerWorker;
+import com.example.myfirstapp.AudioBook;
 
 import java.util.List;
 
