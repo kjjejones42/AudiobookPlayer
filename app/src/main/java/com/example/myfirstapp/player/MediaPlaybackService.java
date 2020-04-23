@@ -91,7 +91,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
                             PlaybackStateCompat.ACTION_STOP))
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                    .setSmallIcon(R.drawable.ic_play)
+                    .setSmallIcon(R.drawable.ic_logo)
                     .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                             .setMediaSession(mediaSession.getSessionToken())
                             .setShowActionsInCompactView(1, 2, 3)
@@ -145,6 +145,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     playPauseIcon, playPauseText,
                     MediaButtonReceiver.buildMediaButtonPendingIntent(context,
                             PlaybackStateCompat.ACTION_PLAY_PAUSE));
+            startForeground(2, notification);
         }
 
         @Override
@@ -193,7 +194,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     initialiseTimer();
                 }
                 updateNotification();
-                startForeground(2, notification);
             }
         }
 
@@ -387,6 +387,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             mediaSession.getController().getTransportControls().seekTo(positionInTrack);
             saveProgress();
             initialiseTimer();
+            mediaSession.getController().getTransportControls().play();
         } catch (IOException e) {
             e.printStackTrace();
             onError();
@@ -416,7 +417,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
     private void onError() {
         stateBuilder.setState(PlaybackStateCompat.STATE_ERROR, 0, 1);
-        unregisterReceiver(myNoisyAudioStreamReceiver);
+        try {
+            unregisterReceiver(myNoisyAudioStreamReceiver);
+        } catch (Exception ignored) {}
         setPlaybackState(stateBuilder.build());
         stopSelf();
     }

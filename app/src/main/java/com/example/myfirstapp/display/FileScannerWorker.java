@@ -22,17 +22,23 @@ import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class FileScannerWorker extends Worker {
 
-    public static final String INPUT = "INPUT";
-    public static final String LIST_OF_DIRS = "LIST_OF_DIRS";
+    static final String INPUT = "INPUT";
+    static final String LIST_OF_DIRS = "LIST_OF_DIRS";
 
     private final ContentResolver resolver = getApplicationContext().getContentResolver();
     private Context context;
 
-    private static class AudioBookResult {
+    private class AudioBookResult {
         String imageUri;
         List<MediaItem> media;
     }
@@ -60,6 +66,7 @@ public class FileScannerWorker extends Worker {
         String imageUri = null;
         Uri uri = DocumentsContract.buildChildDocumentsUriUsingTree(root, id);
         Cursor cursor = resolver.query(uri, null, null, null, null);
+        MediaMetadataRetriever m = new MediaMetadataRetriever();
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 String childId = cursor.getString(cursor.getColumnIndex("document_id"));
@@ -69,10 +76,11 @@ public class FileScannerWorker extends Worker {
                     String displayName = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME));
                     long duration = 0L;
                     try {
-                        MediaMetadataRetriever m = new MediaMetadataRetriever();
                         m.setDataSource(context, newUri);
                         duration = Long.parseLong(m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     MediaItem newItem = new MediaItem(newUri.toString(), displayName, duration);
                     list.add(newItem);
                 } else if (!isDirectory(type)) {
@@ -83,7 +91,8 @@ public class FileScannerWorker extends Worker {
                         }
                         assert inputStream != null;
                         inputStream.close();
-                    } catch (Exception ignored) {
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }
@@ -95,42 +104,45 @@ public class FileScannerWorker extends Worker {
         return result;
     }
 
-    private List<AudioBook> recurse(Uri root, String id) {
-        List<AudioBook> list = new ArrayList<>();
-        Uri uri = DocumentsContract.buildChildDocumentsUriUsingTree(root, id);
-        Cursor cursor = resolver.query(uri, null, null, null, null);
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                String childId = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID));
-                String type = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE));
-                Uri newUri = DocumentsContract.buildDocumentUriUsingTree(root, childId);
-                if (isDirectory(type)) {
-                    AudioBookResult result = getAudioInDirectory(root, childId);
-                    List<MediaItem> childAudio = result.media;
-                    String name = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME));
-                    if (!childAudio.isEmpty()) {
-                        AudioBook newBook = new AudioBook(name, newUri.toString(), result.imageUri, childAudio, context);
-                        list.add(newBook);
-                    }
-                    list.addAll(recurse(root, childId));
-                }
-            }
-            cursor.close();
-        }
-        return list;
-    }
+    private BlockingQueue<String> taskQueue = new ArrayBlockingQueue<>(50);
+    private ExecutorService pool = Executors.newFixedThreadPool(10);
+    private List<Future<AudioBook>> results = Collections.synchronizedList(new ArrayList<>());
 
-    public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
-        super(context, workerParams);
-        this.context = context;
+    private List<AudioBook> getList(String initialUri) {
+        taskQueue.offer(initialUri);
+        while (!isAllDone(results) || !taskQueue.isEmpty()) {
+            try {
+                String uri = taskQueue.poll();
+                if (uri != null) {
+                    System.out.println("ASD: " + uri);
+                    Future<AudioBook> f = pool.submit(() -> checkDirectory(root, uri));
+                    results.add(f);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        List<AudioBook> books = new ArrayList<>();
+        for (Future<AudioBook> result : results) {
+            try {
+                AudioBook book = result.get();
+                if (book != null){
+                    books.add(book);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        pool.shutdown();
+        return books;
     }
 
     @NonNull
     @Override
     public Result doWork() {
         try {
-            final Uri initialUri = Uri.parse(getInputData().getString(INPUT));
-            List<AudioBook> result = recurse(initialUri, DocumentsContract.getTreeDocumentId(initialUri));
+            root = Uri.parse(getInputData().getString(INPUT));
+            List<AudioBook> result = getList(DocumentsContract.getTreeDocumentId(root));
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(result);
@@ -140,6 +152,55 @@ public class FileScannerWorker extends Worker {
             e.printStackTrace();
             return Result.failure();
         }
+    }
+
+    private <T> boolean isAllDone(List<Future<T>> list) {
+        for (Future future : list) {
+            if (!future.isDone()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private AudioBook checkDirectory(Uri root, String id) {
+        if (root == null || id == null) {
+            return null;
+        }
+        Uri childUri = DocumentsContract.buildChildDocumentsUriUsingTree(root, id);
+        Cursor cursor = resolver.query(childUri, null, null, null, null);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String childId = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID));
+                String type = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE));
+                if (isDirectory(type)) {
+                    boolean added = false;
+                    while (!added) {
+                        added = taskQueue.offer(childId);
+                    }
+                }
+            }
+            cursor.close();
+        }
+        AudioBookResult result = getAudioInDirectory(root, id);
+        if (!result.media.isEmpty()) {
+            Uri docUri = DocumentsContract.buildDocumentUriUsingTree(root, id);
+            cursor = resolver.query(docUri, null, null, null, null);
+            if (cursor != null) {
+                cursor.moveToNext();
+                String name = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME));
+                cursor.close();
+                return new AudioBook(name, docUri.toString(), result.imageUri, result.media, context);
+            }
+        }
+        return null;
+    }
+
+    private Uri root;
+
+    public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+        super(context, workerParams);
+        this.context = context;
     }
 }
 

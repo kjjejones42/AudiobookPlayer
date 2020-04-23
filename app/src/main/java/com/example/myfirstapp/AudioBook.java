@@ -98,7 +98,6 @@ public class AudioBook implements Serializable {
         String tempAuthor = null;
         if (files != null) {
             List<Integer> keys = Arrays.asList(MediaMetadataRetriever.METADATA_KEY_ARTIST, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST, MediaMetadataRetriever.METADATA_KEY_AUTHOR, MediaMetadataRetriever.METADATA_KEY_COMPOSER, MediaMetadataRetriever.METADATA_KEY_WRITER);
-
             for (MediaItem item : files) {
                 for (Integer i : keys) {
                     tempAuthor = item.extractMetadata(context, i);
@@ -260,6 +259,7 @@ public class AudioBook implements Serializable {
         return total;
     }
 
+
     public void saveConfig(Context context) {
         try {
             lastSavedTimestamp = new Date().getTime() / 1000L;
@@ -268,7 +268,7 @@ public class AudioBook implements Serializable {
             oos.close();
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException();
+            throw new RuntimeException(e);
         }
     }
 
