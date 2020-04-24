@@ -16,6 +16,7 @@ import androidx.work.WorkerParameters;
 
 import com.example.myfirstapp.AudioBook;
 import com.example.myfirstapp.MediaItem;
+import com.example.myfirstapp.Utils;
 
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -149,6 +150,7 @@ public class FileScannerWorker extends Worker {
             return Result.success();
         } catch (Exception e) {
             e.printStackTrace();
+            Utils.getInstance().logError(e, context);
             return Result.failure();
         }
     }

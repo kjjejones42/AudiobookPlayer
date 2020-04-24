@@ -1,5 +1,7 @@
 package com.example.myfirstapp.display;
 
+import androidx.annotation.NonNull;
+
 import com.example.myfirstapp.AudioBook;
 
 import java.util.HashMap;
@@ -7,17 +9,6 @@ import java.util.HashMap;
 class ListItems {
     final static int TYPE_HEADING = 0;
     final static int TYPE_ITEM = 1;
-    private static HashMap<Integer, String> map;
-
-    private static HashMap<Integer, String> getMap() {
-        if (map == null) {
-            map = new HashMap<>();
-            map.put(AudioBook.STATUS_FINISHED, "Finished");
-            map.put(AudioBook.STATUS_IN_PROGRESS, "In Progress");
-            map.put(AudioBook.STATUS_NOT_BEGUN, "Not Begun");
-        }
-        return map;
-    }
 
     public static abstract class ListItem {
         public abstract int getCategory();
@@ -50,6 +41,11 @@ class ListItems {
             return book.lastSavedTimestamp;
         }
 
+        @NonNull
+        @Override
+        public String toString() {
+            return book.displayName;
+        }
     }
 
     public static class Heading extends ListItem {
@@ -75,7 +71,13 @@ class ListItems {
         }
 
         String getHeadingTitle() {
-            return getMap().get(category);
+            return AudioBook.getStatusMap().get(category);
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return getHeadingTitle();
         }
     }
 }

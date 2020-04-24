@@ -7,6 +7,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.myfirstapp.AudioBook;
+import com.example.myfirstapp.Utils;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -38,9 +39,8 @@ public class DisplayListViewModel extends ViewModel {
             }
             return;
         } catch (FileNotFoundException ignored) {
-        } catch (InvalidClassException e){
-            System.err.println(e.getMessage());
         } catch (Exception e) {
+            Utils.getInstance().logError(e, context);
             e.printStackTrace();
         }
         context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
@@ -63,6 +63,7 @@ public class DisplayListViewModel extends ViewModel {
             oos.close();
         } catch (IOException e) {
             e.printStackTrace();
+            Utils.getInstance().logError(e, context);
         }
     }
 }

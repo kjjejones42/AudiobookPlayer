@@ -14,14 +14,9 @@ import androidx.work.WorkManager;
 
 import android.Manifest;
 import android.app.ProgressDialog;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.session.MediaControllerCompat;
-import android.support.v4.media.session.MediaSessionCompat;
-import android.support.v4.media.session.PlaybackStateCompat;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -34,7 +29,6 @@ import com.example.myfirstapp.AudioBook;
 import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.player.MediaPlaybackService;
 import com.example.myfirstapp.player.PlayActivity;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.List;
 
@@ -72,8 +66,8 @@ public class DisplayListActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == SELECT_DIRECTORY && data != null && data.getData() != null) {
             try {
-                new Thread(() -> Utils.getInstance().saveRoot(data.getData(), this)).start();
                 Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
+                new Thread(() -> Utils.getInstance().saveRoot(data.getData(), this)).start();
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
                 final ProgressDialog dialog = ProgressDialog.show(this, "",
                         "Loading. Please wait...", true);
@@ -87,11 +81,13 @@ public class DisplayListActivity extends AppCompatActivity {
                                     dialog.cancel();
                                     startActivity(intent);
                                 } catch (Exception e) {
+                                    Utils.getInstance().logError(e, this);
                                     e.printStackTrace();
                                 }
                             }
                         });
             } catch (Exception e) {
+                Utils.getInstance().logError(e, this);
                 e.printStackTrace();
             }
         }

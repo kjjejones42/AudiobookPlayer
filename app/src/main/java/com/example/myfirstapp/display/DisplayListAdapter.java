@@ -1,9 +1,13 @@
 package com.example.myfirstapp.display;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,8 +50,8 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     }
 
     private List<ListItems.ListItem> finalList;
-    private final DisplayListViewModel model;
-    private final RecyclerView rcv;
+    private DisplayListViewModel model;
+    private RecyclerView rcv;
     private int selectedPos = RecyclerView.NO_POSITION;
     private Context context;
 
@@ -69,6 +73,17 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     };
 
     private View.OnLongClickListener olcl = v -> {
+        String[] statuses = AudioBook.getStatusMap().values().toArray(new String[0]);
+        AudioBook book = ((ListItems.AudioBookContainer) finalList.get(rcv.getChildLayoutPosition(v))).book;
+        new AlertDialog.Builder(v.getContext())
+                .setSingleChoiceItems(statuses, book.getStatus(), (dialog, which) -> {
+                    book.setStatus(which);
+                    book.saveConfig(v.getContext());
+                    notifyDataSetChanged();
+                    dialog.dismiss();
+                }).setTitle("Choose this book's status.")
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .show();
 //        final int position = rcv.getChildLayoutPosition(v);
 //        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
 //            final EditText et = new EditText(v.getContext());
@@ -119,7 +134,6 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         List<ListItems.ListItem> list = new ArrayList<>();
         Collections.sort(books, (o1, o2) -> o1.displayName.compareTo(o2.displayName));
         for (AudioBook book : books) {
-            book.loadFromFile(context);
             list.add(new ListItems.AudioBookContainer(book));
         }
         List<Integer> letters = new ArrayList<>();
@@ -174,6 +188,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     }
 
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
         switch (finalList.get(position).getHeadingOrItem()) {

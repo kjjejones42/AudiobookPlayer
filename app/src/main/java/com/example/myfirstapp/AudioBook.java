@@ -10,9 +10,11 @@ import android.graphics.Paint;
 import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,12 +29,13 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 public class AudioBook implements Serializable {
-    public static int STATUS_IN_PROGRESS = 0;
-    public static int STATUS_NOT_BEGUN = 1;
-    public static int STATUS_FINISHED = 2;
+    public final static int STATUS_IN_PROGRESS = 0;
+    public final static int STATUS_NOT_BEGUN = 1;
+    public final static int STATUS_FINISHED = 2;
     private static int thumbnailSize;
 //    private static String TAG = "ASD";
 
@@ -48,6 +51,18 @@ public class AudioBook implements Serializable {
     private transient boolean generatedArt;
     private transient Bitmap thumbnail;
     private transient Bitmap art;
+
+    private static HashMap<Integer, String> map;
+
+    public static HashMap<Integer, String> getStatusMap() {
+        if (map == null) {
+            map = new HashMap<>();
+            map.put(AudioBook.STATUS_FINISHED, "Finished");
+            map.put(AudioBook.STATUS_IN_PROGRESS, "In Progress");
+            map.put(AudioBook.STATUS_NOT_BEGUN, "Not Begun");
+        }
+        return map;
+    }
 
     private static int getThumbnailSize(Activity activity) {
         if (thumbnailSize == 0) {
@@ -154,6 +169,7 @@ public class AudioBook implements Serializable {
         }
     }
 
+
     public void loadFromFile(Context context) {
         try {
             ObjectInputStream ois = new ObjectInputStream(context.openFileInput(getUniqueId()));
@@ -175,6 +191,17 @@ public class AudioBook implements Serializable {
     }
 
     public void setStatus(int status) {
+        switch (status) {
+            case AudioBook.STATUS_IN_PROGRESS:
+                break;
+            case AudioBook.STATUS_NOT_BEGUN:
+                lastSavedTimestamp = 0L;
+            case AudioBook.STATUS_FINISHED:
+                setPositionInTrackList(0);
+                setPositionInTrack(0);
+                break;
+        }
+        Log.d("ASD", "setStatus: " + displayName + " " + this.status + " => " + status);
         this.status = status;
     }
 

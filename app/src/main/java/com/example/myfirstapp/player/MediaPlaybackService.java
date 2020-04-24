@@ -34,6 +34,7 @@ import androidx.media.session.MediaButtonReceiver;
 import com.example.myfirstapp.R;
 import com.example.myfirstapp.AudioBook;
 import com.example.myfirstapp.MediaItem;
+import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.display.DisplayListActivity;
 
 import java.io.IOException;
@@ -191,6 +192,10 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         .setState(PlaybackStateCompat.STATE_PLAYING, mediaPlayer.getCurrentPosition(), 1)
                         .build();
                 setPlaybackState(newState);
+                if (mAudiobook.getStatus() == AudioBook.STATUS_NOT_BEGUN) {
+                    mAudiobook.setStatus(AudioBook.STATUS_IN_PROGRESS);
+                    saveProgress();
+                }
                 if (isMediaPlayerPrepared && !mediaPlayer.isPlaying()) {
                     mediaPlayer.start();
                     initialiseTimer();
@@ -234,6 +239,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         stopForeground(false);
                     }
                 } catch (IllegalStateException e) {
+                    Utils.getInstance().logError(e, getApplicationContext());
                     e.printStackTrace();
                 }
             }
@@ -294,10 +300,10 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         public void onSkipToNext() {
             super.onSkipToNext();
             if (isMediaPlayerPrepared) {
-                setPlaybackState(
-                        stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 0, 1)
-                                .build());
                 positionInTrack = 0;
+                setPlaybackState(
+                        stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, positionInTrack, 1)
+                                .build());
                 playTrack(positionInTrackList + 1, mAudiobook);
             }
         }
@@ -364,10 +370,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
         positionInTrackList = position;
         mAudiobook.loadFromFile(MediaPlaybackService.this);
-        if (audiobook.getStatus() == AudioBook.STATUS_NOT_BEGUN) {
-            audiobook.setStatus(AudioBook.STATUS_IN_PROGRESS);
-            saveProgress();
-        }
         MediaItem mediaItem = audiobook.files.get(position);
         mediaPlayer.reset();
         isMediaPlayerPrepared = false;
@@ -391,6 +393,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             initialiseTimer();
             mediaSession.getController().getTransportControls().play();
         } catch (IOException e) {
+            Utils.getInstance().logError(e, getApplicationContext());
             e.printStackTrace();
             onError();
         }
@@ -457,6 +460,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 playTrack(positionInTrackList, mAudiobook);
 
             } catch (Exception e) {
+                Utils.getInstance().logError(e, getApplicationContext());
                 e.printStackTrace();
                 onError();
             }

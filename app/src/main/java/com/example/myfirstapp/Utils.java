@@ -2,11 +2,17 @@ package com.example.myfirstapp;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Environment;
+import android.widget.Toast;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 
 public class Utils {
     private static Utils instance;
@@ -30,15 +36,43 @@ public class Utils {
         return rootUri;
     }
 
+
     public void saveRoot(Uri uri, Context context) {
         try {
             FileOutputStream fos = context.openFileOutput(FILE_NAME, Context.MODE_PRIVATE);
-            ObjectOutputStream oos= new ObjectOutputStream(fos);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
             rootUri = uri;
             oos.writeObject(rootUri.toString());
             oos.close();
         } catch (Exception e) {
             e.printStackTrace();
+            Utils.getInstance().logError(e, context);
+        }
+    }
+
+    private final File f = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "MyAudiobookPlayerLog.txt");
+
+    public void logError(Throwable e, Context context) {
+        synchronized (f) {
+            try {
+                FileOutputStream fos = new FileOutputStream(f, true);
+                PrintWriter p = new PrintWriter(fos);
+                e.printStackTrace(p);
+                p.write(System.lineSeparator() + "--------------------");
+                p.close();
+                if (context != null) {
+                    Toast.makeText(context, "Uncaught exception written to log", Toast.LENGTH_SHORT).show();
+                }
+            } catch (FileNotFoundException ex) {
+                try {
+                    if (f.createNewFile()) {
+                        logError(ex, context);
+                    }
+                } catch (IOException ei) {
+                    ei.printStackTrace();
+                }
+
+            }
         }
     }
 
@@ -51,6 +85,7 @@ public class Utils {
             ois.close();
         } catch (Exception e) {
             e.printStackTrace();
+            Utils.getInstance().logError(e, context);
         }
         return uri;
     }

@@ -47,7 +47,7 @@ public class PlayerViewModel extends ViewModel {
         return emptyMetadata;
     }
 
-    void clear() {
+    private void clear() {
         position.setValue(0L);
         metadata.setValue(getEmptyMetadata());
     }

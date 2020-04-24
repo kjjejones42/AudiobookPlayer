@@ -34,6 +34,7 @@ import android.widget.Toast;
 import com.example.myfirstapp.R;
 import com.example.myfirstapp.AudioBook;
 import com.example.myfirstapp.MediaItem;
+import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.display.DisplayListActivity;
 
 import java.util.Arrays;
@@ -115,6 +116,7 @@ public class PlayActivity extends AppCompatActivity {
                 intent.putExtra(INTENT_INDEX, trackNo);
                 startService(intent);
             } catch (Exception e) {
+                Utils.getInstance().logError(e, this);
                 e.printStackTrace();
             }
         }
@@ -249,6 +251,7 @@ public class PlayActivity extends AppCompatActivity {
                 controller.getTransportControls().play();
             }
         } catch (RemoteException e) {
+            Utils.getInstance().logError(e, this);
             e.printStackTrace();
         }
     }
@@ -298,6 +301,7 @@ public class PlayActivity extends AppCompatActivity {
                 updateStatusBarColor(tv.data);
             }
         } catch (Exception e) {
+            Utils.getInstance().logError(e, this);
             e.printStackTrace();
         }
     }
