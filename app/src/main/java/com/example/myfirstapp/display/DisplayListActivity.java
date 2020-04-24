@@ -14,10 +14,16 @@ import androidx.work.WorkManager;
 
 import android.Manifest;
 import android.app.ProgressDialog;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.SearchView;
 import android.widget.TextView;
@@ -25,6 +31,10 @@ import android.widget.Toast;
 
 import com.example.myfirstapp.R;
 import com.example.myfirstapp.AudioBook;
+import com.example.myfirstapp.Utils;
+import com.example.myfirstapp.player.MediaPlaybackService;
+import com.example.myfirstapp.player.PlayActivity;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.List;
 
@@ -32,15 +42,17 @@ public class DisplayListActivity extends AppCompatActivity {
 
 //    private static String TAG = "ASD";
 
-    public static final String INTENT_UPDATE_MODEL = "UPDATE";
+    public static final String INTENT_UPDATE_MODEL = "com.example.myfirstapp.UPDATE";
+    public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
+    public static final String INTENT_START_PLAYBACK = "com.example.myfirstapp.start";
 
-    public static final String PLAY_FILE = "com.example.myfirstapp.PLAY";
+
     public static final int SELECT_DIRECTORY = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
     private DisplayListViewModel model;
     DisplayListAdapter mAdapter;
 
-    public void chooseDirectory(View view) {
+    public void chooseDirectory(MenuItem item) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivityForResult(intent, SELECT_DIRECTORY);
@@ -60,6 +72,7 @@ public class DisplayListActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == SELECT_DIRECTORY && data != null && data.getData() != null) {
             try {
+                new Thread(() -> Utils.getInstance().saveRoot(data.getData(), this)).start();
                 Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
                 final ProgressDialog dialog = ProgressDialog.show(this, "",
@@ -100,6 +113,11 @@ public class DisplayListActivity extends AppCompatActivity {
                 return false;
             }
         });
+//        final MenuItem r = menu.findItem(R.id.resume);
+//        r.setOnMenuItemClickListener(item -> {
+//            resumeMostRecentBook(null);
+//            return true;
+//        });
         return true;
     }
 
@@ -128,6 +146,27 @@ public class DisplayListActivity extends AppCompatActivity {
     RecyclerView recyclerView;
     TextView emptyView;
 
+    public void resumeMostRecentBook(View v) {
+        List<AudioBook> books = model.getUsers(this).getValue();
+        if (books != null) {
+            AudioBook mostRecent = null;
+            long recent = Long.MIN_VALUE;
+            for (AudioBook book : books) {
+                if (book.lastSavedTimestamp > recent) {
+                    recent = book.lastSavedTimestamp;
+                    mostRecent = book;
+                }
+            }
+            if (mostRecent != null) {
+                Intent intent = new Intent(this, MediaPlaybackService.class);
+                intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent);
+                intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.getPositionInTrackList());
+                startService(intent);
+            }
+        }
+
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -141,9 +180,9 @@ public class DisplayListActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED) {
 //            if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
 //                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        MY_PERMISSIONS_REQUEST_READ_STORAGE);
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    MY_PERMISSIONS_REQUEST_READ_STORAGE);
 //            }
         }
 

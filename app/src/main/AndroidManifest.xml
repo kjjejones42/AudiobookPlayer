@@ -10,6 +10,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:allowBackup="true"
+        android:name=".AudiobookPlayerApplication"
         android:fullBackupContent="true">
         <activity
             android:name=".player.PlayActivity"

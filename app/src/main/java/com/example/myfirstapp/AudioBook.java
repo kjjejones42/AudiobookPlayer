@@ -36,7 +36,7 @@ public class AudioBook implements Serializable {
     private static int thumbnailSize;
 //    private static String TAG = "ASD";
 
-    private final String rootUri;
+    private final String folderDocumentId;
     public final List<MediaItem> files;
     public final String displayName;
     public final String author;
@@ -44,7 +44,6 @@ public class AudioBook implements Serializable {
     private int positionInTrack;
     private int positionInTrackList;
     private int status;
-    private long durationOfMostRecentTrack;
     public long lastSavedTimestamp;
     private transient boolean generatedArt;
     private transient Bitmap thumbnail;
@@ -86,14 +85,14 @@ public class AudioBook implements Serializable {
         return generatedArt;
     }
 
-    public AudioBook(String name, String rootUri, String imageUri, List<MediaItem> files, Context context) {
+    public AudioBook(String name, String folderDocumentId, String imageUri, List<MediaItem> files, Context context) {
         if (files != null) {
             Collections.sort(files);
         }
         this.imageUri = imageUri;
         this.displayName = name;
         this.files = files;
-        this.rootUri = rootUri;
+        this.folderDocumentId = folderDocumentId;
         this.status = STATUS_NOT_BEGUN;
         String tempAuthor = null;
         if (files != null) {
@@ -129,7 +128,7 @@ public class AudioBook implements Serializable {
     }
 
     private File getThumbnailFile(Context context) {
-        return new File(context.getCacheDir(), rootUri.replaceAll("\\W", "") + ".thumbnail");
+        return new File(context.getCacheDir(), getUniqueId() + ".thumbnail");
     }
 
     private void loadThumbnail(Context context) {
@@ -214,11 +213,7 @@ public class AudioBook implements Serializable {
     }
 
     public String getUniqueId(){
-        String path = Uri.parse(rootUri).getPath();
-        if (path != null) {
-            return path.replaceAll("\\W", "");
-        }
-        return "";
+        return folderDocumentId.replaceAll("\\W", "");
     }
 
 
@@ -237,7 +232,6 @@ public class AudioBook implements Serializable {
 
     public void setPositionInTrackList(int positionInTrackList) {
         this.positionInTrackList = positionInTrackList;
-        durationOfMostRecentTrack = files.get(positionInTrackList).getDuration();
     }
 
     public void setFinished(Context context) {

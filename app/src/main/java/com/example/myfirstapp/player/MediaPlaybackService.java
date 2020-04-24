@@ -22,6 +22,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -92,6 +93,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                             PlaybackStateCompat.ACTION_STOP))
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setSmallIcon(R.drawable.ic_logo)
+                    .setShowWhen(false)
                     .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                             .setMediaSession(mediaSession.getSessionToken())
                             .setShowActionsInCompactView(1, 2, 3)
@@ -232,7 +234,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         stopForeground(false);
                     }
                 } catch (IllegalStateException e) {
-                    System.err.println(e.toString());
+                    e.printStackTrace();
                 }
             }
             saveProgress();
@@ -436,7 +438,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 int position = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
 
                 Intent resumeIntent = new Intent(this, PlayActivity.class);
-                resumeIntent.putExtra(DisplayListActivity.PLAY_FILE, mAudiobook);
+                resumeIntent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, mAudiobook);
                 mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_UPDATE_CURRENT));
 
                 if (mAudiobook.getStatus() == AudioBook.STATUS_FINISHED) {
@@ -452,7 +454,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         positionInTrack = 0;
                     }
                 }
-
                 playTrack(positionInTrackList, mAudiobook);
 
             } catch (Exception e) {

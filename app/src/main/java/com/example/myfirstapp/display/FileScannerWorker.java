@@ -114,7 +114,6 @@ public class FileScannerWorker extends Worker {
             try {
                 String uri = taskQueue.poll();
                 if (uri != null) {
-                    System.out.println("ASD: " + uri);
                     Future<AudioBook> f = pool.submit(() -> checkDirectory(root, uri));
                     results.add(f);
                 }
@@ -190,7 +189,7 @@ public class FileScannerWorker extends Worker {
                 cursor.moveToNext();
                 String name = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME));
                 cursor.close();
-                return new AudioBook(name, docUri.toString(), result.imageUri, result.media, context);
+                return new AudioBook(name, id, result.imageUri, result.media, context);
             }
         }
         return null;

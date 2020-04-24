@@ -61,7 +61,8 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 selectedPos = position;
                 notifyItemChanged(position);
                 Intent intent = new Intent(v.getContext(), PlayActivity.class);
-                intent.putExtra(DisplayListActivity.PLAY_FILE, book);
+                intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book);
+                intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
                 v.getContext().startActivity(intent);
             }
         }

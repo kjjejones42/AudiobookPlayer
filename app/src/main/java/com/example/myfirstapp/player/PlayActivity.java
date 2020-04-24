@@ -2,7 +2,6 @@ package com.example.myfirstapp.player;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
@@ -21,7 +20,6 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.AdapterView;
@@ -45,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PlayActivity extends AppCompatActivity {
 
-    private static String TAG = "ASD";
+//    private static String TAG = "ASD";
     public static String INTENT_AUDIOBOOK = "AUDIOBOOK";
     public static String INTENT_INDEX = "INDEX";
 
@@ -62,7 +60,8 @@ public class PlayActivity extends AppCompatActivity {
     private SeekBar seekBar;
     private PlayerViewModel model;
     private ImageView imView;
-    private ConstraintLayout buttonContainer;
+//    private ConstraintLayout buttonContainer;
+    private boolean startPlayback;
 
 
 
@@ -120,6 +119,7 @@ public class PlayActivity extends AppCompatActivity {
             }
         }
     }
+
 
     void setDuration(Long duration) {
         if (duration > 0) {
@@ -182,7 +182,7 @@ public class PlayActivity extends AppCompatActivity {
         seekBar = findViewById(R.id.seekBar);
         spinner = findViewById(R.id.trackChooser);
         imView = findViewById(R.id.albumArtView);
-        buttonContainer = findViewById(R.id.buttonContainer);
+//        buttonContainer = findViewById(R.id.buttonContainer);
 
 //        buttonContainer.setVisibility(View.INVISIBLE);
 
@@ -192,36 +192,35 @@ public class PlayActivity extends AppCompatActivity {
 //        setControlsEnabled(false);
         seekBar.setOnSeekBarChangeListener(osvcl);
 
+        startPlayback = getIntent().getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
+
         if (getIntent() != null) {
-            AudioBook newBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.PLAY_FILE);
+            AudioBook newBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE);
             if (newBook != null) {
                 model.setAudioBook(newBook);
             }
         }
         AudioBook audioBook = model.getAudioBook().getValue();
-        audioBook.loadFromFile(this);
-        setPosition((long) audioBook.getPositionInTrack());
-        setDuration(audioBook.getDurationOfMostRecentTrack());
-
-        new Thread(() -> {
-            Bitmap cover = audioBook.getAlbumArt(this);
-            imView.post(() -> setColorFromAlbumArt(cover));
-        }).start();
-
-        initializeModelObservers();
-
-        ActionBar bar =  getSupportActionBar();
-        if (bar != null) {
-            bar.setTitle(audioBook.displayName);
+        if (audioBook != null) {
+            audioBook.loadFromFile(this);
+            new Thread(() -> {
+                Bitmap cover = audioBook.getAlbumArt(this);
+                imView.post(() -> setColorFromAlbumArt(cover));
+            }).start();
+            ActionBar bar =  getSupportActionBar();
+            if (bar != null) {
+                bar.setTitle(audioBook.displayName);
+            }
+            ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinner.setAdapter(adapter);
+            spinner.setOnItemSelectedListener(oisl);
+            int position = audioBook.getPositionInTrackList();
+            spinner.setTag(position);
+            spinner.setSelection(position);
         }
 
-        ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setOnItemSelectedListener(oisl);
-        int position = audioBook.getPositionInTrackList();
-        spinner.setTag(position);
-        spinner.setSelection(position);
+        initializeModelObservers();
     }
 
     private void onConnected() {
@@ -232,18 +231,23 @@ public class PlayActivity extends AppCompatActivity {
                     mediaBrowser.getSessionToken());
             MediaControllerCompat.setMediaController(PlayActivity.this, controller);
             buildTransportControls();
-            if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
+            if (audioBook != null) {
+                if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
 //                model.clear();
-                initialiseMediaSession(audioBook.getPositionInTrackList());
-            } else {
-                model.setMetadata(controller.getMetadata());
-                model.setPosition(controller.getPlaybackState().getPosition());
+                    initialiseMediaSession(audioBook.getPositionInTrackList());
+                } else {
+                    model.setMetadata(controller.getMetadata());
+                    model.setPosition(controller.getPlaybackState().getPosition());
+                }
             }
 //            Animation bottomUp = AnimationUtils.loadAnimation(this,
 //                    R.anim.bottom_up);
 //            buttonContainer.startAnimation(bottomUp);
 //            buttonContainer.setVisibility(View.VISIBLE);
-            controller.getTransportControls().play();
+            if (startPlayback) {
+                startPlayback = false;
+                controller.getTransportControls().play();
+            }
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -278,7 +282,8 @@ public class PlayActivity extends AppCompatActivity {
         try {
             setImage(bitmap);
             Palette palette = Palette.from(bitmap).generate();
-            if (!model.getAudioBook().getValue().isArtGenerated()) {
+            AudioBook book = model.getAudioBook().getValue();
+            if (book != null && !book.isArtGenerated()) {
                 boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
                 int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
                 PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
@@ -302,13 +307,20 @@ public class PlayActivity extends AppCompatActivity {
         super.onStart();
         mediaBrowser.connect();
         setPosition(model.getPosition().getValue());
-        setDuration(model.getAudioBook().getValue().getDurationOfMostRecentTrack());
+        AudioBook book = model.getAudioBook().getValue();
+        if (book != null) {
+            setPosition((long) book.getPositionInTrack());
+            setDuration(model.getAudioBook().getValue().getDurationOfMostRecentTrack());
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        model.getAudioBook().getValue().loadFromFile(this);
+        AudioBook book = model.getAudioBook().getValue();
+        if (book != null) {
+            book.loadFromFile(this);
+        }
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
@@ -382,8 +394,10 @@ public class PlayActivity extends AppCompatActivity {
             if (MediaPlaybackService.EVENT_REACHED_END.equals(event)) {
                 AudioBook audioBook = model.getAudioBook().getValue();
                 mediaBrowser.disconnect();
-                audioBook.setFinished(PlayActivity.this);
-                audioBook.saveConfig(PlayActivity.this);
+                if (audioBook != null) {
+                    audioBook.setFinished(PlayActivity.this);
+                    audioBook.saveConfig(PlayActivity.this);
+                }
                 onBackPressed();
             }
         }
