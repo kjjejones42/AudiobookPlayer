@@ -420,21 +420,23 @@ public class PlayActivity extends AppCompatActivity {
         @SuppressLint("SwitchIntDef")
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
-            switch (state.getState()) {
-                case PlaybackStateCompat.STATE_STOPPED:
-                case PlaybackStateCompat.STATE_NONE:
-                    break;
-                case PlaybackStateCompat.STATE_ERROR:
-                    Toast.makeText(PlayActivity.this, "Playback Error", Toast.LENGTH_SHORT).show();
-                    break;
-                default:
+            if (state != null) {
+                switch (state.getState()) {
+                    case PlaybackStateCompat.STATE_STOPPED:
+                    case PlaybackStateCompat.STATE_NONE:
+                        break;
+                    case PlaybackStateCompat.STATE_ERROR:
+                        Toast.makeText(PlayActivity.this, "Playback Error", Toast.LENGTH_SHORT).show();
+                        break;
+                    default:
 //                    setControlsEnabled(true);
-                    model.setPosition(state.getPosition());
-                    boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-                    Boolean b = model.getIsPlaying().getValue();
-                    if (b != null && isPlaying != b) {
-                        model.setIsPlaying(isPlaying);
-                    }
+                        model.setPosition(state.getPosition());
+                        boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
+                        Boolean b = model.getIsPlaying().getValue();
+                        if (b != null && isPlaying != b) {
+                            model.setIsPlaying(isPlaying);
+                        }
+                }
             }
         }
     };

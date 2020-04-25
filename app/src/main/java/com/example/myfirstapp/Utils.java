@@ -1,11 +1,15 @@
 package com.example.myfirstapp;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Environment;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,7 +33,9 @@ public class Utils {
 
     private Uri rootUri;
 
-    private Utils() {}
+    private Utils() {
+        Log.d("ASD", "" + f);
+    }
 
     public Uri getRoot(Context context) {
         if (rootUri == null) {
