@@ -138,9 +138,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             saveProgress();
             mediaSession.sendSessionEvent(action, extras);
             if (EVENT_REACHED_END.equals(action)) {
-                onStop();
                 MediaPlaybackService.this.stopForeground(true);
-                MediaPlaybackService.this.stopSelf();
+                onStop();
             }
         }
 
@@ -233,13 +232,12 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 am.abandonAudioFocus(oufcl);
                 mediaSession.setActive(false);
                 updateTask.cancel();
+                saveProgress();
                 PlaybackStateCompat newState = stateBuilder
                         .setState(PlaybackStateCompat.STATE_STOPPED, 0, 1)
                         .build();
                 setPlaybackState(newState);
-                saveProgress();
                 stopForeground(false);
-                mAudiobook.saveConfig(getApplicationContext());
                 stopSelf();
             }
         }
