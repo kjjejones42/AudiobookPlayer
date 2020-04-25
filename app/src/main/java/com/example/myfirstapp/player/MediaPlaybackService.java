@@ -22,7 +22,6 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -505,6 +504,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         PlaybackStateCompat state;
         if (mAudiobook != null && (state = mediaSession.getController().getPlaybackState()) != null) {
             int position = (int) state.getPosition();
+            new RuntimeException().printStackTrace();
             mAudiobook.setPositionInTrack(position);
             mAudiobook.setPositionInTrackList(positionInTrackList);
             mAudiobook.saveConfig(this);
@@ -517,7 +517,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         if (updateTask != null) {
             updateTask.cancel();
         }
-        saveProgress();
         mediaPlayer.release();
         mediaSession.release();
         try {
