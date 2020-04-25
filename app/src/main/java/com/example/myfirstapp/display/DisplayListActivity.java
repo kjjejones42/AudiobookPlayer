@@ -17,6 +17,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -55,9 +56,12 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == MY_PERMISSIONS_REQUEST_READ_STORAGE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+            int total = grantResults.length;
+            for (int i = 0; i < permissions.length; i++) {
+                total += grantResults[i];
             }
+            String result = total == grantResults.length ? "All" : "Not all";
+            Toast.makeText(this, result + " permissions granted.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -173,13 +177,11 @@ public class DisplayListActivity extends AppCompatActivity {
         emptyView = findViewById(R.id.empty_view);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
-//            if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
-//                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     MY_PERMISSIONS_REQUEST_READ_STORAGE);
-//            }
         }
 
         model = new ViewModelProvider(this).get(DisplayListViewModel.class);

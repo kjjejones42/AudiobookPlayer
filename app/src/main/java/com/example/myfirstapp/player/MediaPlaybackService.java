@@ -384,7 +384,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             mediaPlayer.prepare();
             isMediaPlayerPrepared = true;
             mediaSession.setMetadata(trackToMetaData(mediaItem));
-            Log.d(TAG, "playTrack: " + positionInTrack);
             new RuntimeException().printStackTrace();
             mediaSession.getController().getTransportControls().seekTo(positionInTrack);
             saveProgress();

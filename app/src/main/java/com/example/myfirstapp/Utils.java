@@ -33,9 +33,7 @@ public class Utils {
 
     private Uri rootUri;
 
-    private Utils() {
-        Log.d("ASD", "" + f);
-    }
+    private Utils() {}
 
     public Uri getRoot(Context context) {
         if (rootUri == null) {

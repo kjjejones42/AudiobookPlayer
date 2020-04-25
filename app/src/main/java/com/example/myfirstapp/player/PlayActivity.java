@@ -190,19 +190,10 @@ public class PlayActivity extends AppCompatActivity {
 
 //        buttonContainer.setVisibility(View.INVISIBLE);
 
-        for (TextView v : Arrays.asList(durationText, progressText)) {
-            v.setVisibility(View.INVISIBLE);
-            v.setText(getString(R.string.duration_full_width));
-            int w = v.getWidth();
-            v.setMinWidth(w);
-            v.setMinWidth(w);
-            v.setVisibility(View.VISIBLE);
-        }
-
         model = new ViewModelProvider(this).get(PlayerViewModel.class);
         mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
 
-//        setControlsEnabled(false);
+        setControlsEnabled(false);
         seekBar.setOnSeekBarChangeListener(osvcl);
 
         startPlayback = getIntent().getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
@@ -365,18 +356,19 @@ public class PlayActivity extends AppCompatActivity {
         });
         rewindButton.setOnClickListener(v -> controller.getTransportControls().rewind());
         forwardButton.setOnClickListener(v -> controller.getTransportControls().fastForward());
+        setControlsEnabled(true);
     }
 
-//    void setControlsEnabled(boolean on) {
-//        int visibility = on ? View.VISIBLE : View.INVISIBLE;
-//        seekBar.setEnabled(on);
-//        seekBar.setVisibility(visibility);
-//        nextButton.setEnabled(on);
-//        prevButton.setEnabled(on);
-//        toggleButton.setEnabled(on);
-//        rewindButton.setEnabled(on);
-//        forwardButton.setEnabled(on);
-//    }
+    void setControlsEnabled(boolean on) {
+        int visibility = on ? View.VISIBLE : View.INVISIBLE;
+        seekBar.setEnabled(on);
+        seekBar.setVisibility(visibility);
+        nextButton.setEnabled(on);
+        prevButton.setEnabled(on);
+        toggleButton.setEnabled(on);
+        rewindButton.setEnabled(on);
+        forwardButton.setEnabled(on);
+    }
 
     private final MediaBrowserCompat.ConnectionCallback connectionCallbacks =
             new MediaBrowserCompat.ConnectionCallback() {
