@@ -1,6 +1,7 @@
 package com.example.myfirstapp.player;
 
 import android.support.v4.media.MediaMetadataCompat;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -72,7 +73,9 @@ public class PlayerViewModel extends ViewModel {
     void setPosition(long position) {
         Long l = this.position.getValue();
         if (l != null && l != position) {
-            this.position.setValue(position);
+            if (position > 0) {
+                this.position.setValue(position);
+            }
         }
     }
 

@@ -201,7 +201,6 @@ public class AudioBook implements Serializable {
                 setPositionInTrack(0);
                 break;
         }
-        Log.d("ASD", "setStatus: " + displayName + " " + this.status + " => " + status);
         this.status = status;
     }
 

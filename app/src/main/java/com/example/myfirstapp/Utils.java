@@ -5,6 +5,8 @@ import android.net.Uri;
 import android.os.Environment;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -52,13 +54,13 @@ public class Utils {
 
     private final File f = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "MyAudiobookPlayerLog.txt");
 
-    public void logError(Throwable e, Context context) {
+    public void logError(Throwable e, @Nullable Context context) {
         synchronized (f) {
             try {
                 FileOutputStream fos = new FileOutputStream(f, true);
                 PrintWriter p = new PrintWriter(fos);
                 e.printStackTrace(p);
-                p.write(System.lineSeparator() + "--------------------");
+                p.write(System.lineSeparator() + "--------------------" + System.lineSeparator());
                 p.close();
                 if (context != null) {
                     Toast.makeText(context, "Uncaught exception written to log", Toast.LENGTH_SHORT).show();
