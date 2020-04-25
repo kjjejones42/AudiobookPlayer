@@ -10,4 +10,5 @@
     <string name="channel_description">Descript blah</string>
     <string name="scan_for_audiobooks">Scan for Audiobooks</string>
     <string name="search">Search</string>
+    <string name="duration_full_width">00:00:00</string>
 </resources>

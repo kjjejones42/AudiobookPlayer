@@ -38,6 +38,7 @@ import com.example.myfirstapp.MediaItem;
 import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.display.DisplayListActivity;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -188,6 +189,15 @@ public class PlayActivity extends AppCompatActivity {
 //        buttonContainer = findViewById(R.id.buttonContainer);
 
 //        buttonContainer.setVisibility(View.INVISIBLE);
+
+        for (TextView v : Arrays.asList(durationText, progressText)) {
+            v.setVisibility(View.INVISIBLE);
+            v.setText(getString(R.string.duration_full_width));
+            int w = v.getWidth();
+            v.setMinWidth(w);
+            v.setMinWidth(w);
+            v.setVisibility(View.VISIBLE);
+        }
 
         model = new ViewModelProvider(this).get(PlayerViewModel.class);
         mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);

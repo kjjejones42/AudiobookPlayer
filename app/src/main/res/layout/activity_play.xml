@@ -104,7 +104,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:text="00:00"
+            android:textAlignment="viewEnd"
             app:layout_constraintBottom_toTopOf="@id/toggleButton"
             app:layout_constraintEnd_toStartOf="@id/seekBar"
             app:layout_constraintStart_toStartOf="parent"
@@ -126,11 +126,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:text="00:00"
+            android:textAlignment="viewStart"
             app:layout_constraintBottom_toTopOf="@id/toggleButton"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/seekBar"
-            app:layout_constraintTop_toBottomOf="@id/trackChooser"/>
+            app:layout_constraintTop_toBottomOf="@id/trackChooser" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

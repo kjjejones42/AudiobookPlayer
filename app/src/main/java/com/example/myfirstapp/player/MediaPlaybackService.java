@@ -45,22 +45,6 @@ import java.util.TimerTask;
 
 public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
-    @SuppressWarnings("FieldCanBeLocal")
-    private static String TAG = "ASD";
-
-    final public static String EVENT_REACHED_END = "REACHED_END";
-
-    private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-
-    private BroadcastReceiver myNoisyAudioStreamReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                mediaSession.getController().getTransportControls().pause();
-            }
-        }
-    };
-
     private class MySessionCallback extends MediaSessionCompat.Callback {
 
         AudioManager.OnAudioFocusChangeListener oufcl = new AudioManager.OnAudioFocusChangeListener() {
@@ -74,8 +58,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             }
         };
 
-
-
         private void initializeNotification() {
             String CHANNEL_ID = "com.example.myfirstapp";
             Context context = getApplicationContext();
@@ -84,7 +66,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 int importance = NotificationManager.IMPORTANCE_LOW;
                 NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
                 channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-                channel.setDescription(getString(R.string.channel_description));
                 getSystemService(NotificationManager.class).createNotificationChannel(channel);
             }
             notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
@@ -187,7 +168,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             }
             if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
                 if (isMediaPlayerPrepared && !mediaPlayer.isPlaying()) {
-                    registerReceiver(myNoisyAudioStreamReceiver, intentFilter);
                     mediaSession.setActive(true);
                     if (mAudiobook.getStatus() == AudioBook.STATUS_NOT_BEGUN) {
                         mAudiobook.setStatus(AudioBook.STATUS_IN_PROGRESS);
@@ -257,7 +237,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         .setState(PlaybackStateCompat.STATE_STOPPED, 0, 1)
                         .build();
                 setPlaybackState(newState);
-                unregisterReceiver(myNoisyAudioStreamReceiver);
                 saveProgress();
                 stopForeground(false);
                 mAudiobook.saveConfig(getApplicationContext());
@@ -309,6 +288,22 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
     }
 
+    @SuppressWarnings("FieldCanBeLocal")
+    private static String TAG = "ASD";
+
+    final public static String EVENT_REACHED_END = "REACHED_END";
+
+    private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+
+    private BroadcastReceiver myNoisyAudioStreamReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                mediaSession.getController().getTransportControls().pause();
+            }
+        }
+    };
+
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder stateBuilder;
     private MediaMetadataCompat.Builder metadataBuilder;
@@ -352,7 +347,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     };
 
     boolean isPlaying() {
-        if (mediaSession == null) {
+        if (mediaSession == null || mediaSession.getController().getPlaybackState() == null) {
             return false;
         }
         return mediaSession.getController().getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING;
@@ -422,9 +417,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
     private void onError() {
         stateBuilder.setState(PlaybackStateCompat.STATE_ERROR, 0, 1);
-        try {
-            unregisterReceiver(myNoisyAudioStreamReceiver);
-        } catch (Exception ignored) {}
         setPlaybackState(stateBuilder.build());
         stopSelf();
     }
@@ -433,6 +425,10 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             try {
+                 if (updateTask != null) {
+                     updateTask.cancel();
+                 }
+
                 saveProgress();
                 mAudiobook = (AudioBook) intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK);
                 mAudiobook.loadFromFile(this);
@@ -490,6 +486,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
         mediaSession.setCallback(new MySessionCallback());
         setSessionToken(mediaSession.getSessionToken());
+
+        registerReceiver(myNoisyAudioStreamReceiver, intentFilter);
     }
 
     private MediaMetadataCompat trackToMetaData(MediaItem item) {
@@ -524,6 +522,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         saveProgress();
         mediaPlayer.release();
         mediaSession.release();
+        try {
+            unregisterReceiver(myNoisyAudioStreamReceiver);
+        } catch (Exception ignored) {}
     }
 
     @Nullable
