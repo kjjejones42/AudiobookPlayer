@@ -56,6 +56,21 @@ public class Utils {
         }
     }
 
+    public String documentUriToFilePath(Uri uri) {
+        try {
+            String path = uri.getPath();
+            String[] segments = path.split(":");
+            String mainPath = segments[segments.length - 1];
+            segments = segments[segments.length - 2].split("/");
+            String storage = segments[segments.length - 1];
+            String prefix = "primary".equals(storage) ? "/sdcard" :"/storage/" + storage;
+            return new File(prefix + "/" + mainPath).getPath();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     private final File f = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "MyAudiobookPlayerLog.txt");
 
     public void logError(Throwable e, @Nullable Context context) {

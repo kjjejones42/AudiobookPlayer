@@ -30,7 +30,8 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         try {
             if (mmr == null) {
                 mmr = new MediaMetadataRetriever();
-                mmr.setDataSource(context, Uri.parse(documentUri));
+                mmr.setDataSource(Utils.getInstance().documentUriToFilePath(Uri.parse(documentUri)));
+//                mmr.setDataSource(context, Uri.parse(documentUri));
             }
             return mmr;
         } catch (Exception e) {

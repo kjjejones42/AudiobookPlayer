@@ -11,6 +11,7 @@ import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -22,6 +23,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -36,6 +38,7 @@ import com.example.myfirstapp.R;
 import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.display.DisplayListActivity;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -229,7 +232,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         mediaPlayer.setAudioAttributes(getAudioAttributes());
         try {
             mediaPlayer.setOnCompletionListener(onCompletionListener);
-            mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
+            File f = new File(Utils.getInstance().documentUriToFilePath(Uri.parse(mediaItem.documentUri)));
+            mediaPlayer.setDataSource(f.getPath());
+//            mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
 //            LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
 //            ef.setTargetGain(10000);
 //            ef.setEnabled(true);

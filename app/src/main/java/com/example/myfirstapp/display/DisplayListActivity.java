@@ -17,6 +17,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,6 +32,8 @@ import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.player.MediaPlaybackService;
 import com.example.myfirstapp.player.PlayActivity;
 
+import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
@@ -171,6 +174,7 @@ public class DisplayListActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.AppTheme);
         super.onCreate(savedInstanceState);
+        Log.d("ASD", "" + Arrays.asList(new File("/storage").list()));
 
         setContentView(R.layout.activity_display_list);
 

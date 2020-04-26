@@ -9,6 +9,7 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.work.Worker;
@@ -18,6 +19,7 @@ import com.example.myfirstapp.AudioBook;
 import com.example.myfirstapp.MediaItem;
 import com.example.myfirstapp.Utils;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
@@ -142,6 +144,8 @@ public class FileScannerWorker extends Worker {
     public Result doWork() {
         try {
             root = Uri.parse(getInputData().getString(INPUT));
+            File rootDir = new File(Utils.getInstance().documentUriToFilePath(root));
+            Log.d("ASD", "" + rootDir.exists() + " " + rootDir.isDirectory() + " " + rootDir.getPath());
             List<AudioBook> result = getList(DocumentsContract.getTreeDocumentId(root));
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
