@@ -17,7 +17,6 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -74,7 +73,6 @@ public class DisplayListActivity extends AppCompatActivity {
         if (requestCode == SELECT_DIRECTORY && data != null && data.getData() != null) {
             try {
                 Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
-                new Thread(() -> Utils.getInstance().saveRoot(data.getData(), this)).start();
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
                 final ProgressDialog dialog = ProgressDialog.show(this, "",
                         "Loading. Please wait...", true);
@@ -88,13 +86,13 @@ public class DisplayListActivity extends AppCompatActivity {
                                     dialog.cancel();
                                     startActivity(intent);
                                 } catch (Exception e) {
-                                    Utils.getInstance().logError(e, this);
+                                    Utils.logError(e, this);
                                     e.printStackTrace();
                                 }
                             }
                         });
             } catch (Exception e) {
-                Utils.getInstance().logError(e, this);
+                Utils.logError(e, this);
                 e.printStackTrace();
             }
         }
@@ -174,7 +172,6 @@ public class DisplayListActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.AppTheme);
         super.onCreate(savedInstanceState);
-        Log.d("ASD", "" + Arrays.asList(new File("/storage").list()));
 
         setContentView(R.layout.activity_display_list);
 
@@ -203,7 +200,7 @@ public class DisplayListActivity extends AppCompatActivity {
         List<AudioBook> list = model.getUsers(this).getValue();
         if (list != null) {
             for (AudioBook book : list) {
-                book.loadFromFile(this);
+                book.loadFromFile();
             }
         }
         updateScreen();

@@ -1,10 +1,8 @@
 package com.example.myfirstapp;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
-import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -15,7 +13,7 @@ import java.io.ByteArrayInputStream;
 import java.io.Serializable;
 
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
-    public String documentUri;
+    public String filePath;
     private String displayName;
 
     long getDuration() {
@@ -26,12 +24,11 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     private transient MediaMetadataRetriever mmr;
 
     @Nullable
-    private MediaMetadataRetriever getMMR(Context context) {
+    private MediaMetadataRetriever getMMR() {
         try {
             if (mmr == null) {
                 mmr = new MediaMetadataRetriever();
-                mmr.setDataSource(Utils.getInstance().documentUriToFilePath(Uri.parse(documentUri)));
-//                mmr.setDataSource(context, Uri.parse(documentUri));
+                mmr.setDataSource(filePath);
             }
             return mmr;
         } catch (Exception e) {
@@ -39,9 +36,9 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         }
     }
 
-    String extractMetadata(Context context, int keycode) {
+    String extractMetadata(int keycode) {
         try {
-            mmr = getMMR(context);
+            mmr = getMMR();
             if (mmr != null) {
                 return mmr.extractMetadata(keycode);
             }
@@ -50,10 +47,10 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         return null;
     }
 
-    Bitmap getEmbeddedPicture(Context context) {
+    Bitmap getEmbeddedPicture() {
         Bitmap result = null;
         try {
-            mmr = getMMR(context);
+            mmr = getMMR();
             if (mmr != null) {
                 ByteArrayInputStream bis = new ByteArrayInputStream(mmr.getEmbeddedPicture());
                 result = BitmapFactory.decodeStream(bis);
@@ -64,13 +61,13 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     }
 
     public MediaItem(String documentUri, String displayName, long duration) {
-        this.documentUri = documentUri;
+        this.filePath = documentUri;
         this.displayName = displayName;
         this.duration = duration;
     }
 
     private MediaItem(Parcel in) {
-        documentUri = in.readString();
+        filePath = in.readString();
         displayName = in.readString();
     }
 
@@ -103,7 +100,7 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(documentUri);
+        dest.writeString(filePath);
         dest.writeString(displayName);
     }
 

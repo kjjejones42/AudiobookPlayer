@@ -9,7 +9,7 @@ public class AudiobookPlayerApplication extends Application {
 
         Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
-            Utils.getInstance().logError(e, this);
+            Utils.logError(e, this);
             defaultHandler.uncaughtException(thread, e);
         });
     }

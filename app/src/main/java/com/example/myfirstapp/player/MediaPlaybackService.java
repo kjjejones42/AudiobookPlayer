@@ -11,7 +11,6 @@ import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
-import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -38,7 +37,6 @@ import com.example.myfirstapp.R;
 import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.display.DisplayListActivity;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -217,12 +215,13 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             return;
         }
         if (position >= mAudiobook.files.size()) {
-            mAudiobook.setFinished(getApplicationContext());
+            mAudiobook.setStatus(AudioBook.STATUS_FINISHED);
+            mAudiobook.saveConfig();
             mediaSession.getController().getTransportControls().sendCustomAction(EVENT_REACHED_END, null);
             return;
         }
         positionInTrackList = position;
-        mAudiobook.loadFromFile(MediaPlaybackService.this);
+        mAudiobook.loadFromFile();
         MediaItem mediaItem = mAudiobook.files.get(position);
         mediaPlayer.reset();
         isMediaPlayerPrepared = false;
@@ -232,8 +231,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         mediaPlayer.setAudioAttributes(getAudioAttributes());
         try {
             mediaPlayer.setOnCompletionListener(onCompletionListener);
-            File f = new File(Utils.getInstance().documentUriToFilePath(Uri.parse(mediaItem.documentUri)));
-            mediaPlayer.setDataSource(f.getPath());
+            Log.d("ASD", mediaItem.filePath);
+            mediaPlayer.setDataSource(mediaItem.filePath);
 //            mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
 //            LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
 //            ef.setTargetGain(10000);
@@ -247,7 +246,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             saveAudiobookProgress();
             mediaSession.getController().getTransportControls().play();
         } catch (IOException e) {
-            Utils.getInstance().logError(e, getApplicationContext());
+            Utils.logError(e, mediaItem.filePath ,getApplicationContext());
             e.printStackTrace();
             onError();
         }
@@ -283,11 +282,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
     private MediaMetadataCompat trackToMetaData(MediaItem item) {
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        mmr.setDataSource(this, Uri.parse(item.documentUri));
+        mmr.setDataSource(this, Uri.parse(item.filePath));
         long duration = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
         return metadataBuilder
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt(this))
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt())
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                 .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, mAudiobook.files.indexOf(item))
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mAudiobook.getUniqueId())
@@ -300,7 +299,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             int position = (int) state.getPosition();
             mAudiobook.setPositionInTrack(position);
             mAudiobook.setPositionInTrackList(positionInTrackList);
-            mAudiobook.saveConfig(this);
+            mAudiobook.saveConfig();
         }
     }
 
@@ -314,7 +313,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
                 saveAudiobookProgress();
                 mAudiobook = (AudioBook) intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK);
-                mAudiobook.loadFromFile(this);
+                mAudiobook.loadFromFile();
 
                 int position = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
 
@@ -326,7 +325,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     positionInTrackList = 0;
                     positionInTrack = 0;
                     mAudiobook.setStatus(AudioBook.STATUS_IN_PROGRESS);
-                    mAudiobook.saveConfig(this);
+                    mAudiobook.saveConfig();
                 } else {
                     positionInTrackList = position;
                     if (positionInTrackList == mAudiobook.getPositionInTrackList()) {
@@ -339,7 +338,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 playTrack(positionInTrackList);
 
             } catch (Exception e) {
-                Utils.getInstance().logError(e, getApplicationContext());
+                Utils.logError(e, getApplicationContext());
                 e.printStackTrace();
                 onError();
             }
@@ -474,7 +473,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         stopForeground(false);
                     }
                 } catch (IllegalStateException e) {
-                    Utils.getInstance().logError(e, getApplicationContext());
+                    Utils.logError(e, getApplicationContext());
                     e.printStackTrace();
                 }
             }

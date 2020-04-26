@@ -35,12 +35,12 @@ public class DisplayListViewModel extends ViewModel {
             books.setValue((List<AudioBook>) ois.readObject());
             ois.close();
             for (AudioBook user : Objects.requireNonNull(books.getValue())) {
-                user.loadFromFile(context);
+                user.loadFromFile();
             }
             return;
-        } catch (FileNotFoundException ignored) {
+        } catch (FileNotFoundException | ClassNotFoundException | InvalidClassException ignored) {
         } catch (Exception e) {
-            Utils.getInstance().logError(e, context);
+            Utils.logError(e, context);
             e.printStackTrace();
         }
         context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
@@ -63,7 +63,7 @@ public class DisplayListViewModel extends ViewModel {
             oos.close();
         } catch (IOException e) {
             e.printStackTrace();
-            Utils.getInstance().logError(e, context);
+            Utils.logError(e, context);
         }
     }
 }

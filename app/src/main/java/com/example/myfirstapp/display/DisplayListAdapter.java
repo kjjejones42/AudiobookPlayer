@@ -4,10 +4,8 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -72,13 +70,13 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     };
 
-    private View.OnLongClickListener olcl = v -> {
+    private View.OnLongClickListener onLongClickListener = v -> {
         String[] statuses = AudioBook.getStatusMap().values().toArray(new String[0]);
         AudioBook book = ((ListItems.AudioBookContainer) finalList.get(rcv.getChildLayoutPosition(v))).book;
         new AlertDialog.Builder(v.getContext())
                 .setSingleChoiceItems(statuses, book.getStatus(), (dialog, which) -> {
                     book.setStatus(which);
-                    book.saveConfig(v.getContext());
+                    book.saveConfig();
                     notifyDataSetChanged();
                     dialog.dismiss();
                 }).setTitle("Choose this book's status.")
@@ -183,7 +181,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.display_list_item, parent, false);
         v.setOnClickListener(ocl);
-        v.setOnLongClickListener(olcl);
+        v.setOnLongClickListener(onLongClickListener);
         return new MyViewHolder(v, true);
     }
 

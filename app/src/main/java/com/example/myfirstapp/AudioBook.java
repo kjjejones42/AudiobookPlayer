@@ -7,52 +7,60 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
-import android.net.Uri;
-import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InvalidClassException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.Arrays;
+import java.io.StreamCorruptedException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
 public class AudioBook implements Serializable {
-    public final static int STATUS_IN_PROGRESS = 0;
-    public final static int STATUS_NOT_BEGUN = 1;
-    public final static int STATUS_FINISHED = 2;
+    public static final int STATUS_IN_PROGRESS = 0;
+    public static final int STATUS_NOT_BEGUN = 1;
+    public static final int STATUS_FINISHED = 2;
+    private static final long serialVersionUID = 0L;
+    private static final String FILENAME = ".audiobook";
+    private static HashMap<Integer, String> map;
     private static int thumbnailSize;
-//    private static String TAG = "ASD";
-
-    private final String folderDocumentId;
     public final List<MediaItem> files;
     public final String displayName;
     public final String author;
-    private final String imageUri;
+    private final String directoryPath;
+    private final String imagePath;
+    public long lastSavedTimestamp;
     private int positionInTrack;
     private int positionInTrackList;
     private int status;
-    public long lastSavedTimestamp;
     private transient boolean generatedArt;
     private transient Bitmap thumbnail;
     private transient Bitmap art;
+    private transient File saveFile;
 
-    private static HashMap<Integer, String> map;
+    public AudioBook(String name, String directoryPath, String imagePath, List<MediaItem> files, String author) {
+        if (files != null) {
+            Collections.sort(files);
+        }
+        this.imagePath = imagePath;
+        this.displayName = name;
+        this.files = files;
+        this.directoryPath = directoryPath;
+        this.status = STATUS_NOT_BEGUN;
+        this.author = author == null ? "" : author;
+    }
 
     public static HashMap<Integer, String> getStatusMap() {
         if (map == null) {
@@ -76,7 +84,14 @@ public class AudioBook implements Serializable {
         return thumbnailSize;
     }
 
-    private Bitmap textAsBitmap(String text) {
+    private File getSaveFile() {
+        if (saveFile == null) {
+            saveFile = new File(directoryPath + File.separator + FILENAME);
+        }
+        return saveFile;
+    }
+
+    private Bitmap getGeneratedAlbumArt(String text) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setTextSize((float) 600);
         paint.setColor(Color.GRAY);
@@ -100,43 +115,11 @@ public class AudioBook implements Serializable {
         return generatedArt;
     }
 
-    public AudioBook(String name, String folderDocumentId, String imageUri, List<MediaItem> files, Context context) {
-        if (files != null) {
-            Collections.sort(files);
-        }
-        this.imageUri = imageUri;
-        this.displayName = name;
-        this.files = files;
-        this.folderDocumentId = folderDocumentId;
-        this.status = STATUS_NOT_BEGUN;
-        String tempAuthor = null;
-        if (files != null) {
-            List<Integer> keys = Arrays.asList(MediaMetadataRetriever.METADATA_KEY_ARTIST, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST, MediaMetadataRetriever.METADATA_KEY_AUTHOR, MediaMetadataRetriever.METADATA_KEY_COMPOSER, MediaMetadataRetriever.METADATA_KEY_WRITER);
-            for (MediaItem item : files) {
-                for (Integer i : keys) {
-                    tempAuthor = item.extractMetadata(context, i);
-                    if (tempAuthor != null) {
-                        break;
-                    }
-                }
-                if (tempAuthor != null) {
-                    break;
-                }
-            }
-        }
-        author = tempAuthor == null ? "" : tempAuthor;
-    }
-
-
     public Bitmap getThumbnail(Activity activity) {
         if (thumbnail == null) {
             loadThumbnail(activity);
             if (thumbnail == null) {
-                int size = getThumbnailSize(activity);
-                thumbnail = ThumbnailUtils.extractThumbnail(getAlbumArt(activity), size, size);
-            }
-            if (thumbnail != null) {
-                saveThumbnail(activity);
+                generateThumbnailFromAlbumArt(activity, getAlbumArt());
             }
         }
         return thumbnail;
@@ -146,13 +129,21 @@ public class AudioBook implements Serializable {
         return new File(context.getCacheDir(), getUniqueId() + ".thumbnail");
     }
 
+    private void generateThumbnailFromAlbumArt(Activity activity, Bitmap bitmap) {
+        int size = getThumbnailSize(activity);
+        thumbnail = ThumbnailUtils.extractThumbnail(bitmap, size, size);
+        if (thumbnail != null) {
+            saveThumbnail(activity);
+        }
+    }
+
     private void loadThumbnail(Context context) {
         try {
             File file = getThumbnailFile(context);
             FileInputStream fis = new FileInputStream(file);
             thumbnail = BitmapFactory.decodeStream(fis);
             fis.close();
-        } catch ( FileNotFoundException ignored){
+        } catch (FileNotFoundException ignored) {
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -170,24 +161,28 @@ public class AudioBook implements Serializable {
     }
 
 
-    public void loadFromFile(Context context) {
+    public void loadFromFile() {
+        File f = getSaveFile();
         try {
-            ObjectInputStream ois = new ObjectInputStream(context.openFileInput(getUniqueId()));
+            FileInputStream fis = new FileInputStream(f);
+            ObjectInputStream ois = new ObjectInputStream(fis);
             AudioBook book = (AudioBook) ois.readObject();
             ois.close();
             this.positionInTrackList = book.positionInTrackList;
             this.positionInTrack = book.positionInTrack;
             this.status = book.status;
             this.lastSavedTimestamp = book.lastSavedTimestamp;
-            getAlbumArt(context);
-        } catch (ClassNotFoundException | InvalidClassException e) {
-            context.deleteFile(getUniqueId());
-//            Log.d(TAG, "File found for previous version");
-        } catch (FileNotFoundException e) {
-//            Log.d(TAG, "File not found for " + displayName);
-        } catch (IOException e) {
-            e.printStackTrace();
+            getAlbumArt();
+        } catch (ClassNotFoundException | InvalidClassException | StreamCorruptedException | EOFException e) {
+            if (!f.delete()) {
+                new RuntimeException("Previous save file could not be deleted").printStackTrace();
+            }
+        } catch (IOException ignored) {
         }
+    }
+
+    public int getStatus() {
+        return status;
     }
 
     public void setStatus(int status) {
@@ -204,42 +199,38 @@ public class AudioBook implements Serializable {
         this.status = status;
     }
 
-    public int getStatus() {
-        return status;
-    }
-
-    public Bitmap getAlbumArt(Context context) {
+    public Bitmap getAlbumArt() {
         if (art != null) {
             return art;
         }
         Bitmap result = null;
         try {
-            if (imageUri != null) {
-                InputStream inputStream = context.getContentResolver().openInputStream(Uri.parse(imageUri));
-                result = BitmapFactory.decodeStream(inputStream);
-                assert inputStream != null;
-                inputStream.close();
+            if (imagePath != null) {
+                FileInputStream fis = new FileInputStream(new File(imagePath));
+                result = BitmapFactory.decodeStream(fis);
+                fis.close();
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        } catch (Exception ignored){}
+        } catch (Exception ignored) {
+        }
         if (result == null) {
             for (MediaItem file : files) {
-                result = file.getEmbeddedPicture(context);
+                result = file.getEmbeddedPicture();
                 if (result != null) {
                     break;
                 }
             }
         }
         if (result == null) {
-            result = textAsBitmap(displayName.substring(0, 1));
+            result = getGeneratedAlbumArt(displayName.substring(0, 1));
         }
         art = result;
         return art;
     }
 
-    public String getUniqueId(){
-        return folderDocumentId.replaceAll("\\W", "");
+    public String getUniqueId() {
+        return directoryPath.replaceAll("\\W", "");
     }
 
 
@@ -247,31 +238,23 @@ public class AudioBook implements Serializable {
         return positionInTrackList;
     }
 
+    public void setPositionInTrackList(int positionInTrackList) {
+        this.positionInTrackList = positionInTrackList;
+    }
+
     public int getPositionInTrack() {
         return positionInTrack;
     }
-
 
     public void setPositionInTrack(int positionInTrack) {
         this.positionInTrack = positionInTrack;
     }
 
-    public void setPositionInTrackList(int positionInTrackList) {
-        this.positionInTrackList = positionInTrackList;
+    public long getDurationOfMostRecentTrack() {
+        return files.get(getPositionInTrackList()).getDuration();
     }
 
-    public void setFinished(Context context) {
-        setPositionInTrack(0);
-        setPositionInTrackList(0);
-        setStatus(AudioBook.STATUS_FINISHED);
-        saveConfig(context);
-    }
-
-    public long getDurationOfMostRecentTrack(){
-       return files.get(getPositionInTrackList()).getDuration();
-    }
-
-    public long getTotalDuration(){
+    public long getTotalDuration() {
         long total = 0;
         for (MediaItem item : files) {
             total += item.getDuration();
@@ -280,10 +263,15 @@ public class AudioBook implements Serializable {
     }
 
 
-    public void saveConfig(Context context) {
+    public void saveConfig() {
+        File f = getSaveFile();
         try {
+            if (!f.exists() && !f.createNewFile()) {
+                throw new IOException("Could not create save file");
+            }
+            FileOutputStream fos = new FileOutputStream(f);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
             lastSavedTimestamp = new Date().getTime() / 1000L;
-            ObjectOutputStream oos = new ObjectOutputStream(context.openFileOutput(getUniqueId(), Context.MODE_PRIVATE));
             oos.writeObject(this);
             oos.close();
         } catch (IOException e) {

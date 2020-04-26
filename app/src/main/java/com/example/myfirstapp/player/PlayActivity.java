@@ -120,8 +120,8 @@ public class PlayActivity extends AppCompatActivity {
                 AudioBook audioBook = model.getAudioBook().getValue();
                 mediaBrowser.disconnect();
                 if (audioBook != null) {
-                    audioBook.setFinished(PlayActivity.this);
-                    audioBook.saveConfig(PlayActivity.this);
+                    audioBook.setStatus(AudioBook.STATUS_FINISHED);
+                    audioBook.saveConfig();
                 }
                 onBackPressed();
             }
@@ -176,7 +176,7 @@ public class PlayActivity extends AppCompatActivity {
                 intent.putExtra(INTENT_INDEX, trackNo);
                 startService(intent);
             } catch (Exception e) {
-                Utils.getInstance().logError(e, this);
+                Utils.logError(e, this);
                 e.printStackTrace();
             }
         }
@@ -272,7 +272,7 @@ public class PlayActivity extends AppCompatActivity {
                 updateStatusBarColor(tv.data);
             }
         } catch (Exception e) {
-            Utils.getInstance().logError(e, this);
+            Utils.logError(e, this);
             e.printStackTrace();
         }
     }
@@ -345,9 +345,9 @@ public class PlayActivity extends AppCompatActivity {
         }
         AudioBook audioBook = model.getAudioBook().getValue();
         if (audioBook != null) {
-            audioBook.loadFromFile(this);
+            audioBook.loadFromFile();
             new Thread(() -> {
-                Bitmap cover = audioBook.getAlbumArt(this);
+                Bitmap cover = audioBook.getAlbumArt();
                 imView.post(() -> setColorFromAlbumArt(cover));
             }).start();
             ActionBar bar = getSupportActionBar();
@@ -404,7 +404,7 @@ public class PlayActivity extends AppCompatActivity {
                 controller.getTransportControls().play();
             }
         } catch (RemoteException e) {
-            Utils.getInstance().logError(e, this);
+            Utils.logError(e, this);
             e.printStackTrace();
         }
     }
@@ -414,7 +414,7 @@ public class PlayActivity extends AppCompatActivity {
         super.onResume();
         AudioBook book = model.getAudioBook().getValue();
         if (book != null) {
-            book.loadFromFile(this);
+            book.loadFromFile();
         }
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
