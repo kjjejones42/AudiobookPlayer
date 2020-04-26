@@ -121,7 +121,7 @@ public class PlayActivity extends AppCompatActivity {
                 mediaBrowser.disconnect();
                 if (audioBook != null) {
                     audioBook.setStatus(AudioBook.STATUS_FINISHED);
-                    audioBook.saveConfig();
+                    audioBook.saveConfig(PlayActivity.this);
                 }
                 onBackPressed();
             }
@@ -345,7 +345,7 @@ public class PlayActivity extends AppCompatActivity {
         }
         AudioBook audioBook = model.getAudioBook().getValue();
         if (audioBook != null) {
-            audioBook.loadFromFile();
+            audioBook.loadFromFile(this);
             new Thread(() -> {
                 Bitmap cover = audioBook.getAlbumArt();
                 imView.post(() -> setColorFromAlbumArt(cover));
@@ -414,7 +414,7 @@ public class PlayActivity extends AppCompatActivity {
         super.onResume();
         AudioBook book = model.getAudioBook().getValue();
         if (book != null) {
-            book.loadFromFile();
+            book.loadFromFile(this);
         }
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }

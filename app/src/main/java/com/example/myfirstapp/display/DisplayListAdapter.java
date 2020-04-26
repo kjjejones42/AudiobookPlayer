@@ -76,7 +76,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         new AlertDialog.Builder(v.getContext())
                 .setSingleChoiceItems(statuses, book.getStatus(), (dialog, which) -> {
                     book.setStatus(which);
-                    book.saveConfig();
+                    book.saveConfig(v.getContext());
                     notifyDataSetChanged();
                     dialog.dismiss();
                 }).setTitle("Choose this book's status.")

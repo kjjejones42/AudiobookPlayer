@@ -216,12 +216,12 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
         if (position >= mAudiobook.files.size()) {
             mAudiobook.setStatus(AudioBook.STATUS_FINISHED);
-            mAudiobook.saveConfig();
+            mAudiobook.saveConfig(this);
             mediaSession.getController().getTransportControls().sendCustomAction(EVENT_REACHED_END, null);
             return;
         }
         positionInTrackList = position;
-        mAudiobook.loadFromFile();
+        mAudiobook.loadFromFile(this);
         MediaItem mediaItem = mAudiobook.files.get(position);
         mediaPlayer.reset();
         isMediaPlayerPrepared = false;
@@ -299,7 +299,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             int position = (int) state.getPosition();
             mAudiobook.setPositionInTrack(position);
             mAudiobook.setPositionInTrackList(positionInTrackList);
-            mAudiobook.saveConfig();
+            mAudiobook.saveConfig(this);
         }
     }
 
@@ -313,7 +313,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
                 saveAudiobookProgress();
                 mAudiobook = (AudioBook) intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK);
-                mAudiobook.loadFromFile();
+                mAudiobook.loadFromFile(this);
 
                 int position = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
 
@@ -325,7 +325,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     positionInTrackList = 0;
                     positionInTrack = 0;
                     mAudiobook.setStatus(AudioBook.STATUS_IN_PROGRESS);
-                    mAudiobook.saveConfig();
+                    mAudiobook.saveConfig(this);
                 } else {
                     positionInTrackList = position;
                     if (positionInTrackList == mAudiobook.getPositionInTrackList()) {

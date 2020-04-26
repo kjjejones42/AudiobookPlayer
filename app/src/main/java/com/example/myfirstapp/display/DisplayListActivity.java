@@ -200,7 +200,7 @@ public class DisplayListActivity extends AppCompatActivity {
         List<AudioBook> list = model.getUsers(this).getValue();
         if (list != null) {
             for (AudioBook book : list) {
-                book.loadFromFile();
+                book.loadFromFile(this);
             }
         }
         updateScreen();

@@ -11,18 +11,16 @@ import android.media.ThumbnailUtils;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
-
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InvalidClassException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
-import java.io.StreamCorruptedException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -33,7 +31,6 @@ public class AudioBook implements Serializable {
     public static final int STATUS_NOT_BEGUN = 1;
     public static final int STATUS_FINISHED = 2;
     private static final long serialVersionUID = 0L;
-    private static final String FILENAME = ".audiobook";
     private static HashMap<Integer, String> map;
     private static int thumbnailSize;
     public final List<MediaItem> files;
@@ -48,7 +45,6 @@ public class AudioBook implements Serializable {
     private transient boolean generatedArt;
     private transient Bitmap thumbnail;
     private transient Bitmap art;
-    private transient File saveFile;
 
     public AudioBook(String name, String directoryPath, String imagePath, List<MediaItem> files, String author) {
         if (files != null) {
@@ -82,13 +78,6 @@ public class AudioBook implements Serializable {
             thumbnailSize = (int) Math.round(Math.ceil(ret));
         }
         return thumbnailSize;
-    }
-
-    private File getSaveFile() {
-        if (saveFile == null) {
-            saveFile = new File(directoryPath + File.separator + FILENAME);
-        }
-        return saveFile;
     }
 
     private Bitmap getGeneratedAlbumArt(String text) {
@@ -161,10 +150,9 @@ public class AudioBook implements Serializable {
     }
 
 
-    public void loadFromFile() {
-        File f = getSaveFile();
+    public void loadFromFile(Context context) {
         try {
-            FileInputStream fis = new FileInputStream(f);
+            InputStream fis = context.openFileInput(getUniqueId());
             ObjectInputStream ois = new ObjectInputStream(fis);
             AudioBook book = (AudioBook) ois.readObject();
             ois.close();
@@ -173,11 +161,7 @@ public class AudioBook implements Serializable {
             this.status = book.status;
             this.lastSavedTimestamp = book.lastSavedTimestamp;
             getAlbumArt();
-        } catch (ClassNotFoundException | InvalidClassException | StreamCorruptedException | EOFException e) {
-            if (!f.delete()) {
-                new RuntimeException("Previous save file could not be deleted").printStackTrace();
-            }
-        } catch (IOException ignored) {
+        } catch (IOException | ClassNotFoundException ignored) {
         }
     }
 
@@ -263,20 +247,16 @@ public class AudioBook implements Serializable {
     }
 
 
-    public void saveConfig() {
-        File f = getSaveFile();
+    public void saveConfig(Context context) {
         try {
-            if (!f.exists() && !f.createNewFile()) {
-                throw new IOException("Could not create save file");
-            }
-            FileOutputStream fos = new FileOutputStream(f);
+            OutputStream fos =context.openFileOutput(getUniqueId(), Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             lastSavedTimestamp = new Date().getTime() / 1000L;
             oos.writeObject(this);
             oos.close();
         } catch (IOException e) {
+            Utils.logError(e, context);
             e.printStackTrace();
-            throw new RuntimeException(e);
         }
     }
 

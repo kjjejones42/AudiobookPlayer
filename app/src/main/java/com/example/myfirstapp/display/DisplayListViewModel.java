@@ -35,7 +35,7 @@ public class DisplayListViewModel extends ViewModel {
             books.setValue((List<AudioBook>) ois.readObject());
             ois.close();
             for (AudioBook user : Objects.requireNonNull(books.getValue())) {
-                user.loadFromFile();
+                user.loadFromFile(context);
             }
             return;
         } catch (FileNotFoundException | ClassNotFoundException | InvalidClassException ignored) {
