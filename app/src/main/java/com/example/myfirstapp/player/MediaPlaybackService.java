@@ -22,7 +22,6 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -61,8 +60,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private int positionInTrack;
     private boolean isMediaPlayerPrepared;
 
-    private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
@@ -70,7 +69,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             }
         }
     };
-    private AudioManager.OnAudioFocusChangeListener onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+    private final AudioManager.OnAudioFocusChangeListener onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
         @Override
         public void onAudioFocusChange(int focusChange) {
             if (focusChange != AudioManager.AUDIOFOCUS_GAIN) {
@@ -80,11 +79,17 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             }
         }
     };
-    private MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
+    private final MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
             int state = mediaSession.getController().getPlaybackState().getState();
             if (state != PlaybackStateCompat.STATE_SKIPPING_TO_NEXT && state != PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS) {
+                mediaSession.getController().getTransportControls().pause();
+                if (updateTask != null) {
+                    updateTask.cancel();
+                }
+                mAudiobook.setPositionInTrack(1);
+                mAudiobook.saveConfig(MediaPlaybackService.this);
                 playTrack(positionInTrackList + 1);
             }
         }
@@ -203,7 +208,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
     }
 
-    boolean isPlaying() {
+    private boolean isPlaying() {
         if (mediaSession == null || mediaSession.getController().getPlaybackState() == null) {
             return false;
         }
@@ -222,6 +227,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
         positionInTrackList = position;
         mAudiobook.loadFromFile(this);
+        positionInTrack = mAudiobook.getPositionInTrack();
         MediaItem mediaItem = mAudiobook.files.get(position);
         mediaPlayer.reset();
         isMediaPlayerPrepared = false;
@@ -231,7 +237,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         mediaPlayer.setAudioAttributes(getAudioAttributes());
         try {
             mediaPlayer.setOnCompletionListener(onCompletionListener);
-            Log.d("ASD", mediaItem.filePath);
             mediaPlayer.setDataSource(mediaItem.filePath);
 //            mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
 //            LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
@@ -519,6 +524,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 if (mediaPlayer.getCurrentPosition() > 5 * 1000) {
                     mediaSession.getController().getTransportControls().seekTo(0);
                 } else {
+                    onPause();
                     setPlaybackState(stateBuilder
                             .setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, 0, 1)
                             .build());
@@ -531,6 +537,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         public void onSkipToNext() {
             super.onSkipToNext();
             if (getIsMediaPlayerPrepared()) {
+                onPause();
                 positionInTrack = 0;
                 setPlaybackState(
                         stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, positionInTrack, 1)
