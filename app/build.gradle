@@ -9,7 +9,7 @@ android {
             keyPassword 'Padd1ngt0n'
         }
     }
-    compileSdkVersion 29
+    compileSdkVersion 28
     buildToolsVersion "29.0.3"
 
     defaultConfig {

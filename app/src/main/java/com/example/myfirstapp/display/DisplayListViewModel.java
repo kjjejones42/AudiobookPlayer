@@ -22,7 +22,7 @@ import java.util.Objects;
 
 public class DisplayListViewModel extends ViewModel {
 
-    private MutableLiveData<List<AudioBook>> books = new MutableLiveData<>();
+    private final MutableLiveData<List<AudioBook>> books = new MutableLiveData<>();
 
     public DisplayListViewModel() {
     }

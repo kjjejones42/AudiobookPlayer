@@ -1,7 +1,6 @@
 package com.example.myfirstapp.player;
 
 import android.support.v4.media.MediaMetadataCompat;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -14,10 +13,10 @@ public class PlayerViewModel extends ViewModel {
 
     static private MediaMetadataCompat emptyMetadata;
 
-    private MutableLiveData<Boolean> isPlaying = new MutableLiveData<>();
-    private MutableLiveData<Long> position = new MutableLiveData<>();
-    private MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>();
-    private MutableLiveData<AudioBook> audioBook = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isPlaying = new MutableLiveData<>();
+    private final MutableLiveData<Long> position = new MutableLiveData<>();
+    private final MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>();
+    private final MutableLiveData<AudioBook> audioBook = new MutableLiveData<>();
 
     @NonNull
     LiveData<AudioBook> getAudioBook() {

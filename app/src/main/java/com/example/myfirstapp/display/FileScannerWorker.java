@@ -34,9 +34,9 @@ public class FileScannerWorker extends Worker {
     static final String INPUT = "INPUT";
     static final String LIST_OF_DIRS = "LIST_OF_DIRS";
     private static final List<Integer> authorKeys = Arrays.asList(MediaMetadataRetriever.METADATA_KEY_ARTIST, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST, MediaMetadataRetriever.METADATA_KEY_AUTHOR, MediaMetadataRetriever.METADATA_KEY_COMPOSER, MediaMetadataRetriever.METADATA_KEY_WRITER);
-    private Context context;
+    private final Context context;
 
-    private class AudioBookResult {
+    private static class AudioBookResult {
         String imageUri;
         List<MediaItem> media;
         String author;
@@ -109,9 +109,9 @@ public class FileScannerWorker extends Worker {
         return result;
     }
 
-    private BlockingQueue<String> taskQueue = new ArrayBlockingQueue<>(50);
-    private ExecutorService pool = Executors.newFixedThreadPool(10);
-    private List<Future<AudioBook>> results = Collections.synchronizedList(new ArrayList<>());
+    private final BlockingQueue<String> taskQueue = new ArrayBlockingQueue<>(50);
+    private final ExecutorService pool = Executors.newFixedThreadPool(10);
+    private final List<Future<AudioBook>> results = Collections.synchronizedList(new ArrayList<>());
 
     private List<AudioBook> getList(String initialPath) {
         taskQueue.offer(initialPath);

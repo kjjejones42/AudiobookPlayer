@@ -4,8 +4,6 @@ import androidx.annotation.NonNull;
 
 import com.example.myfirstapp.AudioBook;
 
-import java.util.HashMap;
-
 class ListItems {
     final static int TYPE_HEADING = 0;
     final static int TYPE_ITEM = 1;

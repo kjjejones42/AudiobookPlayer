@@ -13,8 +13,8 @@ import java.io.ByteArrayInputStream;
 import java.io.Serializable;
 
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
-    public String filePath;
-    private String displayName;
+    public final String filePath;
+    private final String displayName;
 
     long getDuration() {
         return duration;
@@ -34,17 +34,6 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         } catch (Exception e) {
             return null;
         }
-    }
-
-    String extractMetadata(int keycode) {
-        try {
-            mmr = getMMR();
-            if (mmr != null) {
-                return mmr.extractMetadata(keycode);
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
     }
 
     Bitmap getEmbeddedPicture() {

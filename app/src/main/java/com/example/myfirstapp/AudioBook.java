@@ -249,7 +249,7 @@ public class AudioBook implements Serializable {
 
     public void saveConfig(Context context) {
         try {
-            OutputStream fos =context.openFileOutput(getUniqueId(), Context.MODE_PRIVATE);
+            OutputStream fos = context.openFileOutput(getUniqueId(), Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             lastSavedTimestamp = new Date().getTime() / 1000L;
             oos.writeObject(this);

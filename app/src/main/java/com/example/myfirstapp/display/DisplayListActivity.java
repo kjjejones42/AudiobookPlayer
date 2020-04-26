@@ -17,7 +17,6 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -31,25 +30,24 @@ import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.player.MediaPlaybackService;
 import com.example.myfirstapp.player.PlayActivity;
 
-import java.io.File;
-import java.util.Arrays;
 import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
 
 //    private static String TAG = "ASD";
 
-    public static final String INTENT_UPDATE_MODEL = "com.example.myfirstapp.UPDATE";
+    private static final String INTENT_UPDATE_MODEL = "com.example.myfirstapp.UPDATE";
     public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
     public static final String INTENT_START_PLAYBACK = "com.example.myfirstapp.start";
 
-
-    public static final int SELECT_DIRECTORY = 1;
+    private static final int SELECT_DIRECTORY = 1;
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
     private DisplayListViewModel model;
-    DisplayListAdapter mAdapter;
+    private DisplayListAdapter mAdapter;
+    private RecyclerView recyclerView;
+    private TextView emptyView;
 
-    public void chooseDirectory(MenuItem item) {
+    public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivityForResult(intent, SELECT_DIRECTORY);
@@ -122,7 +120,7 @@ public class DisplayListActivity extends AppCompatActivity {
         return true;
     }
 
-    void updateScreen() {
+    private void updateScreen() {
         mAdapter.notifyDataSetChanged();
         List<AudioBook> list = model.getUsers(this).getValue();
         if (list != null && list.isEmpty()) {
@@ -144,10 +142,8 @@ public class DisplayListActivity extends AppCompatActivity {
         updateScreen();
     }
 
-    RecyclerView recyclerView;
-    TextView emptyView;
 
-    public void resumeMostRecentBook(View v) {
+    public void resumeMostRecentBook(@SuppressWarnings("unused") View v) {
         List<AudioBook> books = model.getUsers(this).getValue();
         if (books != null) {
             AudioBook mostRecent = null;

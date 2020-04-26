@@ -29,10 +29,10 @@ import java.util.List;
 public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
 
     static class MyViewHolder extends RecyclerView.ViewHolder {
-        TextView textView;
+        final TextView textView;
         TextView artist;
         ImageView image;
-        View v;
+        final View v;
 
         MyViewHolder(View v, boolean isItem) {
             super(v);
@@ -48,13 +48,14 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     }
 
     private List<ListItems.ListItem> finalList;
-    private DisplayListViewModel model;
+    private final DisplayListViewModel model;
+    @SuppressWarnings("CanBeFinal")
     private RecyclerView rcv;
     private int selectedPos = RecyclerView.NO_POSITION;
-    private Context context;
+    private final Context context;
 
 
-    private View.OnClickListener ocl = new View.OnClickListener() {
+    private final View.OnClickListener ocl = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             int position = rcv.getChildLayoutPosition(v);
@@ -70,7 +71,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     };
 
-    private View.OnLongClickListener onLongClickListener = v -> {
+    private final View.OnLongClickListener onLongClickListener = v -> {
         String[] statuses = AudioBook.getStatusMap().values().toArray(new String[0]);
         AudioBook book = ((ListItems.AudioBookContainer) finalList.get(rcv.getChildLayoutPosition(v))).book;
         new AlertDialog.Builder(v.getContext())
@@ -105,7 +106,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         return false;
     };
 
-    DisplayListAdapter(DisplayListViewModel model, RecyclerView rcv, LifecycleOwner lco) {
+    DisplayListAdapter(@NonNull DisplayListViewModel model, @NonNull RecyclerView rcv, LifecycleOwner lco) {
         this.model = model;
         this.context = rcv.getContext();
         model.getUsers(rcv.getContext()).observe(lco, this::getGroups);
