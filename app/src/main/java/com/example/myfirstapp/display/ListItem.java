@@ -4,12 +4,34 @@ import androidx.annotation.NonNull;
 
 import com.example.myfirstapp.AudioBook;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 abstract class ListItem {
 
     final static int TYPE_HEADING = 0;
     final static int TYPE_ITEM = 1;
+
+    final private static Map<String, Long> idMap = new HashMap<>();
+
+    static long getId(String name) {
+        long id;
+        if (idMap.containsKey(name)) {
+            Long value = idMap.get(name);
+            if (value == null) {
+                throw new RuntimeException();
+            }
+            id = value;
+        } else {
+            id = UUID.nameUUIDFromBytes(name.getBytes()).getMostSignificantBits();
+            while (idMap.containsValue(id)) {
+                id++;
+            }
+            idMap.put(name, id);
+        }
+        return id;
+    }
 
     public abstract long getId();
 
@@ -25,7 +47,7 @@ abstract class ListItem {
 
         AudioBookContainer(AudioBook book) {
             this.book = book;
-            this.id = UUID.nameUUIDFromBytes(book.displayName.getBytes()).getMostSignificantBits();
+            this.id = getId(book.displayName);
         }
 
         @Override
@@ -62,7 +84,7 @@ abstract class ListItem {
 
         Heading(int title) {
             this.category = title;
-            this.id =  UUID.nameUUIDFromBytes(this.getHeadingTitle().getBytes()).getMostSignificantBits();
+            this.id = getId(getHeadingTitle());
         }
 
         @Override
