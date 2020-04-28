@@ -3,9 +3,9 @@ package com.example.myfirstapp.display;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,10 +52,10 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     @SuppressWarnings("CanBeFinal")
     private RecyclerView rcv;
     private int selectedPos = RecyclerView.NO_POSITION;
-    private final Context context;
+    private DisplayListActivity activity;
 
 
-    private final View.OnClickListener ocl = new View.OnClickListener() {
+    private final View.OnClickListener onClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             int position = rcv.getChildLayoutPosition(v);
@@ -78,7 +78,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 .setSingleChoiceItems(statuses, book.getStatus(), (dialog, which) -> {
                     book.setStatus(which);
                     book.saveConfig(v.getContext());
-                    notifyDataSetChanged();
+                    getGroups();
                     dialog.dismiss();
                 }).setTitle("Choose this book's status.")
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
@@ -106,22 +106,15 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         return false;
     };
 
-    DisplayListAdapter(@NonNull DisplayListViewModel model, @NonNull RecyclerView rcv, LifecycleOwner lco) {
+    DisplayListAdapter(@NonNull DisplayListViewModel model, @NonNull RecyclerView rcv, DisplayListActivity activity) {
         this.model = model;
-        this.context = rcv.getContext();
-        model.getUsers(rcv.getContext()).observe(lco, this::getGroups);
+        this.activity = activity;
+        model.getUsers(rcv.getContext()).observe(activity, this::getGroups);
         this.rcv = rcv;
-        registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
-            @Override
-            public void onChanged() {
-                super.onChanged();
-                updateFromDisk();
-            }
-        });
     }
 
-    private void updateFromDisk() {
-        getGroups(DisplayListAdapter.this.model.getUsers(context).getValue());
+    private void getGroups() {
+        getGroups(DisplayListAdapter.this.model.getUsers(activity).getValue());
     }
 
     @Override
@@ -155,18 +148,23 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             return i;
         });
         this.finalList = list;
+        notifyDataSetChanged();
     }
 
     void filter(String filterTerm) {
-        List<AudioBook> books = model.getUsers(context).getValue();
+        List<AudioBook> books = model.getUsers(activity).getValue();
         if (books != null) {
-            List<AudioBook> filtered = new ArrayList<>();
-            for (AudioBook book : books) {
-                if (book.toString().toUpperCase().contains(filterTerm.toUpperCase())) {
-                    filtered.add(book);
+            if (filterTerm == null) {
+                getGroups(books);
+            } else {
+                List<AudioBook> filtered = new ArrayList<>();
+                for (AudioBook book : books) {
+                    if (book.toString().toUpperCase().contains(filterTerm.toUpperCase())) {
+                        filtered.add(book);
+                    }
                 }
+                getGroups(filtered);
             }
-            getGroups(filtered);
         }
     }
 
@@ -181,7 +179,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
         v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.display_list_item, parent, false);
-        v.setOnClickListener(ocl);
+        v.setOnClickListener(onClickListener);
         v.setOnLongClickListener(onLongClickListener);
         return new MyViewHolder(v, true);
     }

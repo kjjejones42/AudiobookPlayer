@@ -182,12 +182,6 @@ public class PlayActivity extends AppCompatActivity {
         }
     }
 
-    private void setDuration(Long duration) {
-        if (duration > 0) {
-            seekBar.setMax(duration.intValue());
-            durationText.setText(msToMMSS(duration));
-        }
-    }
 
     private void setImage(Bitmap bitmap) {
         if (bitmap != null) {
@@ -202,17 +196,21 @@ public class PlayActivity extends AppCompatActivity {
     }
 
     private void setIsPlaying(Boolean isPlaying) {
-        if (isPlaying) {
-            toggleButton.setImageResource(R.drawable.ic_pause);
-        } else {
-            toggleButton.setImageResource(R.drawable.ic_play);
-        }
+        int image = isPlaying ? R.drawable.ic_pause : R.drawable.ic_play;
+        toggleButton.setImageResource(image);
     }
 
     private void setPosition(Long position) {
         if (position > 0) {
             seekBar.setProgress(position.intValue());
             progressText.setText(msToMMSS(position));
+        }
+    }
+
+    private void setDuration(Long duration) {
+        if (duration > 0) {
+            seekBar.setMax(duration.intValue());
+            durationText.setText(msToMMSS(duration));
         }
     }
 
@@ -377,7 +375,6 @@ public class PlayActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         mediaBrowser.connect();
-        setPosition(model.getPosition().getValue());
         AudioBook book = model.getAudioBook().getValue();
         if (book != null) {
             setPosition((long) book.getPositionInTrack());
@@ -395,7 +392,6 @@ public class PlayActivity extends AppCompatActivity {
             buildTransportControls();
             if (audioBook != null) {
                 if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
-//                model.clear();
                     initialiseMediaSession(audioBook.getPositionInTrackList());
                 } else {
                     model.setMetadata(controller.getMetadata());

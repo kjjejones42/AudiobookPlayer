@@ -33,8 +33,7 @@ import com.example.myfirstapp.player.PlayActivity;
 import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
-
-//    private static String TAG = "ASD";
+    //    private static String TAG = "ASD";
 
     private static final String INTENT_UPDATE_MODEL = "com.example.myfirstapp.UPDATE";
     public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
@@ -52,6 +51,7 @@ public class DisplayListActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivityForResult(intent, SELECT_DIRECTORY);
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -100,6 +100,10 @@ public class DisplayListActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
         final SearchView s = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
+        s.setOnCloseListener(() -> {
+            mAdapter.filter(null);
+            return false;
+        });
         s.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -109,6 +113,7 @@ public class DisplayListActivity extends AppCompatActivity {
 
             @Override
             public boolean onQueryTextChange(String newText) {
+                mAdapter.filter(newText);
                 return false;
             }
         });
@@ -120,7 +125,7 @@ public class DisplayListActivity extends AppCompatActivity {
         return true;
     }
 
-    private void updateScreen() {
+    void updateScreen() {
         mAdapter.notifyDataSetChanged();
         List<AudioBook> list = model.getUsers(this).getValue();
         if (list != null && list.isEmpty()) {
@@ -163,6 +168,7 @@ public class DisplayListActivity extends AppCompatActivity {
         }
 
     }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
