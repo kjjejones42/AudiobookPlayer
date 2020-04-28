@@ -127,7 +127,7 @@ public class DisplayListActivity extends AppCompatActivity {
 
     void updateScreen() {
         mAdapter.notifyDataSetChanged();
-        List<AudioBook> list = model.getUsers(this).getValue();
+        List<AudioBook> list = model.getSavedBooks(this).getValue();
         if (list != null && list.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
             emptyView.setVisibility(View.VISIBLE);
@@ -149,7 +149,7 @@ public class DisplayListActivity extends AppCompatActivity {
 
 
     public void resumeMostRecentBook(@SuppressWarnings("unused") View v) {
-        List<AudioBook> books = model.getUsers(this).getValue();
+        List<AudioBook> books = model.getSavedBooks(this).getValue();
         if (books != null) {
             AudioBook mostRecent = null;
             long recent = Long.MIN_VALUE;
@@ -193,18 +193,14 @@ public class DisplayListActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new DisplayListAdapter(model, recyclerView, this);
         recyclerView.setAdapter(mAdapter);
+        model.loadFromDisk(this);
         updateScreen();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        List<AudioBook> list = model.getUsers(this).getValue();
-        if (list != null) {
-            for (AudioBook book : list) {
-                book.loadFromFile(this);
-            }
-        }
+        mAdapter.recalculateListFromModel();
         updateScreen();
     }
 

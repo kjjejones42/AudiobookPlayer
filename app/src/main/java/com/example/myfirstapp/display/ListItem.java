@@ -1,12 +1,12 @@
 package com.example.myfirstapp.display;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.example.myfirstapp.AudioBook;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 abstract class ListItem {
 
@@ -24,10 +24,7 @@ abstract class ListItem {
             }
             id = value;
         } else {
-            id = UUID.nameUUIDFromBytes(name.getBytes()).getMostSignificantBits();
-            while (idMap.containsValue(id)) {
-                id++;
-            }
+            id = idMap.entrySet().size();
             idMap.put(name, id);
         }
         return id;
@@ -41,13 +38,21 @@ abstract class ListItem {
 
     public abstract int getHeadingOrItem();
 
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        if (obj instanceof ListItem) {
+            return obj.toString().equals(this.toString());
+        }
+        return super.equals(obj);
+    }
+
     public static class AudioBookContainer extends ListItem {
         final AudioBook book;
         final private long id;
 
         AudioBookContainer(AudioBook book) {
             this.book = book;
-            this.id = getId(book.displayName);
+            this.id = getId(book.getUniqueId());
         }
 
         @Override
@@ -116,5 +121,6 @@ abstract class ListItem {
         public String toString() {
             return getHeadingTitle();
         }
+
     }
 }

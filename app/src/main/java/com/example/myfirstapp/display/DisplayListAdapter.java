@@ -1,7 +1,6 @@
 package com.example.myfirstapp.display;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -14,119 +13,123 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.myfirstapp.player.PlayActivity;
-import com.example.myfirstapp.R;
 import com.example.myfirstapp.AudioBook;
+import com.example.myfirstapp.R;
+import com.example.myfirstapp.player.PlayActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 
 
 public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
 
-    static class MyViewHolder extends RecyclerView.ViewHolder {
-        final TextView textView;
-        TextView artist;
-        ImageView image;
-        final View v;
-
-        MyViewHolder(View v, boolean isItem) {
-            super(v);
-            this.v = v;
-            if (isItem) {
-                textView = v.findViewById(R.id.listItemText);
-                image = v.findViewById(R.id.listImageView);
-                artist = v.findViewById(R.id.artist);
-            } else {
-                textView = (TextView) v;
-            }
-        }
-    }
-
-    private List<ListItem> finalList;
-    private final DisplayListViewModel model;
+    private DisplayListViewModel model;
     @SuppressWarnings("CanBeFinal")
     private RecyclerView rcv;
-    private int selectedPos = RecyclerView.NO_POSITION;
     private DisplayListActivity activity;
-
-
-    private final View.OnClickListener onClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            int position = rcv.getChildLayoutPosition(v);
-            if (finalList.get(position).getHeadingOrItem() == ListItem.TYPE_ITEM) {
-                AudioBook book = ((ListItem.AudioBookContainer) finalList.get(position)).book;
-                selectedPos = position;
-                notifyItemChanged(position);
-                Intent intent = new Intent(v.getContext(), PlayActivity.class);
-                intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book);
-                intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
-                v.getContext().startActivity(intent);
-            }
+    private int selectedPos = RecyclerView.NO_POSITION;
+    private final View.OnClickListener onClickListener = v -> {
+        int position = rcv.getChildLayoutPosition(v);
+        List<ListItem> items = model.getListItems(activity).getValue();
+        assert items != null;
+        if (items.get(position).getHeadingOrItem() == ListItem.TYPE_ITEM) {
+            AudioBook book = ((ListItem.AudioBookContainer) items.get(position)).book;
+            selectedPos = position;
+            notifyItemChanged(position);
+            Intent intent = new Intent(v.getContext(), PlayActivity.class);
+            intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book);
+            intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
+            v.getContext().startActivity(intent);
         }
     };
-
+    private List<ListItem> currentItems;
     private final View.OnLongClickListener onLongClickListener = v -> {
+        List<ListItem> items = model.getListItems(activity).getValue();
         String[] statuses = AudioBook.getStatusMap().values().toArray(new String[0]);
-        AudioBook book = ((ListItem.AudioBookContainer) finalList.get(rcv.getChildLayoutPosition(v))).book;
+        assert items != null;
+        AudioBook book = ((ListItem.AudioBookContainer) items.get(rcv.getChildLayoutPosition(v))).book;
         new AlertDialog.Builder(v.getContext())
                 .setSingleChoiceItems(statuses, book.getStatus(), (dialog, which) -> {
                     book.setStatus(which);
-                    book.saveConfig(v.getContext());
-                    getGroups();
+                    book.saveConfig(v.getContext(), false);
+                    recalculateListFromModel();
                     dialog.dismiss();
                 }).setTitle("Choose this book's status.")
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
                 .show();
-//        final int position = rcv.getChildLayoutPosition(v);
-//        if (finalList.get(position).getType() == ListItems.TYPE_ITEM) {
-//            final EditText et = new EditText(v.getContext());
-//            et.setInputType(InputType.TYPE_CLASS_TEXT);
-//            new AlertDialog.Builder(v.getContext()).setMessage("Enter title")
-//                    .setView(et)
-//                    .setPositiveButton("Change", new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialog, int which) {
-//                            Log.d(TAG, "onClick: " + et.getText());
-//                        }
-//                    })
-//                    .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-//                        @Override
-//                        public void onClick(DialogInterface dialog, int which) {
-//                            dialog.cancel();
-//                        }
-//                    })
-//                    .show();
-//        }
         return false;
     };
 
     DisplayListAdapter(@NonNull DisplayListViewModel model, @NonNull RecyclerView rcv, DisplayListActivity activity) {
         this.model = model;
         this.activity = activity;
-        model.getUsers(rcv.getContext()).observe(activity, this::getGroups);
         this.rcv = rcv;
+        model.getSavedBooks(activity).observe(activity, this::recalculateList);
+        model.getListItems(activity).observe(activity, this::selectivelyNotify);
         setHasStableIds(true);
     }
 
-    private void getGroups() {
-        getGroups(DisplayListAdapter.this.model.getUsers(activity).getValue());
+    void recalculateListFromModel() {
+        recalculateList(model.getSavedBooks(activity).getValue());
+    }
+
+    private void selectivelyNotify(List<ListItem> newItems) {
+        List<ListItem> oldItems = currentItems;
+        currentItems = newItems;
+        if (newItems.equals(oldItems)) {
+            return;
+        }
+        if (oldItems == null) {
+            notifyItemRangeInserted(0, newItems.size());
+            return;
+        }
+        if (oldItems.size() == newItems.size()) {
+            notifyDataSetChanged();
+            return;
+        }
+        boolean remove = oldItems.size() > newItems.size();
+        List<ListItem> larger = remove ? oldItems : newItems;
+        List<ListItem> smaller = remove ? newItems : oldItems;
+        List<Integer> indexes = new ArrayList<>();
+        for (int i = 0; i < larger.size(); i++) {
+            if (!smaller.contains(larger.get(i))) {
+                indexes.add(i);
+            }
+        }
+        Collections.sort(indexes, (o1, o2) -> o2 - o1);
+        if (remove) {
+            for (int i : indexes) {
+                notifyItemRemoved(i);
+            }
+        } else {
+            for (int i : indexes) {
+                notifyItemInserted(i);
+            }
+        }
+        rcv.scrollToPosition(0);
+    }
+
+    private List<ListItem> getItems() {
+        if (currentItems != null) {
+            return currentItems;
+        }
+        return Objects.requireNonNull(model.getListItems(activity).getValue());
     }
 
     @Override
     public long getItemId(int position) {
-        return finalList.get(position).getId();
+        return getItems().get(position).getId();
     }
 
     @Override
     public int getItemViewType(int position) {
-        return finalList.get(position).getHeadingOrItem();
+        return getItems().get(position).getHeadingOrItem();
     }
 
-    private void getGroups(List<AudioBook> books) {
+    private List<ListItem> getItemsFromBooks(List<AudioBook> books) {
         List<ListItem> list = new ArrayList<>();
         Collections.sort(books, (o1, o2) -> o1.displayName.compareTo(o2.displayName));
         for (AudioBook book : books) {
@@ -151,15 +154,21 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             }
             return i;
         });
-        this.finalList = list;
-        notifyDataSetChanged();
+        return list;
+    }
+
+    private void recalculateList(List<AudioBook> books) {
+        List<ListItem> list = getItemsFromBooks(books);
+        if (!list.equals(getItems())) {
+            model.setListItems(list);
+        }
     }
 
     void filter(String filterTerm) {
-        List<AudioBook> books = model.getUsers(activity).getValue();
+        List<AudioBook> books = model.getSavedBooks(activity).getValue();
         if (books != null) {
             if (filterTerm == null) {
-                getGroups(books);
+                recalculateList(books);
             } else {
                 List<AudioBook> filtered = new ArrayList<>();
                 for (AudioBook book : books) {
@@ -167,7 +176,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                         filtered.add(book);
                     }
                 }
-                getGroups(filtered);
+                recalculateList(filtered);
             }
         }
     }
@@ -188,18 +197,19 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         return new MyViewHolder(v, true);
     }
 
-
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
-        switch (finalList.get(position).getHeadingOrItem()) {
+        List<ListItem> items = getItems();
+        assert items != null;
+        switch (items.get(position).getHeadingOrItem()) {
             case ListItem.TYPE_ITEM:
-                AudioBook book = ((ListItem.AudioBookContainer) finalList.get(position)).book;
+                AudioBook book = ((ListItem.AudioBookContainer) items.get(position)).book;
                 holder.textView.setText(book.displayName + " | " + PlayActivity.msToMMSS(book.getTotalDuration()));
                 holder.artist.setText(book.author);
                 holder.textView.setSelected(selectedPos == position);
                 new Thread(() -> {
-                    Bitmap thumbnail = book.getThumbnail((Activity) rcv.getContext());
+                    Bitmap thumbnail = book.getThumbnail(activity);
                     holder.v.post(() -> {
                         holder.image.setImageBitmap(thumbnail);
                         holder.image.setVisibility(View.VISIBLE);
@@ -208,7 +218,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 break;
 
             case ListItem.TYPE_HEADING:
-                String title = ((ListItem.Heading) finalList.get(position)).getHeadingTitle();
+                String title = ((ListItem.Heading) items.get(position)).getHeadingTitle();
                 holder.textView.setText(title);
                 break;
         }
@@ -216,6 +226,25 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     @Override
     public int getItemCount() {
-        return finalList.size();
+        return getItems().size();
+    }
+
+    static class MyViewHolder extends RecyclerView.ViewHolder {
+        final TextView textView;
+        final View v;
+        TextView artist;
+        ImageView image;
+
+        MyViewHolder(View v, boolean isItem) {
+            super(v);
+            this.v = v;
+            if (isItem) {
+                textView = v.findViewById(R.id.listItemText);
+                image = v.findViewById(R.id.listImageView);
+                artist = v.findViewById(R.id.artist);
+            } else {
+                textView = (TextView) v;
+            }
+        }
     }
 }

@@ -22,7 +22,8 @@ import java.util.Objects;
 
 public class DisplayListViewModel extends ViewModel {
 
-    private final MutableLiveData<List<AudioBook>> books = new MutableLiveData<>();
+    private final MutableLiveData<List<AudioBook>> books = new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<List<ListItem>> listItems = new MutableLiveData<>(new ArrayList<>());
 
     public DisplayListViewModel() {
     }
@@ -37,22 +38,38 @@ public class DisplayListViewModel extends ViewModel {
             for (AudioBook user : Objects.requireNonNull(books.getValue())) {
                 user.loadFromFile(context);
             }
-            return;
+            listItems.setValue(listItems.getValue());
         } catch (FileNotFoundException | ClassNotFoundException | InvalidClassException ignored) {
+            onLoadError(context);
         } catch (Exception e) {
             Utils.logError(e, context);
             e.printStackTrace();
+            onLoadError(context);
         }
+    }
+
+    private void onLoadError(Context context) {
         context.deleteFile(FileScannerWorker.LIST_OF_DIRS);
         books.setValue(new ArrayList<>());
         saveToDisk(context);
     }
 
-    LiveData<List<AudioBook>> getUsers(Context context) {
+    LiveData<List<AudioBook>> getSavedBooks(Context context) {
         if (books.getValue() == null) {
             loadFromDisk(context);
         }
         return books;
+    }
+
+    LiveData<List<ListItem>> getListItems(Context context) {
+        if (listItems.getValue() == null) {
+            loadFromDisk(context);
+        }
+        return listItems;
+    }
+
+    void setListItems(List<ListItem> newList) {
+        listItems.setValue(newList);
     }
 
     void saveToDisk(Context context) {

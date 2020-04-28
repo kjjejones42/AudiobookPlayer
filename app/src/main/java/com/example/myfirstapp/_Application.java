@@ -2,7 +2,7 @@ package com.example.myfirstapp;
 
 import android.app.Application;
 
-public class AudiobookPlayerApplication extends Application {
+public class _Application extends Application {
 
     public void onCreate () {
         super.onCreate();
