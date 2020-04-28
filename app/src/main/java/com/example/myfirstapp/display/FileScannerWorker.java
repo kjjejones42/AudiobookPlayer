@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.webkit.MimeTypeMap;
 
 import androidx.annotation.NonNull;
+import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -35,13 +36,6 @@ public class FileScannerWorker extends Worker {
     static final String LIST_OF_DIRS = "LIST_OF_DIRS";
     private static final List<Integer> authorKeys = Arrays.asList(MediaMetadataRetriever.METADATA_KEY_ARTIST, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST, MediaMetadataRetriever.METADATA_KEY_AUTHOR, MediaMetadataRetriever.METADATA_KEY_COMPOSER, MediaMetadataRetriever.METADATA_KEY_WRITER);
     private final Context context;
-
-    private static class AudioBookResult {
-        String imageUri;
-        List<MediaItem> media;
-        String author;
-    }
-
     private final List<String> audioFormats = Arrays.asList(
             MediaFormat.MIMETYPE_AUDIO_AAC, MediaFormat.MIMETYPE_AUDIO_AC3,
             MediaFormat.MIMETYPE_AUDIO_AMR_NB, MediaFormat.MIMETYPE_AUDIO_AMR_WB,
@@ -50,7 +44,16 @@ public class FileScannerWorker extends Worker {
             MediaFormat.MIMETYPE_AUDIO_MSGSM, MediaFormat.MIMETYPE_AUDIO_OPUS,
             MediaFormat.MIMETYPE_AUDIO_QCELP, MediaFormat.MIMETYPE_AUDIO_RAW,
             MediaFormat.MIMETYPE_AUDIO_VORBIS);
+    private final ExecutorService pool = Executors.newFixedThreadPool(10);
+    private final BlockingQueue<String> taskQueue = new ArrayBlockingQueue<>(50);
+    private final List<Future> futures = new ArrayList<>();
+    private final List<AudioBook> results = Collections.synchronizedList(new ArrayList<>());
+    private int counter = 0;
 
+    public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
+        super(context, workerParams);
+        this.context = context;
+    }
 
     private boolean isAudio(String input) {
         return audioFormats.contains(input);
@@ -93,7 +96,7 @@ public class FileScannerWorker extends Worker {
                 list.add(newItem);
             } else if (!file.isDirectory() && imageUri == null) {
                 try {
-                    FileInputStream fis =  new FileInputStream(file);
+                    FileInputStream fis = new FileInputStream(file);
                     if (BitmapFactory.decodeStream(fis) != null) {
                         imageUri = file.getPath();
                     }
@@ -109,36 +112,28 @@ public class FileScannerWorker extends Worker {
         return result;
     }
 
-    private final BlockingQueue<String> taskQueue = new ArrayBlockingQueue<>(50);
-    private final ExecutorService pool = Executors.newFixedThreadPool(10);
-    private final List<Future<AudioBook>> results = Collections.synchronizedList(new ArrayList<>());
-
-    private List<AudioBook> getList(String initialPath) {
-        taskQueue.offer(initialPath);
-        while (!isAllDone(results) || !taskQueue.isEmpty()) {
+    private void getList(String initialPath) {
+        boolean added = false;
+        while (!added) {
+            added = taskQueue.offer(initialPath);
+        }
+        while (!isAllDone(futures) || !taskQueue.isEmpty()) {
             try {
                 String path = taskQueue.poll();
                 if (path != null) {
-                    Future<AudioBook> f = pool.submit(() -> checkDirectoryFile(path));
-                    results.add(f);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        List<AudioBook> books = new ArrayList<>();
-        for (Future<AudioBook> result : results) {
-            try {
-                AudioBook book = result.get();
-                if (book != null){
-                    books.add(book);
+                    futures.add(pool.submit(() -> checkDirectoryFile(path)));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         pool.shutdown();
-        return books;
+    }
+
+
+    private synchronized void updateProgress() {
+        int i = ++counter;
+        setProgressAsync(new Data.Builder().putInt("PROGRESS", i).build());
     }
 
     @NonNull
@@ -147,10 +142,10 @@ public class FileScannerWorker extends Worker {
         try {
             Uri root = Uri.parse(getInputData().getString(INPUT));
             File rootDir = new File(Utils.documentUriToFilePath(root));
-            List<AudioBook> result = getList(rootDir.getPath());
+            getList(rootDir.getPath());
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
-            oos.writeObject(result);
+            oos.writeObject(results);
             oos.close();
             return Result.success();
         } catch (Exception e) {
@@ -160,7 +155,7 @@ public class FileScannerWorker extends Worker {
         }
     }
 
-    private <T> boolean isAllDone(List<Future<T>> list) {
+    private boolean isAllDone(Iterable<Future> list) {
         for (Future future : list) {
             if (!future.isDone()) {
                 return false;
@@ -169,9 +164,9 @@ public class FileScannerWorker extends Worker {
         return true;
     }
 
-    private AudioBook checkDirectoryFile(String filePath) {
+    private void checkDirectoryFile(String filePath) {
         if (filePath == null) {
-            return null;
+            return;
         }
         File file = new File(filePath);
         for (File child : file.listFiles()) {
@@ -184,15 +179,15 @@ public class FileScannerWorker extends Worker {
         }
         AudioBookResult result = getAudioInDirectoryFile(file);
         if (!result.media.isEmpty()) {
-            return new AudioBook(file.getName(), filePath, result.imageUri, result.media, result.author);
+            results.add(new AudioBook(file.getName(), filePath, result.imageUri, result.media, result.author));
+            updateProgress();
         }
-        return null;
     }
 
-
-    public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
-        super(context, workerParams);
-        this.context = context;
+    private static class AudioBookResult {
+        String imageUri;
+        List<MediaItem> media;
+        String author;
     }
 }
 

@@ -17,6 +17,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -45,6 +46,7 @@ public class DisplayListActivity extends AppCompatActivity {
     private DisplayListAdapter mAdapter;
     private RecyclerView recyclerView;
     private TextView emptyView;
+    private SearchView searchView;
 
     public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -70,22 +72,28 @@ public class DisplayListActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == SELECT_DIRECTORY && data != null && data.getData() != null) {
             try {
+                final String message = "Loading. Please wait...";
                 Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
-                final ProgressDialog dialog = ProgressDialog.show(this, "",
-                        "Loading. Please wait...", true);
+                final ProgressDialog dialog = ProgressDialog.show(this, "", message, true);
                 WorkManager.getInstance(this).enqueue(request);
                 WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.getId())
                         .observe(this, workInfo -> {
-                            if (workInfo != null && workInfo.getState().isFinished()) {
-                                try {
-                                    Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
-                                    intent.putExtra(INTENT_UPDATE_MODEL, true);
-                                    dialog.cancel();
-                                    startActivity(intent);
-                                } catch (Exception e) {
-                                    Utils.logError(e, this);
-                                    e.printStackTrace();
+                            if (workInfo != null) {
+                                int resultsCount = workInfo.getProgress().getInt("PROGRESS", 0);
+                                if (resultsCount != 0) {
+                                    dialog.setMessage(message + "\nFound " + resultsCount + " books.");
+                                }
+                                if (workInfo.getState().isFinished()) {
+                                    try {
+                                        Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
+                                        intent.putExtra(INTENT_UPDATE_MODEL, true);
+                                        dialog.cancel();
+                                        startActivity(intent);
+                                    } catch (Exception e) {
+                                        Utils.logError(e, this);
+                                        e.printStackTrace();
+                                    }
                                 }
                             }
                         });
@@ -97,14 +105,26 @@ public class DisplayListActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        if (searchView != null && !searchView.isIconified()) {
+            searchView.setQuery("",false);
+            searchView.clearFocus();
+            searchView.setIconified(true);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
-        final SearchView s = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
-        s.setOnCloseListener(() -> {
+        searchView = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
+        searchView.setSubmitButtonEnabled(false);
+        searchView.setOnCloseListener(() -> {
             mAdapter.filter(null);
             return false;
         });
-        s.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 mAdapter.filter(query);
@@ -117,11 +137,6 @@ public class DisplayListActivity extends AppCompatActivity {
                 return false;
             }
         });
-//        final MenuItem r = menu.findItem(R.id.resume);
-//        r.setOnMenuItemClickListener(item -> {
-//            resumeMostRecentBook(null);
-//            return true;
-//        });
         return true;
     }
 
