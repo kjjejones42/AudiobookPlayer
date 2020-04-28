@@ -4,23 +4,33 @@ import androidx.annotation.NonNull;
 
 import com.example.myfirstapp.AudioBook;
 
-class ListItems {
+import java.util.UUID;
+
+abstract class ListItem {
+
     final static int TYPE_HEADING = 0;
     final static int TYPE_ITEM = 1;
 
-    public static abstract class ListItem {
-        public abstract int getCategory();
+    public abstract long getId();
 
-        public abstract long getTimeStamp();
+    public abstract int getCategory();
 
-        public abstract int getHeadingOrItem();
-    }
+    public abstract long getTimeStamp();
+
+    public abstract int getHeadingOrItem();
 
     public static class AudioBookContainer extends ListItem {
         final AudioBook book;
+        final private long id;
 
         AudioBookContainer(AudioBook book) {
             this.book = book;
+            this.id = UUID.nameUUIDFromBytes(book.displayName.getBytes()).getMostSignificantBits();
+        }
+
+        @Override
+        public long getId() {
+            return id;
         }
 
         @Override
@@ -47,10 +57,17 @@ class ListItems {
     }
 
     public static class Heading extends ListItem {
-        final int category;
+        final private int category;
+        final private long id;
 
         Heading(int title) {
             this.category = title;
+            this.id =  UUID.nameUUIDFromBytes(this.getHeadingTitle().getBytes()).getMostSignificantBits();
+        }
+
+        @Override
+        public long getId() {
+            return id;
         }
 
         @Override
