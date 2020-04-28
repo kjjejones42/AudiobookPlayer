@@ -17,6 +17,7 @@ public class PlayerViewModel extends ViewModel {
     private final MutableLiveData<Long> position = new MutableLiveData<>();
     private final MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>();
     private final MutableLiveData<AudioBook> audioBook = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> startPlayback = new MutableLiveData<>();
 
     @NonNull
     LiveData<AudioBook> getAudioBook() {
@@ -27,6 +28,16 @@ public class PlayerViewModel extends ViewModel {
         this.audioBook.setValue(audioBook);
     }
 
+    LiveData<Boolean> getStartPlayback() {
+        return startPlayback;
+    }
+
+    void setStartPlayback(boolean startPlayback) {
+        Boolean b = this.startPlayback.getValue();
+        if (b != null && b != startPlayback) {
+            this.startPlayback.setValue(startPlayback);
+        }
+    }
 
     public PlayerViewModel(){
         super();

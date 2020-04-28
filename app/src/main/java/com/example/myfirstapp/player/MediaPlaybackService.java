@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -22,6 +23,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -59,6 +61,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private int positionInTrackList;
     private int positionInTrack;
     private boolean isMediaPlayerPrepared;
+    private int intentId;
 
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -282,7 +285,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private void onError() {
         stateBuilder.setState(PlaybackStateCompat.STATE_ERROR, 0, 1);
         setPlaybackState(stateBuilder.build());
-        stopSelf();
+        stopSelf(intentId);
     }
 
     private MediaMetadataCompat trackToMetaData(MediaItem item) {
@@ -310,6 +313,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        intentId = startId;
         if (intent != null) {
             try {
                 if (updateTask != null) {
@@ -498,7 +502,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         .build();
                 setPlaybackState(newState);
                 stopForeground(false);
-                stopSelf();
+                stopSelf(intentId);
             }
         }
 

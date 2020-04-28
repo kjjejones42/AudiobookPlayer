@@ -14,6 +14,7 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.AdapterView;
@@ -72,7 +73,6 @@ public class PlayActivity extends AppCompatActivity {
     private PlayerViewModel model;
     private ImageView imView;
     //    private ConstraintLayout buttonContainer;
-    private boolean startPlayback;
 
     private final SeekBar.OnSeekBarChangeListener onSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
         @Override
@@ -195,6 +195,26 @@ public class PlayActivity extends AppCompatActivity {
         }
 
     }
+    private void initializeModelObservers() {
+        model.getIsPlaying().observe(this, this::setIsPlaying);
+        model.getPosition().observe(this, this::setPosition);
+        model.getMetadata().observe(this, this::setMetaData);
+    }
+
+    private void setIsPlaying(Boolean isPlaying) {
+        if (isPlaying) {
+            toggleButton.setImageResource(R.drawable.ic_pause);
+        } else {
+            toggleButton.setImageResource(R.drawable.ic_play);
+        }
+    }
+
+    private void setPosition(Long position) {
+        if (position > 0) {
+            seekBar.setProgress(position.intValue());
+            progressText.setText(msToMMSS(position));
+        }
+    }
 
     private void setMetaData(MediaMetadataCompat metadata) {
         long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
@@ -206,25 +226,6 @@ public class PlayActivity extends AppCompatActivity {
             spinner.setSelection(position);
         }
 
-    }
-
-    private void initializeModelObservers() {
-        model.getIsPlaying().observe(this, isPlaying -> {
-            if (isPlaying) {
-                toggleButton.setImageResource(R.drawable.ic_pause);
-            } else {
-                toggleButton.setImageResource(R.drawable.ic_play);
-            }
-        });
-        model.getPosition().observe(this, this::setPosition);
-        model.getMetadata().observe(this, this::setMetaData);
-    }
-
-    private void setPosition(Long position) {
-        if (position > 0) {
-            seekBar.setProgress(position.intValue());
-            progressText.setText(msToMMSS(position));
-        }
     }
 
     private void updateButtonColor(int color) {
@@ -335,14 +336,20 @@ public class PlayActivity extends AppCompatActivity {
         setControlsEnabled(false);
         seekBar.setOnSeekBarChangeListener(onSeekBarChangeListener);
 
-        startPlayback = getIntent().getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
+        boolean shouldStart = savedInstanceState == null;
 
-        if (getIntent() != null) {
-            AudioBook newBook = (AudioBook) getIntent().getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE);
+        model.setStartPlayback(getIntent().getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false));
+        Intent intent;
+
+        if ((intent = getIntent()) != null) {
+            shouldStart = shouldStart && intent.getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
+            AudioBook newBook = (AudioBook) intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE);
             if (newBook != null) {
                 model.setAudioBook(newBook);
             }
         }
+        model.setStartPlayback(shouldStart);
+
         AudioBook audioBook = model.getAudioBook().getValue();
         if (audioBook != null) {
             audioBook.loadFromFile(this);
@@ -393,14 +400,16 @@ public class PlayActivity extends AppCompatActivity {
                 } else {
                     model.setMetadata(controller.getMetadata());
                     model.setPosition(controller.getPlaybackState().getPosition());
+                    model.setIsPlaying(controller.getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING);
                 }
             }
 //            Animation bottomUp = AnimationUtils.loadAnimation(this,
 //                    R.anim.bottom_up);
 //            buttonContainer.startAnimation(bottomUp);
 //            buttonContainer.setVisibility(View.VISIBLE);
-            if (startPlayback) {
-                startPlayback = false;
+            Boolean b = model.getStartPlayback().getValue();
+            if (b != null && b) {
+                model.setStartPlayback(false);
                 controller.getTransportControls().play();
             }
         } catch (RemoteException e) {
