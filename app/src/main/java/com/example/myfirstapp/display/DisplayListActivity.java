@@ -14,10 +14,14 @@ import androidx.work.WorkManager;
 
 import android.Manifest;
 import android.app.ProgressDialog;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.RemoteException;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -30,6 +34,7 @@ import com.example.myfirstapp.AudioBook;
 import com.example.myfirstapp.Utils;
 import com.example.myfirstapp.player.MediaPlaybackService;
 import com.example.myfirstapp.player.PlayActivity;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.List;
 
@@ -47,6 +52,13 @@ public class DisplayListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private TextView emptyView;
     private SearchView searchView;
+    private AudioBook lastBookStarted;
+    private MediaControllerCompat controller;
+    private MediaBrowserCompat browser;
+
+    public void setLastBookStarted(AudioBook lastBookStarted) {
+        this.lastBookStarted = lastBookStarted;
+    }
 
     public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -141,7 +153,7 @@ public class DisplayListActivity extends AppCompatActivity {
     }
 
     void updateScreen() {
-        mAdapter.notifyDataSetChanged();
+        mAdapter.recalculateListFromModel();
         List<AudioBook> list = model.getSavedBooks(this).getValue();
         if (list != null && list.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
@@ -162,8 +174,7 @@ public class DisplayListActivity extends AppCompatActivity {
         updateScreen();
     }
 
-
-    public void resumeMostRecentBook(@SuppressWarnings("unused") View v) {
+    private void resumeMostRecentBook() {
         List<AudioBook> books = model.getSavedBooks(this).getValue();
         if (books != null) {
             AudioBook mostRecent = null;
@@ -178,12 +189,53 @@ public class DisplayListActivity extends AppCompatActivity {
                 Intent intent = new Intent(this, MediaPlaybackService.class);
                 intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent);
                 intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.getPositionInTrackList());
+                setLastBookStarted(mostRecent);
                 startService(intent);
             }
         }
-
     }
 
+
+    public void onFloatingActionButtonClick(@SuppressWarnings("unused") View v) {
+        if (controller.getPlaybackState() == null || controller.getPlaybackState().getState() != PlaybackStateCompat.STATE_PLAYING) {
+            resumeMostRecentBook();
+        } else {
+            controller.getTransportControls().pause();
+        }
+    }
+
+    @Override
+    protected void onRestart() {
+        mAdapter.recalculateListFromModel();
+        super.onRestart();
+    }
+
+
+    MediaBrowserCompat.ConnectionCallback connectionCallbacks = new MediaBrowserCompat.ConnectionCallback(){
+        @Override
+        public void onConnected() {
+            super.onConnected();
+            try {
+                controller = new MediaControllerCompat(
+                        DisplayListActivity.this,
+                        browser.getSessionToken());
+                    controller.registerCallback(new MediaControllerCompat.Callback() {
+                        @Override
+                        public void onPlaybackStateChanged(PlaybackStateCompat state) {
+                            if (state != null) {
+                                FloatingActionButton fab = findViewById(R.id.fab);
+                                if (state.getState() == PlaybackStateCompat.STATE_PLAYING) {
+                                    fab.setImageDrawable(getDrawable(R.drawable.ic_pause));
+                                } else {
+                                    fab.setImageDrawable(getDrawable(R.drawable.ic_play));
+                                }
+                            }
+                            super.onPlaybackStateChanged(state);
+                        }
+                    });
+            } catch (RemoteException ignored) {}
+        }
+    } ;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -204,6 +256,7 @@ public class DisplayListActivity extends AppCompatActivity {
         }
 
         model = new ViewModelProvider(this).get(DisplayListViewModel.class);
+        browser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new DisplayListAdapter(model, recyclerView, this);
@@ -215,8 +268,32 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        mAdapter.recalculateListFromModel();
+        List<AudioBook> books = model.getSavedBooks(this).getValue();
+        if (books != null) {
+            for (AudioBook book : books) {
+                if (book.equals(lastBookStarted)) {
+                    book.loadFromFile(this);
+                    break;
+                }
+            }
+        }
         updateScreen();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (browser != null) {
+            browser.connect();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (browser != null) {
+            browser.disconnect();
+        }
     }
 
     @Override
@@ -225,6 +302,12 @@ public class DisplayListActivity extends AppCompatActivity {
         if (model != null) {
             model.saveToDisk(this);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        model.saveToDisk(this);
+        super.onDestroy();
     }
 }
 

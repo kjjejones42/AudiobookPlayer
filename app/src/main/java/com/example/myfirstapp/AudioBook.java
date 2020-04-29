@@ -11,6 +11,8 @@ import android.media.ThumbnailUtils;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -263,6 +265,14 @@ public class AudioBook implements Serializable {
 
     public void saveConfig(Context context) {
         saveConfig(context, true);
+    }
+
+    @Override
+    public boolean equals(@Nullable Object obj) {
+        if (obj instanceof AudioBook) {
+            return this.getUniqueId().equals(((AudioBook) obj).getUniqueId());
+        }
+        return super.equals(obj);
     }
 
     @NonNull

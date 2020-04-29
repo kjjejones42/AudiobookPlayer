@@ -2,6 +2,7 @@ package com.example.myfirstapp.display;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -54,6 +55,7 @@ public class DisplayListViewModel extends ViewModel {
         saveToDisk(context);
     }
 
+    @NonNull
     LiveData<List<AudioBook>> getSavedBooks(Context context) {
         if (books.getValue() == null) {
             loadFromDisk(context);
@@ -61,6 +63,7 @@ public class DisplayListViewModel extends ViewModel {
         return books;
     }
 
+    @NonNull
     LiveData<List<ListItem>> getListItems(Context context) {
         if (listItems.getValue() == null) {
             loadFromDisk(context);

@@ -39,10 +39,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             AudioBook book = ((ListItem.AudioBookContainer) items.get(position)).book;
             selectedPos = position;
             notifyItemChanged(position);
-            Intent intent = new Intent(v.getContext(), PlayActivity.class);
-            intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book);
-            intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
-            v.getContext().startActivity(intent);
+            startAudioBook(book);
         }
     };
     private List<ListItem> currentItems;
@@ -62,6 +59,14 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 .show();
         return false;
     };
+
+    private void startAudioBook(AudioBook book) {
+        Intent intent = new Intent(activity, PlayActivity.class);
+        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book);
+        intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
+        activity.setLastBookStarted(book);
+        activity.startActivity(intent);
+    }
 
     DisplayListAdapter(@NonNull DisplayListViewModel model, @NonNull RecyclerView rcv, DisplayListActivity activity) {
         this.model = model;
@@ -242,6 +247,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 textView = v.findViewById(R.id.listItemText);
                 image = v.findViewById(R.id.listImageView);
                 artist = v.findViewById(R.id.artist);
+                image.setVisibility(View.INVISIBLE);
             } else {
                 textView = (TextView) v;
             }
