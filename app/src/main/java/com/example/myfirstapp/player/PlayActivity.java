@@ -26,6 +26,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.ColorUtils;
@@ -248,15 +249,11 @@ public class PlayActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
     }
 
-    private void setColorFromAlbumArt(Bitmap bitmap) {
-        if (bitmap == null) {
-            return;
-        }
+    private void setColorFromAlbumArt(@NonNull AudioBook book) {
         try {
-            setImage(bitmap);
-            Palette palette = Palette.from(bitmap).generate();
-            AudioBook book = model.getAudioBook().getValue();
-            if (book != null && !book.isArtGenerated()) {
+            setImage(book.getAlbumArt());
+            if (!book.isArtGenerated()) {
+                Palette palette = book.getAlbumArtPalette();
                 boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
                 int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
                 PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
@@ -351,8 +348,7 @@ public class PlayActivity extends AppCompatActivity {
         AudioBook audioBook = model.getAudioBook().getValue();
         if (audioBook != null) {
             audioBook.loadFromFile(this);
-            Bitmap cover = audioBook.getAlbumArt();
-            setColorFromAlbumArt(cover);
+            setColorFromAlbumArt(audioBook);
             ActionBar bar = getSupportActionBar();
             if (bar != null) {
                 bar.setTitle(audioBook.displayName);

@@ -8,11 +8,11 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.media.ThumbnailUtils;
-import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.palette.graphics.Palette;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,8 +26,6 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -52,6 +50,7 @@ public class AudioBook implements Serializable {
     private transient boolean generatedArt;
     private transient Bitmap thumbnail;
     private transient Bitmap art;
+    private transient Palette albumArtPalette;
 
     public AudioBook(String name, String directoryPath, String imagePath, List<MediaItem> files, String author) {
         if (files != null) {
@@ -73,6 +72,19 @@ public class AudioBook implements Serializable {
             map.put(AudioBook.STATUS_NOT_BEGUN, "Not Begun");
         }
         return map;
+    }
+
+    private void generatePalette(Bitmap bitmap) {
+        if (bitmap != null) {
+            albumArtPalette = Palette.from(bitmap).generate();
+        }
+    }
+
+    public Palette getAlbumArtPalette() {
+        if (albumArtPalette == null) {
+            generatePalette(getAlbumArt());
+        }
+        return albumArtPalette;
     }
 
     private static int getThumbnailSize(Activity activity) {
@@ -217,6 +229,7 @@ public class AudioBook implements Serializable {
             result = getGeneratedAlbumArt(displayName.substring(0, 1));
         }
         art = result;
+        generatePalette(art);
         return art;
     }
 
