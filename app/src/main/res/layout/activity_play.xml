@@ -26,6 +26,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
         <ImageButton
+            android:contentDescription="@string/prevButtonImageDescriptor"
             android:id="@+id/prevButton"
             style="@style/Widget.AppCompat.ImageButton"
             android:layout_width="wrap_content"
@@ -42,6 +43,7 @@
             app:layout_constraintTop_toBottomOf="@+id/seekBar" />
 
         <ImageButton
+            android:contentDescription="@string/rewindButtonImageDescriptor"
             android:id="@+id/rewindButton"
             style="@style/Widget.AppCompat.ImageButton"
             android:layout_width="wrap_content"
@@ -58,6 +60,7 @@
             app:layout_constraintTop_toBottomOf="@+id/seekBar" />
 
         <ImageButton
+            android:contentDescription="@string/toggleButtonImageDescriptor"
             android:id="@+id/toggleButton"
             android:layout_width="@android:dimen/notification_large_icon_width"
             android:layout_height="@android:dimen/notification_large_icon_height"
@@ -72,6 +75,7 @@
             app:layout_constraintTop_toBottomOf="@+id/seekBar" />
 
         <ImageButton
+            android:contentDescription="@string/forwardButtonImageDescriptor"
             android:id="@+id/forwardButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -86,6 +90,7 @@
             app:layout_constraintTop_toBottomOf="@+id/seekBar" />
 
         <ImageButton
+            android:contentDescription="@string/nextButtonImageDescriptor"
             android:id="@+id/nextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -105,7 +110,6 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:textAlignment="viewEnd"
-            android:text="00:00:00"
             app:layout_constraintBottom_toTopOf="@id/toggleButton"
             app:layout_constraintEnd_toStartOf="@id/seekBar"
             app:layout_constraintStart_toStartOf="parent"
@@ -129,7 +133,6 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
             android:textAlignment="viewStart"
-            android:text="00:00:00"
             app:layout_constraintBottom_toTopOf="@id/toggleButton"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/seekBar"

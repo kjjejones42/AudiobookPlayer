@@ -5,4 +5,9 @@
     <string name="channel_name">Audiobook Player</string>
     <string name="scan_for_audiobooks">Scan for Audiobooks</string>
     <string name="search">Search</string>
+    <string name="prevButtonImageDescriptor">Previous Track</string>
+    <string name="rewindButtonImageDescriptor">Skip Back</string>
+    <string name="toggleButtonImageDescriptor">Toggle Play Pause</string>
+    <string name="forwardButtonImageDescriptor">Skip Forward</string>
+    <string name="nextButtonImageDescriptor">Next Track</string>
 </resources>
