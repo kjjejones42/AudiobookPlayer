@@ -10,4 +10,5 @@
     <string name="toggleButtonImageDescriptor">Toggle Play Pause</string>
     <string name="forwardButtonImageDescriptor">Skip Forward</string>
     <string name="nextButtonImageDescriptor">Next Track</string>
+    <string name="_00_00_00">00:00:00</string>
 </resources>
