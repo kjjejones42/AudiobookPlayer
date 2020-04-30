@@ -194,12 +194,13 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
             v = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.display_list_group, parent, false);
             return new MyViewHolder(v, false);
+        } else {
+            v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.display_list_item, parent, false);
+            v.setOnClickListener(onClickListener);
+            v.setOnLongClickListener(onLongClickListener);
+            return new MyViewHolder(v, true);
         }
-        v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.display_list_item, parent, false);
-        v.setOnClickListener(onClickListener);
-        v.setOnLongClickListener(onLongClickListener);
-        return new MyViewHolder(v, true);
     }
 
     @SuppressLint("SetTextI18n")

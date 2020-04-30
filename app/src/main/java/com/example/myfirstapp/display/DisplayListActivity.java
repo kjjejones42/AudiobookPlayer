@@ -22,6 +22,7 @@ import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -60,7 +61,24 @@ public class DisplayListActivity extends AppCompatActivity {
         this.lastBookStarted = lastBookStarted;
     }
 
+    private boolean arePermissionsInvalid() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED ||
+               ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED;
+    }
+
     public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
+        if (arePermissionsInvalid()) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    MY_PERMISSIONS_REQUEST_READ_STORAGE
+            );
+        } else {
+            askUserForDirectory();
+        }
+    }
+
+    private void askUserForDirectory() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivityForResult(intent, SELECT_DIRECTORY);
@@ -74,8 +92,12 @@ public class DisplayListActivity extends AppCompatActivity {
             for (int i = 0; i < permissions.length; i++) {
                 total += grantResults[i];
             }
-            String result = total == grantResults.length ? "All" : "Not all";
+            boolean allApproved = total == grantResults.length;
+            String result = allApproved ? "All" : "Not all";
             Toast.makeText(this, result + " permissions granted.", Toast.LENGTH_LONG).show();
+            if (allApproved) {
+                askUserForDirectory();
+            }
         }
     }
 
@@ -247,14 +269,6 @@ public class DisplayListActivity extends AppCompatActivity {
         recyclerView = findViewById(R.id.recyclerView);
         emptyView = findViewById(R.id.empty_view);
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    MY_PERMISSIONS_REQUEST_READ_STORAGE);
-        }
-
         model = new ViewModelProvider(this).get(DisplayListViewModel.class);
         browser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
 
@@ -291,6 +305,7 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        model.saveToDisk(this);
         if (browser != null) {
             browser.disconnect();
         }
@@ -304,10 +319,5 @@ public class DisplayListActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        model.saveToDisk(this);
-        super.onDestroy();
-    }
 }
 

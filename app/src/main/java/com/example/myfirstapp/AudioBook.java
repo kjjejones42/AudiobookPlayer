@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.media.ThumbnailUtils;
+import android.util.Log;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
@@ -23,6 +24,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -216,7 +221,11 @@ public class AudioBook implements Serializable {
     }
 
     public String getUniqueId() {
-        return directoryPath.replaceAll("\\W", "");
+        try {
+            return URLEncoder.encode(directoryPath, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 

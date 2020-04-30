@@ -351,10 +351,8 @@ public class PlayActivity extends AppCompatActivity {
         AudioBook audioBook = model.getAudioBook().getValue();
         if (audioBook != null) {
             audioBook.loadFromFile(this);
-            new Thread(() -> {
-                Bitmap cover = audioBook.getAlbumArt();
-                imView.post(() -> setColorFromAlbumArt(cover));
-            }).start();
+            Bitmap cover = audioBook.getAlbumArt();
+            setColorFromAlbumArt(cover);
             ActionBar bar = getSupportActionBar();
             if (bar != null) {
                 bar.setTitle(audioBook.displayName);
