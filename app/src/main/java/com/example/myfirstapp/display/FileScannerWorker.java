@@ -5,7 +5,10 @@ import android.graphics.BitmapFactory;
 import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Looper;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.work.Data;
@@ -141,7 +144,8 @@ public class FileScannerWorker extends Worker {
     public Result doWork() {
         try {
             Uri root = Uri.parse(getInputData().getString(INPUT));
-            File rootDir = new File(Utils.documentUriToFilePath(root));
+            String path = Utils.documentUriToFilePath(root);
+            File rootDir = new File(path);
             getList(rootDir.getPath());
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);

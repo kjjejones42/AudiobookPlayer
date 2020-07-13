@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Environment;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -24,10 +25,13 @@ public class Utils {
     public static String documentUriToFilePath(Uri uri) {
         try {
             String path = uri.getPath();
+            Log.d("ASD", path);
             assert path != null;
             String[] segments = path.split(":");
             String mainPath = segments[segments.length - 1];
-            segments = segments[segments.length - 2].split("/");
+            if (segments.length > 1) {
+                segments = segments[segments.length - 2].split("/");
+            }
             String storage = segments[segments.length - 1];
             String prefix = "primary".equals(storage) ? Environment.getExternalStorageDirectory().getPath() : "/storage/" + storage;
             return new File(prefix + "/" + mainPath).getPath();
