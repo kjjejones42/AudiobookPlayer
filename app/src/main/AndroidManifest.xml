@@ -20,7 +20,8 @@
         <activity
             android:name=".display.DisplayListActivity"
             android:launchMode="singleTask"
-            android:theme="@style/Launcher">
+            android:theme="@style/Launcher"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -28,13 +29,15 @@
         </activity>
 
         <service android:name=".player.MediaPlaybackService"
-            android:permission="android.permission.READ_EXTERNAL_STORAGE">
+            android:permission="android.permission.READ_EXTERNAL_STORAGE"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
 
-        <receiver android:name="androidx.media.session.MediaButtonReceiver" >
+        <receiver android:name="androidx.media.session.MediaButtonReceiver"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
