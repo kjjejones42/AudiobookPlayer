@@ -86,6 +86,7 @@ public class DisplayListActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == MY_PERMISSIONS_REQUEST_READ_STORAGE) {
             int total = grantResults.length;
             for (int i = 0; i < permissions.length; i++) {
@@ -236,25 +237,23 @@ public class DisplayListActivity extends AppCompatActivity {
         @Override
         public void onConnected() {
             super.onConnected();
-            try {
-                controller = new MediaControllerCompat(
-                        DisplayListActivity.this,
-                        browser.getSessionToken());
-                    controller.registerCallback(new MediaControllerCompat.Callback() {
-                        @Override
-                        public void onPlaybackStateChanged(PlaybackStateCompat state) {
-                            if (state != null) {
-                                FloatingActionButton fab = findViewById(R.id.fab);
-                                if (state.getState() == PlaybackStateCompat.STATE_PLAYING) {
-                                    fab.setImageDrawable(getDrawable(R.drawable.ic_pause));
-                                } else {
-                                    fab.setImageDrawable(getDrawable(R.drawable.ic_play));
-                                }
-                            }
-                            super.onPlaybackStateChanged(state);
+            controller = new MediaControllerCompat(
+                    DisplayListActivity.this,
+                    browser.getSessionToken());
+            controller.registerCallback(new MediaControllerCompat.Callback() {
+                @Override
+                public void onPlaybackStateChanged(PlaybackStateCompat state) {
+                    if (state != null) {
+                        FloatingActionButton fab = findViewById(R.id.fab);
+                        if (state.getState() == PlaybackStateCompat.STATE_PLAYING) {
+                            fab.setImageDrawable(getDrawable(R.drawable.ic_pause));
+                        } else {
+                            fab.setImageDrawable(getDrawable(R.drawable.ic_play));
                         }
-                    });
-            } catch (RemoteException ignored) {}
+                    }
+                    super.onPlaybackStateChanged(state);
+                }
+            });
         }
     } ;
 

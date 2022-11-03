@@ -45,7 +45,6 @@ import java.util.concurrent.TimeUnit;
 
 public class PlayActivity extends AppCompatActivity {
 
-    //    private static String TAG = "ASD";
     public final static String INTENT_AUDIOBOOK = "AUDIOBOOK";
     public final static String INTENT_INDEX = "INDEX";
 
@@ -320,9 +319,6 @@ public class PlayActivity extends AppCompatActivity {
         seekBar = findViewById(R.id.seekBar);
         spinner = findViewById(R.id.trackChooser);
         imView = findViewById(R.id.albumArtView);
-//        buttonContainer = findViewById(R.id.buttonContainer);
-
-//        buttonContainer.setVisibility(View.INVISIBLE);
 
         model = new ViewModelProvider(this).get(PlayerViewModel.class);
         mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
@@ -376,34 +372,25 @@ public class PlayActivity extends AppCompatActivity {
     }
 
     private void onConnected() {
-        try {
-            AudioBook audioBook = model.getAudioBook().getValue();
-            controller = new MediaControllerCompat(
-                    PlayActivity.this,
-                    mediaBrowser.getSessionToken());
-            MediaControllerCompat.setMediaController(PlayActivity.this, controller);
-            buildTransportControls();
-            if (audioBook != null) {
-                if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
-                    initialiseMediaSession(audioBook.getPositionInTrackList());
-                } else {
-                    model.setMetadata(controller.getMetadata());
-                    model.setPosition(controller.getPlaybackState().getPosition());
-                    model.setIsPlaying(controller.getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING);
-                }
+        AudioBook audioBook = model.getAudioBook().getValue();
+        controller = new MediaControllerCompat(
+                PlayActivity.this,
+                mediaBrowser.getSessionToken());
+        MediaControllerCompat.setMediaController(PlayActivity.this, controller);
+        buildTransportControls();
+        if (audioBook != null) {
+            if (!audioBook.getUniqueId().equals(controller.getMetadata().getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))) {
+                initialiseMediaSession(audioBook.getPositionInTrackList());
+            } else {
+                model.setMetadata(controller.getMetadata());
+                model.setPosition(controller.getPlaybackState().getPosition());
+                model.setIsPlaying(controller.getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING);
             }
-//            Animation bottomUp = AnimationUtils.loadAnimation(this,
-//                    R.anim.bottom_up);
-//            buttonContainer.startAnimation(bottomUp);
-//            buttonContainer.setVisibility(View.VISIBLE);
-            Boolean b = model.getStartPlayback().getValue();
-            if (b != null && b) {
-                model.setStartPlayback(false);
-                controller.getTransportControls().play();
-            }
-        } catch (RemoteException e) {
-            Utils.logError(e, this);
-            e.printStackTrace();
+        }
+        Boolean b = model.getStartPlayback().getValue();
+        if (b != null && b) {
+            model.setStartPlayback(false);
+            controller.getTransportControls().play();
         }
     }
 

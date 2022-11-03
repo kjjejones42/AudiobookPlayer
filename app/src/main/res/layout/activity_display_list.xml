@@ -38,6 +38,7 @@
         android:layout_gravity="end|bottom"
         android:layout_margin="16dp"
         android:src="@drawable/ic_play"
-        android:onClick="onFloatingActionButtonClick"/>
+        android:onClick="onFloatingActionButtonClick"
+        android:contentDescription="@string/play_button" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout >

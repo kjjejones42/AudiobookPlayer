@@ -289,7 +289,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private MediaMetadataCompat trackToMetaData(MediaItem item) {
         MediaMetadataRetriever mmr = new MediaMetadataRetriever();
         mmr.setDataSource(this, Uri.parse(item.filePath));
-        long duration = Long.parseLong(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+        String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+        assert durationStr != null;
+        long duration = Long.parseLong(durationStr);
         return metadataBuilder
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt())
@@ -320,13 +322,14 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
                 saveAudiobookProgress();
                 mAudiobook = (AudioBook) intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK);
+                assert mAudiobook != null;
                 mAudiobook.loadFromFile(this);
 
                 int position = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
 
                 Intent resumeIntent = new Intent(this, PlayActivity.class);
                 resumeIntent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, mAudiobook);
-                mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_UPDATE_CURRENT));
+                mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_IMMUTABLE));
 
                 if (mAudiobook.getStatus() == AudioBook.STATUS_FINISHED) {
                     positionInTrackList = 0;
