@@ -5,10 +5,7 @@ import android.graphics.BitmapFactory;
 import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
-import android.os.Looper;
-import android.util.Log;
 import android.webkit.MimeTypeMap;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.work.Data;
@@ -27,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -49,7 +47,7 @@ public class FileScannerWorker extends Worker {
             MediaFormat.MIMETYPE_AUDIO_VORBIS);
     private final ExecutorService pool = Executors.newFixedThreadPool(10);
     private final BlockingQueue<String> taskQueue = new ArrayBlockingQueue<>(50);
-    private final List<Future> futures = new ArrayList<>();
+    private final List<Future<Void>> futures = new ArrayList<>();
     private final List<AudioBook> results = Collections.synchronizedList(new ArrayList<>());
     private int counter = 0;
 
@@ -77,13 +75,15 @@ public class FileScannerWorker extends Worker {
         String imageUri = null;
         String author = null;
         MediaMetadataRetriever m = new MediaMetadataRetriever();
-        for (File file : directory.listFiles()) {
+        for (File file : Objects.requireNonNull(directory.listFiles())) {
             String type = getMimeType(file);
             if (isAudio(type)) {
                 long duration = 0L;
                 try {
                     m.setDataSource(file.getPath());
-                    duration = Long.parseLong(m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+                    String durationString = m.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    assert durationString != null;
+                    duration = Long.parseLong(durationString);
                     if (author == null) {
                         for (Integer i : authorKeys) {
                             author = m.extractMetadata(i);
@@ -124,7 +124,11 @@ public class FileScannerWorker extends Worker {
             try {
                 String path = taskQueue.poll();
                 if (path != null) {
-                    futures.add(pool.submit(() -> checkDirectoryFile(path)));
+                    Future<Void> future = pool.submit(() -> {
+                        checkDirectoryFile(path);
+                        return null;
+                    });
+                    futures.add(future);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -145,6 +149,7 @@ public class FileScannerWorker extends Worker {
         try {
             Uri root = Uri.parse(getInputData().getString(INPUT));
             String path = Utils.documentUriToFilePath(root);
+            assert path != null;
             File rootDir = new File(path);
             getList(rootDir.getPath());
             FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
@@ -159,8 +164,8 @@ public class FileScannerWorker extends Worker {
         }
     }
 
-    private boolean isAllDone(Iterable<Future> list) {
-        for (Future future : list) {
+    private boolean isAllDone(Iterable<Future<Void>> list) {
+        for (Future<Void> future : list) {
             if (!future.isDone()) {
                 return false;
             }
@@ -173,7 +178,7 @@ public class FileScannerWorker extends Worker {
             return;
         }
         File file = new File(filePath);
-        for (File child : file.listFiles()) {
+        for (File child : Objects.requireNonNull(file.listFiles())) {
             if (child != null && child.isDirectory()) {
                 boolean added = false;
                 while (!added) {

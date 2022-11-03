@@ -25,7 +25,6 @@ public class Utils {
     public static String documentUriToFilePath(Uri uri) {
         try {
             String path = uri.getPath();
-            Log.d("ASD", path);
             assert path != null;
             String[] segments = path.split(":");
             String mainPath = segments[segments.length - 1];

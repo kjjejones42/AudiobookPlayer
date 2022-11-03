@@ -239,12 +239,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         try {
             mediaPlayer.setOnCompletionListener(onCompletionListener);
             mediaPlayer.setDataSource(mediaItem.filePath);
-//            mediaPlayer.setDataSource(getApplicationContext(), Uri.parse(mediaItem.documentUri));
-//            LoudnessEnhancer ef = new LoudnessEnhancer(mediaPlayer.getAudioSessionId());
-//            ef.setTargetGain(10000);
-//            ef.setEnabled(true);
-//            mediaPlayer.attachAuxEffect(ef.getId());
-//            mediaPlayer.setAuxEffectSendLevel(1f);
             mediaPlayer.prepare();
             isMediaPlayerPrepared = true;
             mediaSession.setMetadata(trackToMetaData(mediaItem));

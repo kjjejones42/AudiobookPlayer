@@ -3,6 +3,7 @@ package com.example.myfirstapp.display;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -18,7 +19,6 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -39,7 +39,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
-    //    private static String TAG = "ASD";
 
     private static final String INTENT_UPDATE_MODEL = "com.example.myfirstapp.UPDATE";
     public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
@@ -153,6 +152,7 @@ public class DisplayListActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
         searchView = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
+        assert searchView != null;
         searchView.setSubmitButtonEnabled(false);
         searchView.setOnCloseListener(() -> {
             mAdapter.filter(null);
@@ -233,7 +233,7 @@ public class DisplayListActivity extends AppCompatActivity {
     }
 
 
-    MediaBrowserCompat.ConnectionCallback connectionCallbacks = new MediaBrowserCompat.ConnectionCallback(){
+    final MediaBrowserCompat.ConnectionCallback connectionCallbacks = new MediaBrowserCompat.ConnectionCallback(){
         @Override
         public void onConnected() {
             super.onConnected();
@@ -245,11 +245,9 @@ public class DisplayListActivity extends AppCompatActivity {
                 public void onPlaybackStateChanged(PlaybackStateCompat state) {
                     if (state != null) {
                         FloatingActionButton fab = findViewById(R.id.fab);
-                        if (state.getState() == PlaybackStateCompat.STATE_PLAYING) {
-                            fab.setImageDrawable(getDrawable(R.drawable.ic_pause));
-                        } else {
-                            fab.setImageDrawable(getDrawable(R.drawable.ic_play));
-                        }
+                        int icon = (state.getState() == PlaybackStateCompat.STATE_PLAYING) ?
+                                R.drawable.ic_pause : R.drawable.ic_play;
+                        fab.setImageDrawable(AppCompatResources.getDrawable(getBaseContext(), icon));
                     }
                     super.onPlaybackStateChanged(state);
                 }

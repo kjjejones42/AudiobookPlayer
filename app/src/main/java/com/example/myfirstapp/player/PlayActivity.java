@@ -9,7 +9,6 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
@@ -255,7 +254,7 @@ public class PlayActivity extends AppCompatActivity {
                 boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
                 int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
                 PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
-                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent));
+                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent, getTheme()));
                 updateButtonColor(color);
                 updateStatusBarColor(color);
             } else {

@@ -81,6 +81,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         recalculateList(model.getSavedBooks(activity).getValue());
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     private void selectivelyNotify(List<ListItem> newItems) {
         List<ListItem> oldItems = currentItems;
         currentItems = newItems;

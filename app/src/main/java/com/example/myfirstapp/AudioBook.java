@@ -209,7 +209,7 @@ public class AudioBook implements Serializable {
         Bitmap result = null;
         try {
             if (imagePath != null) {
-                FileInputStream fis = new FileInputStream(new File(imagePath));
+                FileInputStream fis = new FileInputStream(imagePath);
                 result = BitmapFactory.decodeStream(fis);
                 fis.close();
             }
