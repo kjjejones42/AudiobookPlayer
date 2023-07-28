@@ -1,4 +1,4 @@
-package com.example.myfirstapp.display;
+package com.kjjejones42.audiobookplayer.display;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,11 +28,11 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.myfirstapp.R;
-import com.example.myfirstapp.AudioBook;
-import com.example.myfirstapp.Utils;
-import com.example.myfirstapp.player.MediaPlaybackService;
-import com.example.myfirstapp.player.PlayActivity;
+import com.kjjejones42.audiobookplayer.R;
+import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.Utils;
+import com.kjjejones42.audiobookplayer.player.MediaPlaybackService;
+import com.kjjejones42.audiobookplayer.player.PlayActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.List;
@@ -43,7 +43,13 @@ public class DisplayListActivity extends AppCompatActivity {
     public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
     public static final String INTENT_START_PLAYBACK = "com.example.myfirstapp.start";
 
-    private final String[] PERMISSIONS = new String[] { Manifest.permission.READ_EXTERNAL_STORAGE };
+    private final String[] PERMISSIONS = new String[] {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_AUDIO,
+            Manifest.permission.READ_MEDIA_AUDIO,
+            Manifest.permission.POST_NOTIFICATIONS,
+    };
 
 
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;

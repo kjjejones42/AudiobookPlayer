@@ -1,4 +1,4 @@
-package com.example.myfirstapp.display;
+package com.kjjejones42.audiobookplayer.display;
 
 import android.content.Context;
 
@@ -7,8 +7,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.myfirstapp.AudioBook;
-import com.example.myfirstapp.Utils;
+import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.Utils;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

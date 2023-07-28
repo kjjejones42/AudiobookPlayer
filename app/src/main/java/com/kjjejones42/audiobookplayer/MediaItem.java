@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.kjjejones42.audiobookplayer;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;

@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.kjjejones42.audiobookplayer;
 
 import org.junit.Test;
 

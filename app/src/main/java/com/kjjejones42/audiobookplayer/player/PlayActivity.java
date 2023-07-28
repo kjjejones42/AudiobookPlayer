@@ -1,4 +1,4 @@
-package com.example.myfirstapp.player;
+package com.kjjejones42.audiobookplayer.player;
 
 import android.annotation.SuppressLint;
 import android.content.ComponentName;
@@ -31,11 +31,11 @@ import androidx.core.graphics.ColorUtils;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.palette.graphics.Palette;
 
-import com.example.myfirstapp.AudioBook;
-import com.example.myfirstapp.MediaItem;
-import com.example.myfirstapp.R;
-import com.example.myfirstapp.Utils;
-import com.example.myfirstapp.display.DisplayListActivity;
+import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.MediaItem;
+import com.kjjejones42.audiobookplayer.R;
+import com.kjjejones42.audiobookplayer.Utils;
+import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
 
 import java.util.Arrays;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.example.myfirstapp;
+package com.kjjejones42.audiobookplayer;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

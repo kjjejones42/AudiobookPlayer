@@ -1,4 +1,4 @@
-package com.example.myfirstapp.display;
+package com.kjjejones42.audiobookplayer.display;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -11,12 +11,11 @@ import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
-import com.example.myfirstapp.AudioBook;
-import com.example.myfirstapp.MediaItem;
+import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.MediaItem;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,30 +24,46 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 public class FileScannerWorker extends Worker {
 
     static final String LIST_OF_DIRS = "LIST_OF_DIRS";
-    private static final List<Integer> authorKeys = Arrays.asList(MediaMetadataRetriever.METADATA_KEY_ARTIST, MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST, MediaMetadataRetriever.METADATA_KEY_AUTHOR, MediaMetadataRetriever.METADATA_KEY_COMPOSER, MediaMetadataRetriever.METADATA_KEY_WRITER);
+    private static final List<Integer> authorKeys = Arrays.asList(
+            MediaMetadataRetriever.METADATA_KEY_ARTIST,
+            MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST,
+            MediaMetadataRetriever.METADATA_KEY_AUTHOR,
+            MediaMetadataRetriever.METADATA_KEY_COMPOSER,
+            MediaMetadataRetriever.METADATA_KEY_WRITER
+    );
 
     public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
-    private String findAuthor(Collection<MediaItem> mediaFiles) {
-        String author = null;
+
+    private String getFileAuthor(String filename, MediaMetadataRetriever m) {
         try {
-            MediaMetadataRetriever m = new MediaMetadataRetriever();
-            for (MediaItem item : mediaFiles) {
-                m.setDataSource(item.filePath);
+            if (filename != null && new File(filename).exists()) {
+                m.setDataSource(filename);
                 for (Integer i : authorKeys) {
-                    author = m.extractMetadata(i);
-                    if (author != null) {
-                        m.close();
-                        return author;
-                    }
+                    String author = m.extractMetadata(i);
+                    m.close();
+                    return author;
                 }
             }
-        } catch (IOException ignored) {}
-        return author;
+
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private String findAuthor(Collection<MediaItem> mediaFiles) {
+        MediaMetadataRetriever m = new MediaMetadataRetriever();
+        for (MediaItem item : mediaFiles) {
+            String author = getFileAuthor(item.filePath, m);
+            if (author != null) {
+                return author;
+            }
+        }
+        return null;
     }
 
     @SuppressLint("Range")
@@ -92,21 +107,17 @@ public class FileScannerWorker extends Worker {
                     MediaStore.Audio.Media.TITLE,
                     MediaStore.Audio.Media.DURATION
                 },
-                MediaStore.Audio.Media.IS_AUDIOBOOK + " = ?",
-                new String[]{ "1" },
+                MediaStore.Audio.Media.IS_AUDIOBOOK + " != 0",
+                null,
                 null
         );
         if (cursor != null) {
-            int DATA = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
-            int DIR = cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH);
-            int TITLE = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
-            int DURATION = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
             Map<String, List<MediaItem>> dirs = new HashMap<>();
             while (cursor.moveToNext()) {
-                String file = cursor.getString(DATA);
-                String dir = cursor.getString(DIR);
-                int duration = cursor.getInt(DURATION);
-                String title = cursor.getString(TITLE);
+                String file = cursor.getString(0);
+                String dir = cursor.getString(1);
+                String title = cursor.getString(2);
+                int duration = cursor.getInt(3);
                 MediaItem media = new MediaItem(file, title, duration);
                 if (!dirs.containsKey(dir)) {
                     dirs.put(dir, new ArrayList<>());
@@ -133,6 +144,7 @@ public class FileScannerWorker extends Worker {
             oos.close();
         } catch (Exception e) {
             Log.e("ASD", e.toString());
+            e.printStackTrace();
             return Result.failure();
         }
         return Result.success();

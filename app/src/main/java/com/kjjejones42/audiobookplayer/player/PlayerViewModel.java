@@ -1,4 +1,4 @@
-package com.example.myfirstapp.player;
+package com.kjjejones42.audiobookplayer.player;
 
 import android.support.v4.media.MediaMetadataCompat;
 
@@ -7,7 +7,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.example.myfirstapp.AudioBook;
+import com.kjjejones42.audiobookplayer.AudioBook;
 
 public class PlayerViewModel extends ViewModel {
 

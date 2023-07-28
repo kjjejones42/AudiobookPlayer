@@ -1,4 +1,4 @@
-package com.example.myfirstapp.player;
+package com.kjjejones42.audiobookplayer.player;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -28,11 +28,11 @@ import androidx.core.app.NotificationCompat;
 import androidx.media.MediaBrowserServiceCompat;
 import androidx.media.session.MediaButtonReceiver;
 
-import com.example.myfirstapp.AudioBook;
-import com.example.myfirstapp.MediaItem;
-import com.example.myfirstapp.R;
-import com.example.myfirstapp.Utils;
-import com.example.myfirstapp.display.DisplayListActivity;
+import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.MediaItem;
+import com.kjjejones42.audiobookplayer.R;
+import com.kjjejones42.audiobookplayer.Utils;
+import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
 
 import java.io.IOException;
 import java.util.ArrayList;

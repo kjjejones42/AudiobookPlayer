@@ -12,7 +12,7 @@ android {
     compileSdkVersion 33
 
     defaultConfig {
-        applicationId "com.example.myfirstapp"
+        applicationId "com.kjjejones42.audiobookplayer"
         minSdkVersion 29
         targetSdkVersion 33
         versionCode 1
@@ -32,7 +32,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    namespace 'com.example.myfirstapp'
+    namespace 'com.kjjejones42.audiobookplayer'
 
 }
 

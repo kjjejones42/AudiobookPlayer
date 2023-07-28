@@ -1,9 +1,9 @@
-package com.example.myfirstapp.display;
+package com.kjjejones42.audiobookplayer.display;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.example.myfirstapp.AudioBook;
+import com.kjjejones42.audiobookplayer.AudioBook;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.example.myfirstapp.display;
+package com.kjjejones42.audiobookplayer.display;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -13,9 +13,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.myfirstapp.AudioBook;
-import com.example.myfirstapp.R;
-import com.example.myfirstapp.player.PlayActivity;
+import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.R;
+import com.kjjejones42.audiobookplayer.player.PlayActivity;
 
 import java.util.ArrayList;
 import java.util.Collections;
