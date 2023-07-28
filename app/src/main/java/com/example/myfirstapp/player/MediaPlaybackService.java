@@ -14,7 +14,6 @@ import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
@@ -25,7 +24,6 @@ import android.support.v4.media.session.PlaybackStateCompat;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.media.MediaBrowserServiceCompat;
 import androidx.media.session.MediaButtonReceiver;
@@ -96,7 +94,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
     };
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private AudioFocusRequest getRequest() {
         if (audioFocusRequest == null) {
             audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -110,13 +107,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private void initializeNotification() {
         String CHANNEL_ID = "com.example.myfirstapp";
         Context context = getApplicationContext();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = getString(R.string.channel_name);
-            int importance = NotificationManager.IMPORTANCE_LOW;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
-        }
+        CharSequence name = getString(R.string.channel_name);
+        int importance = NotificationManager.IMPORTANCE_LOW;
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+        channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        getSystemService(NotificationManager.class).createNotificationChannel(channel);
         notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
         notificationBuilder
                 .setContentIntent(mediaSession.getController().getSessionActivity())
@@ -420,11 +415,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
             if (getIsMediaPlayerPrepared() && !isMediaPlayerPlaying()) {
                 int result;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    result = am.requestAudioFocus(getRequest());
-                } else {
-                    result = am.requestAudioFocus(onAudioFocusChangeListener, AudioAttributes.CONTENT_TYPE_SPEECH, AudioManager.AUDIOFOCUS_GAIN);
-                }
+                result = am.requestAudioFocus(getRequest());
                 if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
                     mediaSession.setActive(true);
                     if (mAudiobook.getStatus() == AudioBook.STATUS_NOT_BEGUN) {
@@ -488,7 +479,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         public void onStop() {
             if (getIsMediaPlayerPrepared()) {
                 AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
-                am.abandonAudioFocus(onAudioFocusChangeListener);
+                am.abandonAudioFocusRequest(audioFocusRequest);
                 mediaSession.setActive(false);
                 updateTask.cancel();
                 saveAudiobookProgress();

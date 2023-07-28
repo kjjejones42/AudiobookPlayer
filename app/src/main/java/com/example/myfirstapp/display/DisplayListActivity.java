@@ -1,7 +1,6 @@
 package com.example.myfirstapp.display;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
@@ -9,11 +8,11 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -44,7 +43,9 @@ public class DisplayListActivity extends AppCompatActivity {
     public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
     public static final String INTENT_START_PLAYBACK = "com.example.myfirstapp.start";
 
-    private static final int SELECT_DIRECTORY = 1;
+    private final String[] PERMISSIONS = new String[] { Manifest.permission.READ_EXTERNAL_STORAGE };
+
+
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
     private DisplayListViewModel model;
     private DisplayListAdapter mAdapter;
@@ -60,28 +61,42 @@ public class DisplayListActivity extends AppCompatActivity {
     }
 
     private boolean arePermissionsInvalid() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED ||
-               ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED;
+        for (String permission : PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_DENIED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
         if (arePermissionsInvalid()) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    MY_PERMISSIONS_REQUEST_READ_STORAGE
-            );
+            ActivityCompat.requestPermissions(this, PERMISSIONS, MY_PERMISSIONS_REQUEST_READ_STORAGE);
         } else {
             askUserForDirectory();
         }
     }
 
     private void askUserForDirectory() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivityForResult(intent, SELECT_DIRECTORY);
+        final String message = "Loading. Please wait...";
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).build();
+        final ProgressDialog dialog = ProgressDialog.show(this, "", message, true);
+        WorkManager.getInstance(this).enqueue(request);
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.getId())
+            .observe(this, workInfo -> {
+                if (workInfo != null && workInfo.getState().isFinished()) {
+                        try {
+                            Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
+                            intent.putExtra(INTENT_UPDATE_MODEL, true);
+                            dialog.cancel();
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            Utils.logError(e, this);
+                            e.printStackTrace();
+                        }
+                    }
+            });
     }
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -96,43 +111,6 @@ public class DisplayListActivity extends AppCompatActivity {
             Toast.makeText(this, result + " permissions granted.", Toast.LENGTH_LONG).show();
             if (allApproved) {
                 askUserForDirectory();
-            }
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == SELECT_DIRECTORY && data != null && data.getData() != null) {
-            try {
-                final String message = "Loading. Please wait...";
-                Data d = new Data.Builder().putString(FileScannerWorker.INPUT, data.getData().toString()).build();
-                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).setInputData(d).build();
-                final ProgressDialog dialog = ProgressDialog.show(this, "", message, true);
-                WorkManager.getInstance(this).enqueue(request);
-                WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.getId())
-                        .observe(this, workInfo -> {
-                            if (workInfo != null) {
-                                int resultsCount = workInfo.getProgress().getInt("PROGRESS", 0);
-                                if (resultsCount != 0) {
-                                    dialog.setMessage(message + "\nFound " + resultsCount + " books.");
-                                }
-                                if (workInfo.getState().isFinished()) {
-                                    try {
-                                        Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
-                                        intent.putExtra(INTENT_UPDATE_MODEL, true);
-                                        dialog.cancel();
-                                        startActivity(intent);
-                                    } catch (Exception e) {
-                                        Utils.logError(e, this);
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }
-                        });
-            } catch (Exception e) {
-                Utils.logError(e, this);
-                e.printStackTrace();
             }
         }
     }
@@ -174,6 +152,7 @@ public class DisplayListActivity extends AppCompatActivity {
         return true;
     }
 
+    @SuppressLint("Range")
     void updateScreen() {
         mAdapter.recalculateListFromModel();
         List<AudioBook> list = model.getSavedBooks(this).getValue();

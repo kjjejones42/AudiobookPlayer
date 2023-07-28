@@ -2,9 +2,7 @@ package com.example.myfirstapp;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.net.Uri;
 import android.os.Environment;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -21,24 +19,6 @@ public class Utils {
     @SuppressLint("SimpleDateFormat")
     private final static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS");
     private final static File logFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "MyAudiobookPlayerLog.txt");
-
-    public static String documentUriToFilePath(Uri uri) {
-        try {
-            String path = uri.getPath();
-            assert path != null;
-            String[] segments = path.split(":");
-            String mainPath = segments[segments.length - 1];
-            if (segments.length > 1) {
-                segments = segments[segments.length - 2].split("/");
-            }
-            String storage = segments[segments.length - 1];
-            String prefix = "primary".equals(storage) ? Environment.getExternalStorageDirectory().getPath() : "/storage/" + storage;
-            return new File(prefix + "/" + mainPath).getPath();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
 
     public static void logError(Throwable e, @Nullable Context context) {
         logError(e, "", context);
