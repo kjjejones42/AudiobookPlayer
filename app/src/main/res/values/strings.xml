@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Audiobook Player</string>
     <string name="album_art">Album Art</string>
-    <string name="no_data_available">No Audiobooks detected! \n Scan for Audiobooks in the menu to get started.</string>
+    <string name="no_data_available">No Audiobooks detected!</string>
     <string name="channel_name">Audiobook Player</string>
     <string name="scan_for_audiobooks">Scan for Audiobooks</string>
     <string name="search">Search</string>

@@ -6,5 +6,9 @@
         android:title="@string/search"
         app:actionViewClass="android.widget.SearchView"
         app:showAsAction="ifRoom" />
-    <item android:title="@string/scan_for_audiobooks" android:onClick="chooseDirectory"/>
+    <item
+        android:icon="@drawable/ic_baseline_sync_24"
+        android:onClick="chooseDirectory"
+        android:title="@string/scan_for_audiobooks"
+        app:showAsAction="always" />
 </menu>
