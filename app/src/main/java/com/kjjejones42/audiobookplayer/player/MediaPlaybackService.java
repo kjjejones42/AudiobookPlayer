@@ -233,7 +233,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         mediaPlayer.setAudioAttributes(getAudioAttributes());
         try {
             mediaPlayer.setOnCompletionListener(onCompletionListener);
-            mediaPlayer.setDataSource(mediaItem.filePath);
+            mediaPlayer.setDataSource(this, Uri.parse(mediaItem.filePath));
             mediaPlayer.prepare();
             isMediaPlayerPrepared = true;
             mediaSession.setMetadata(trackToMetaData(mediaItem));

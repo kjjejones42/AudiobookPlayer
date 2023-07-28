@@ -14,6 +14,7 @@ import java.io.Serializable;
 
 public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem> {
     public final String filePath;
+    public final String uri;
     private final String displayName;
 
     long getDuration() {
@@ -49,14 +50,16 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
         return result;
     }
 
-    public MediaItem(String documentUri, String displayName, long duration) {
+    public MediaItem(String documentUri, String uri, String displayName, long duration) {
         this.filePath = documentUri;
+        this.uri = uri;
         this.displayName = displayName;
         this.duration = duration;
     }
 
     private MediaItem(Parcel in) {
         filePath = in.readString();
+        uri = in.readString();
         displayName = in.readString();
     }
 
@@ -90,11 +93,12 @@ public class MediaItem implements Parcelable, Serializable, Comparable<MediaItem
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(filePath);
+        dest.writeString(uri);
         dest.writeString(displayName);
     }
 
     @Override
     public int compareTo(MediaItem o) {
-        return displayName.compareTo(o.displayName);
+        return filePath.compareTo(o.filePath);
     }
 }

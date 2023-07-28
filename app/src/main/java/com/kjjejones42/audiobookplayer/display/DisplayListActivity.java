@@ -1,5 +1,8 @@
 package com.kjjejones42.audiobookplayer.display;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -21,6 +24,7 @@ import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -44,9 +48,7 @@ public class DisplayListActivity extends AppCompatActivity {
     public static final String INTENT_START_PLAYBACK = "com.example.myfirstapp.start";
 
     private final String[] PERMISSIONS = new String[] {
-            Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_AUDIO,
             Manifest.permission.READ_MEDIA_AUDIO,
             Manifest.permission.POST_NOTIFICATIONS,
     };
@@ -66,21 +68,13 @@ public class DisplayListActivity extends AppCompatActivity {
         this.lastBookStarted = lastBookStarted;
     }
 
-    private boolean arePermissionsInvalid() {
-        for (String permission : PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_DENIED) {
-                return false;
-            }
-        }
-        return true;
-    }
+    private final ActivityResultLauncher<String[]> activityResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            x -> askUserForDirectory()
+    );
 
     public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
-        if (arePermissionsInvalid()) {
-            ActivityCompat.requestPermissions(this, PERMISSIONS, MY_PERMISSIONS_REQUEST_READ_STORAGE);
-        } else {
-            askUserForDirectory();
-        }
+        activityResultLauncher.launch(PERMISSIONS);
     }
 
     private void askUserForDirectory() {

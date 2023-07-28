@@ -1,3 +1,7 @@
 /build
+<<<<<<< HEAD
 release/
 .apk
+=======
+/release
+>>>>>>> 17e63d945963f4291fa60496a3851487449ee845

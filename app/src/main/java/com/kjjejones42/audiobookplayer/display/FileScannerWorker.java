@@ -1,9 +1,11 @@
 package com.kjjejones42.audiobookplayer.display;
 
 import android.annotation.SuppressLint;
+import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
 import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -102,10 +104,11 @@ public class FileScannerWorker extends Worker {
         Cursor cursor = getApplicationContext().getContentResolver().query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 new String[]{
-                    MediaStore.Audio.Media.DATA,
+                    MediaStore.Audio.Media._ID,
                     MediaStore.Audio.Media.RELATIVE_PATH,
                     MediaStore.Audio.Media.TITLE,
-                    MediaStore.Audio.Media.DURATION
+                    MediaStore.Audio.Media.DURATION,
+                    MediaStore.Audio.Media.DATA
                 },
                 MediaStore.Audio.Media.IS_AUDIOBOOK + " != 0",
                 null,
@@ -114,11 +117,13 @@ public class FileScannerWorker extends Worker {
         if (cursor != null) {
             Map<String, List<MediaItem>> dirs = new HashMap<>();
             while (cursor.moveToNext()) {
-                String file = cursor.getString(0);
+                long id = cursor.getLong(0);
                 String dir = cursor.getString(1);
                 String title = cursor.getString(2);
                 int duration = cursor.getInt(3);
-                MediaItem media = new MediaItem(file, title, duration);
+                String file = cursor.getString(4);
+                Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
+                MediaItem media = new MediaItem(file, uri.toString(), title, duration);
                 if (!dirs.containsKey(dir)) {
                     dirs.put(dir, new ArrayList<>());
                 }

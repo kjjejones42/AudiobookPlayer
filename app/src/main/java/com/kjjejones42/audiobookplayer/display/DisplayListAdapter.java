@@ -18,7 +18,7 @@ import com.kjjejones42.audiobookplayer.R;
 import com.kjjejones42.audiobookplayer.player.PlayActivity;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -105,7 +105,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 indexes.add(i);
             }
         }
-        Collections.sort(indexes, (o1, o2) -> o2 - o1);
+        indexes.sort((o1, o2) -> o2 - o1);
         if (remove) {
             for (int i : indexes) {
                 notifyItemRemoved(i);
@@ -137,7 +137,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     private List<ListItem> getItemsFromBooks(List<AudioBook> books) {
         List<ListItem> list = new ArrayList<>();
-        Collections.sort(books, (o1, o2) -> o1.displayName.compareTo(o2.displayName));
+        books.sort(Comparator.comparing(o -> o.displayName));
         for (AudioBook book : books) {
             list.add(new ListItem.AudioBookContainer(book));
         }
@@ -149,7 +149,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         for (Integer letter : letters) {
             list.add(new ListItem.Heading(letter));
         }
-        Collections.sort(list, (o1, o2) -> {
+        list.sort((o1, o2) -> {
             int i = o1.getCategory() - o2.getCategory();
             if (i == 0) {
                 int j = o1.getHeadingOrItem() - o2.getHeadingOrItem();

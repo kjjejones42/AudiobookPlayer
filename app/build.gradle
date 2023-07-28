@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId "com.kjjejones42.audiobookplayer"
-        minSdkVersion 29
+        minSdkVersion 33
         targetSdkVersion 33
         versionCode 1
         versionName "1.0"
