@@ -13,10 +13,10 @@ import androidx.work.WorkerParameters;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
+import com.kjjejones42.audiobookplayer.database.AudiobookDao;
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -25,8 +25,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public class FileScannerWorker extends Worker {
-
-    static final String LIST_OF_DIRS = "LIST_OF_DIRS";
 
     private static final String[] authorFields = new String[]{
             MediaStore.Audio.Media.ARTIST,
@@ -142,10 +140,8 @@ public class FileScannerWorker extends Worker {
     public Result doWork() {
         try {
             List<AudioBook> results = getList();
-            FileOutputStream fos = getApplicationContext().openFileOutput(LIST_OF_DIRS, Context.MODE_PRIVATE);
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-            oos.writeObject(results);
-            oos.close();
+            AudiobookDao dao = AudiobookDatabase.getInstance(getApplicationContext()).audiobookDao();
+            dao.insertAll(results);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.failure();

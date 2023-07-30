@@ -35,6 +35,8 @@ import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
 import com.kjjejones42.audiobookplayer.R;
 import com.kjjejones42.audiobookplayer.Utils;
+import com.kjjejones42.audiobookplayer.database.AudiobookDao;
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
 
 import java.util.Arrays;
@@ -70,15 +72,13 @@ public class PlayActivity extends AppCompatActivity {
     private SeekBar seekBar;
     private PlayerViewModel model;
     private ImageView imView;
-    //    private ConstraintLayout buttonContainer;
+    private final AudiobookDao audiobookDao = AudiobookDatabase.getInstance(this).audiobookDao();
 
     private final SeekBar.OnSeekBarChangeListener onSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-            if (fromUser) {
-                if (controller != null) {
-                    controller.getTransportControls().seekTo(progress);
-                }
+            if (fromUser && controller != null) {
+                controller.getTransportControls().seekTo(progress);
             }
         }
 
@@ -119,7 +119,7 @@ public class PlayActivity extends AppCompatActivity {
                 mediaBrowser.disconnect();
                 if (audioBook != null) {
                     audioBook.setStatus(AudioBook.STATUS_FINISHED);
-                    audioBook.saveConfig(PlayActivity.this);
+                    audiobookDao.updateStatus(audioBook.displayName, AudioBook.STATUS_FINISHED);
                 }
                 onBackPressed();
             }
@@ -128,55 +128,43 @@ public class PlayActivity extends AppCompatActivity {
         @SuppressLint("SwitchIntDef")
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
-            if (state != null) {
-                switch (state.getState()) {
-                    case PlaybackStateCompat.STATE_STOPPED:
-                    case PlaybackStateCompat.STATE_NONE:
-                        break;
-                    case PlaybackStateCompat.STATE_ERROR:
-                        Toast.makeText(PlayActivity.this, "Playback Error", Toast.LENGTH_SHORT).show();
-                        break;
-                    default:
-//                    setControlsEnabled(true);
-                        model.setPosition(state.getPosition());
-                        boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-                        Boolean b = model.getIsPlaying().getValue();
-                        if (b != null && isPlaying != b) {
-                            model.setIsPlaying(isPlaying);
-                        }
+            if (state == null) return;
+            switch (state.getState()) {
+                case PlaybackStateCompat.STATE_STOPPED:
+                case PlaybackStateCompat.STATE_NONE:
+                    break;
+                case PlaybackStateCompat.STATE_ERROR:
+                    Toast.makeText(PlayActivity.this, "Playback Error", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    model.setPosition(state.getPosition());
+                    boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
+                    Boolean b = model.getIsPlaying().getValue();
+                    if (b != null && isPlaying != b) {
+                        model.setIsPlaying(isPlaying);
                 }
             }
         }
     };
 
     private final MediaBrowserCompat.ConnectionCallback connectionCallbacks = new MediaBrowserCompat.ConnectionCallback() {
-                @Override
-                public void onConnected() {
-                    PlayActivity.this.onConnected();
-                }
-
-                @Override
-                public void onConnectionSuspended() {
-//                    setControlsEnabled(false);
-                }
-
-                @Override
-                public void onConnectionFailed() {
-//                    setControlsEnabled(false);
-                }
-            };
+            @Override
+            public void onConnected() {
+                PlayActivity.this.onConnected();
+            }
+    };
 
     private void initialiseMediaSession(int trackNo) {
-        if (controller != null) {
-            try {
-                Intent intent = new Intent(this, MediaPlaybackService.class);
-                intent.putExtra(INTENT_AUDIOBOOK, model.getAudioBook().getValue());
-                intent.putExtra(INTENT_INDEX, trackNo);
-                startService(intent);
-            } catch (Exception e) {
-                Utils.logError(e, this);
-                e.printStackTrace();
-            }
+        AudioBook book = model.getAudioBook().getValue();
+        if (controller == null || book == null) return;
+        try {
+            Intent intent = new Intent(this, MediaPlaybackService.class);
+            intent.putExtra(INTENT_AUDIOBOOK, book.displayName);
+            intent.putExtra(INTENT_INDEX, trackNo);
+            startService(intent);
+        } catch (Exception e) {
+            Utils.logError(e, this);
+            e.printStackTrace();
         }
     }
 
@@ -213,7 +201,9 @@ public class PlayActivity extends AppCompatActivity {
     }
 
     private void setMetaData(MediaMetadataCompat metadata) {
+
         long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+
         if (duration != 0) {
             setDuration(duration);
             setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
@@ -332,7 +322,8 @@ public class PlayActivity extends AppCompatActivity {
 
         if ((intent = getIntent()) != null) {
             shouldStart = shouldStart && intent.getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
-            AudioBook newBook = intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE, AudioBook.class);
+            String newBookId = intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE, String.class);
+            AudioBook newBook = audiobookDao.findByName(newBookId);
             if (newBook != null) {
                 model.setAudioBook(newBook);
             }
@@ -341,7 +332,7 @@ public class PlayActivity extends AppCompatActivity {
 
         AudioBook audioBook = model.getAudioBook().getValue();
         if (audioBook != null) {
-            audioBook.loadFromFile(this);
+            model.updateBook(this);
             setColorFromAlbumArt(audioBook);
             ActionBar bar = getSupportActionBar();
             if (bar != null) {
@@ -396,10 +387,7 @@ public class PlayActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        AudioBook book = model.getAudioBook().getValue();
-        if (book != null) {
-            book.loadFromFile(this);
-        }
+        model.updateBook(this);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
