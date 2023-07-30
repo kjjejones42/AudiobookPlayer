@@ -2,13 +2,13 @@ package com.kjjejones42.audiobookplayer;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.media.ThumbnailUtils;
-import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -89,12 +89,12 @@ public class AudioBook implements Serializable {
 
     private static int getThumbnailSize(Activity activity) {
         if (thumbnailSize == 0) {
-            TypedValue value = new TypedValue();
-            activity.getTheme().resolveAttribute(android.R.attr.listPreferredItemHeight, value, true);
-            android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
-            activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            float ret = value.getDimension(metrics);
-            thumbnailSize = (int) Math.round(Math.ceil(ret));
+             try (TypedArray value = activity.getTheme().obtainStyledAttributes(
+                    new int[]{ android.R.attr.listPreferredItemHeight }
+            )) {
+                 float height = value.getDimension(0, .0F);
+                 thumbnailSize = (int) Math.round(Math.ceil(height));
+             }
         }
         return thumbnailSize;
     }
@@ -124,6 +124,7 @@ public class AudioBook implements Serializable {
     }
 
     public Bitmap getThumbnail(Activity activity) {
+        getThumbnailSize(activity);
         if (thumbnail == null) {
             loadThumbnail(activity);
             if (thumbnail == null) {

@@ -332,7 +332,7 @@ public class PlayActivity extends AppCompatActivity {
 
         if ((intent = getIntent()) != null) {
             shouldStart = shouldStart && intent.getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
-            AudioBook newBook = (AudioBook) intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE);
+            AudioBook newBook = intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE, AudioBook.class);
             if (newBook != null) {
                 model.setAudioBook(newBook);
             }

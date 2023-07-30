@@ -276,18 +276,21 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     }
 
     private MediaMetadataCompat trackToMetaData(MediaItem item) {
-        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-        mmr.setDataSource(this, Uri.parse(item.filePath));
-        String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-        assert durationStr != null;
-        long duration = Long.parseLong(durationStr);
-        return metadataBuilder
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt())
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-                .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, mAudiobook.files.indexOf(item))
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mAudiobook.getUniqueId())
-                .build();
+        try (MediaMetadataRetriever mmr = new MediaMetadataRetriever()) {
+            mmr.setDataSource(this, Uri.parse(item.filePath));
+                String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                assert durationStr != null;
+                long duration = Long.parseLong(durationStr);
+                return metadataBuilder
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
+                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt())
+                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+                    .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, mAudiobook.files.indexOf(item))
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mAudiobook.getUniqueId())
+                    .build();
+        } catch (IOException ignored) {
+            return null;
+        }
     }
 
     private void saveAudiobookProgress() {
@@ -310,7 +313,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 }
 
                 saveAudiobookProgress();
-                mAudiobook = (AudioBook) intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK);
+                mAudiobook = intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK, AudioBook.class);
                 assert mAudiobook != null;
                 mAudiobook.loadFromFile(this);
 
@@ -405,7 +408,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             saveAudiobookProgress();
             mediaSession.sendSessionEvent(action, extras);
             if (EVENT_REACHED_END.equals(action)) {
-                MediaPlaybackService.this.stopForeground(true);
+                MediaPlaybackService.this.stopForeground(STOP_FOREGROUND_REMOVE);
                 onStop();
             }
         }
@@ -465,7 +468,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         mediaPlayer.pause();
                         updateNotification();
                         ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(2, notification);
-                        stopForeground(false);
+                        stopForeground(STOP_FOREGROUND_DETACH);
                     }
                 } catch (IllegalStateException e) {
                     Utils.logError(e, getApplicationContext());
@@ -487,7 +490,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         .setState(PlaybackStateCompat.STATE_STOPPED, 0, 1)
                         .build();
                 setPlaybackState(newState);
-                stopForeground(false);
+                stopForeground(STOP_FOREGROUND_REMOVE);
                 stopSelf(intentId);
             }
         }

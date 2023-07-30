@@ -7,7 +7,6 @@ import android.database.Cursor;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.provider.MediaStore;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.work.Worker;
@@ -148,7 +147,6 @@ public class FileScannerWorker extends Worker {
             oos.writeObject(results);
             oos.close();
         } catch (Exception e) {
-            Log.e("ASD", e.toString());
             e.printStackTrace();
             return Result.failure();
         }
