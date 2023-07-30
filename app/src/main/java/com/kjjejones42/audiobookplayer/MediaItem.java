@@ -17,7 +17,7 @@ import java.io.Serializable;
 
 public class MediaItem implements Serializable, Comparable<MediaItem> {
 
-    private final Uri uri;
+    private final String uri;
     private final String displayName;
     private final long duration;
     private transient MediaMetadataRetriever mmr;
@@ -26,7 +26,7 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
     private MediaMetadataRetriever getMMR(Context context) {
         try {
             if (mmr == null) {
-                AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(uri, "r");
+                AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(getUri(), "r");
                 if (assetFileDescriptor != null) {
                     FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
                     mmr = new MediaMetadataRetriever();
@@ -54,13 +54,13 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
     }
 
     public MediaItem(Uri documentUri, String displayName, long duration) {
-        this.uri = documentUri;
+        this.uri = documentUri.toString();
         this.displayName = displayName;
         this.duration = duration;
     }
 
     public Uri getUri() {
-        return uri;
+        return Uri.parse(uri);
     }
     long getDuration() {
         return duration;
