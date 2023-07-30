@@ -1,8 +1,6 @@
 package com.kjjejones42.audiobookplayer.player;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -13,24 +11,18 @@ import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 import androidx.media.MediaBrowserServiceCompat;
-import androidx.media.session.MediaButtonReceiver;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
-import com.kjjejones42.audiobookplayer.R;
 import com.kjjejones42.audiobookplayer.Utils;
 import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
 
@@ -45,13 +37,13 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     final public static String EVENT_REACHED_END = "REACHED_END";
     final private static String TAG = "ASD";
     private final MediaPlayer mediaPlayer = new MediaPlayer();
+
+    private PlayerNotificationManager notificationManager;
     private PlaybackStateCompat.Builder stateBuilder;
     private MediaMetadataCompat.Builder metadataBuilder;
-    private NotificationCompat.Builder notificationBuilder;
     private MediaSessionCompat mediaSession;
     private AudioFocusRequest audioFocusRequest;
     private AudioAttributes audioAttributes;
-    private Notification notification;
     private AudioBook mAudiobook;
     private Timer updateTask;
     private int positionInTrackList;
@@ -102,78 +94,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     .build();
         }
         return audioFocusRequest;
-    }
-
-    private void initializeNotification() {
-        String CHANNEL_ID = "com.example.myfirstapp";
-        Context context = getApplicationContext();
-        CharSequence name = getString(R.string.channel_name);
-        int importance = NotificationManager.IMPORTANCE_LOW;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-        channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        getSystemService(NotificationManager.class).createNotificationChannel(channel);
-        notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
-        notificationBuilder
-                .setContentIntent(mediaSession.getController().getSessionActivity())
-                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                        PlaybackStateCompat.ACTION_STOP))
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setSmallIcon(R.drawable.ic_logo)
-                .setShowWhen(false)
-                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-                        .setMediaSession(mediaSession.getSessionToken())
-                        .setShowActionsInCompactView(1, 2, 3)
-                        .setShowCancelButton(true)
-                        .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                PlaybackStateCompat.ACTION_STOP)))
-                .addAction(new NotificationCompat.Action(R.drawable.ic_skip_prev,
-                        "Prev", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
-                .addAction(new NotificationCompat.Action(R.drawable.ic_replay_30,
-                        "Rewind", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context, PlaybackStateCompat.ACTION_REWIND)))
-                .addAction(new NotificationCompat.Action(
-                        R.drawable.ic_play, "Play",
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                PlaybackStateCompat.ACTION_PLAY_PAUSE)))
-                .addAction(new NotificationCompat.Action(R.drawable.ic_forward_30,
-                        "Forward", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context, PlaybackStateCompat.ACTION_FAST_FORWARD)))
-                .addAction(new NotificationCompat.Action(R.drawable.ic_skip_next,
-                        "Next", MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)));
-
-    }
-
-    private void updateNotification() {
-
-        MediaControllerCompat controller = mediaSession.getController();
-
-        boolean playing = isPlaying();
-        int playPauseIcon = playing ? R.drawable.ic_pause : R.drawable.ic_play;
-        String playPauseText = playing ? "Pause" : "Play";
-
-        Context context = getApplicationContext();
-        if (notificationBuilder == null) {
-            initializeNotification();
-        }
-        MediaDescriptionCompat description = controller.getMetadata().getDescription();
-
-        notificationBuilder
-                .setContentText(description.getTitle())
-                .setLargeIcon(description.getIconBitmap())
-                .setOngoing(playing);
-
-        if (mAudiobook != null) {
-            notificationBuilder.setContentTitle(mAudiobook.displayName);
-        }
-
-        notification = notificationBuilder.build();
-        notification.actions[2] = new Notification.Action(
-                playPauseIcon, playPauseText,
-                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE));
-        startForeground(2, notification);
     }
 
     private AudioAttributes getAudioAttributes() {
@@ -233,7 +153,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         mediaPlayer.setAudioAttributes(getAudioAttributes());
         try {
             mediaPlayer.setOnCompletionListener(onCompletionListener);
-            mediaPlayer.setDataSource(this, Uri.parse(mediaItem.filePath));
+            mediaPlayer.setDataSource(this, mediaItem.getUri());
             mediaPlayer.prepare();
             isMediaPlayerPrepared = true;
             mediaSession.setMetadata(trackToMetaData(mediaItem));
@@ -241,7 +161,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             saveAudiobookProgress();
             mediaSession.getController().getTransportControls().play();
         } catch (IOException e) {
-            Utils.logError(e, mediaItem.filePath ,getApplicationContext());
+            Utils.logError(e, mediaItem.getUri().toString(), getApplicationContext());
             e.printStackTrace();
             onError();
         }
@@ -277,13 +197,13 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
     private MediaMetadataCompat trackToMetaData(MediaItem item) {
         try (MediaMetadataRetriever mmr = new MediaMetadataRetriever()) {
-            mmr.setDataSource(this, Uri.parse(item.filePath));
+            mmr.setDataSource(this, item.getUri());
                 String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 assert durationStr != null;
                 long duration = Long.parseLong(durationStr);
                 return metadataBuilder
                     .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt())
+                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mAudiobook.getAlbumArt(this))
                     .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                     .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, mAudiobook.files.indexOf(item))
                     .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mAudiobook.getUniqueId())
@@ -353,6 +273,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         super.onCreate();
         mediaSession = new MediaSessionCompat(getApplicationContext(), TAG);
 
+        notificationManager = new PlayerNotificationManager(mediaSession, this);
+
         stateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(
                         PlaybackStateCompat.ACTION_PLAY |
@@ -387,6 +309,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             unregisterReceiver(broadcastReceiver);
         } catch (Exception ignored) {
         }
+    }
+
+    private void updateNotification() {
+        Notification notification = notificationManager.updateNotification(isPlaying(), mAudiobook.displayName);
+        startForeground(2, notification);
     }
 
     @Nullable
@@ -467,8 +394,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                         setPlaybackState(newState);
                         mediaPlayer.pause();
                         updateNotification();
-                        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(2, notification);
-                        stopForeground(STOP_FOREGROUND_DETACH);
                     }
                 } catch (IllegalStateException e) {
                     Utils.logError(e, getApplicationContext());

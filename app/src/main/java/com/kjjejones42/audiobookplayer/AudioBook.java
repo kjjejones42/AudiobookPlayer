@@ -41,9 +41,13 @@ public class AudioBook implements Serializable {
     public final List<MediaItem> files;
     public final String displayName;
     public final String author;
-    private final String directoryPath;
     private final String imagePath;
-    public long lastSavedTimestamp;
+
+    public long getLastSavedTimestamp() {
+        return lastSavedTimestamp;
+    }
+
+    private long lastSavedTimestamp;
     private int positionInTrack;
     private int positionInTrackList;
     private int status;
@@ -52,14 +56,13 @@ public class AudioBook implements Serializable {
     private transient Bitmap art;
     private transient Palette albumArtPalette;
 
-    public AudioBook(String name, String directoryPath, String imagePath, List<MediaItem> files, String author) {
+    public AudioBook(String name, String imagePath, List<MediaItem> files, String author) {
         if (files != null) {
             Collections.sort(files);
         }
         this.imagePath = imagePath;
         this.displayName = name;
         this.files = files;
-        this.directoryPath = directoryPath;
         this.status = STATUS_NOT_BEGUN;
         this.author = author == null ? "" : author;
     }
@@ -80,9 +83,9 @@ public class AudioBook implements Serializable {
         }
     }
 
-    public Palette getAlbumArtPalette() {
+    public Palette getAlbumArtPalette(Context context) {
         if (albumArtPalette == null) {
-            generatePalette(getAlbumArt());
+            generatePalette(getAlbumArt(context));
         }
         return albumArtPalette;
     }
@@ -128,7 +131,7 @@ public class AudioBook implements Serializable {
         if (thumbnail == null) {
             loadThumbnail(activity);
             if (thumbnail == null) {
-                generateThumbnailFromAlbumArt(activity, getAlbumArt());
+                generateThumbnailFromAlbumArt(activity, getAlbumArt(activity));
             }
         }
         return thumbnail;
@@ -180,7 +183,7 @@ public class AudioBook implements Serializable {
             this.positionInTrack = book.positionInTrack;
             this.status = book.status;
             this.lastSavedTimestamp = book.lastSavedTimestamp;
-            getAlbumArt();
+            getAlbumArt(context);
         } catch (IOException | ClassNotFoundException ignored) {
         }
     }
@@ -203,7 +206,7 @@ public class AudioBook implements Serializable {
         this.status = status;
     }
 
-    public Bitmap getAlbumArt() {
+    public Bitmap getAlbumArt(Context context) {
         if (art != null) {
             return art;
         }
@@ -220,7 +223,7 @@ public class AudioBook implements Serializable {
         }
         if (result == null) {
             for (MediaItem file : files) {
-                result = file.getEmbeddedPicture();
+                result = file.getEmbeddedPicture(context);
                 if (result != null) {
                     break;
                 }
@@ -236,7 +239,7 @@ public class AudioBook implements Serializable {
 
     public String getUniqueId() {
         try {
-            return URLEncoder.encode(directoryPath, "UTF-8");
+            return URLEncoder.encode(displayName, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }

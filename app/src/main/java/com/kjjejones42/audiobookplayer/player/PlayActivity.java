@@ -248,9 +248,9 @@ public class PlayActivity extends AppCompatActivity {
 
     private void setColorFromAlbumArt(@NonNull AudioBook book) {
         try {
-            setImage(book.getAlbumArt());
+            setImage(book.getAlbumArt(this));
             if (!book.isArtGenerated()) {
-                Palette palette = book.getAlbumArtPalette();
+                Palette palette = book.getAlbumArtPalette(this);
                 boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
                 int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
                 PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);

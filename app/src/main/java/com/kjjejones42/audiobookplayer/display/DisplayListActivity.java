@@ -38,16 +38,14 @@ import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
 
-    private static final String INTENT_UPDATE_MODEL = "com.example.myfirstapp.UPDATE";
-    public static final String INTENT_PLAY_FILE = "com.example.myfirstapp.PLAY";
-    public static final String INTENT_START_PLAYBACK = "com.example.myfirstapp.start";
+    private static final String INTENT_UPDATE_MODEL = "com.kjjejones42.audiobookplayer.UPDATE";
+    public static final String INTENT_PLAY_FILE = "com.kjjejones42.audiobookplayer.PLAY";
+    public static final String INTENT_START_PLAYBACK = "com.kjjejones42.audiobookplayer.start";
 
     private final String[] PERMISSIONS = new String[] {
             Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_AUDIO,
-            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.READ_MEDIA_AUDIO
     };
-
 
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
     private DisplayListViewModel model;
@@ -176,8 +174,8 @@ public class DisplayListActivity extends AppCompatActivity {
             AudioBook mostRecent = null;
             long recent = Long.MIN_VALUE;
             for (AudioBook book : books) {
-                if (book.lastSavedTimestamp > recent) {
-                    recent = book.lastSavedTimestamp;
+                if (book.getLastSavedTimestamp() > recent) {
+                    recent = book.getLastSavedTimestamp();
                     mostRecent = book;
                 }
             }

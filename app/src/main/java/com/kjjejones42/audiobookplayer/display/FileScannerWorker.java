@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.provider.MediaStore;
 
@@ -19,7 +18,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -29,42 +27,48 @@ import java.util.Objects;
 public class FileScannerWorker extends Worker {
 
     static final String LIST_OF_DIRS = "LIST_OF_DIRS";
-    private static final List<Integer> authorKeys = Arrays.asList(
-            MediaMetadataRetriever.METADATA_KEY_ARTIST,
-            MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST,
-            MediaMetadataRetriever.METADATA_KEY_AUTHOR,
-            MediaMetadataRetriever.METADATA_KEY_COMPOSER,
-            MediaMetadataRetriever.METADATA_KEY_WRITER
-    );
+
+    private static final String[] authorFields = new String[]{
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM_ARTIST,
+            MediaStore.Audio.Media.AUTHOR,
+            MediaStore.Audio.Media.COMPOSER,
+            MediaStore.Audio.Media.WRITER
+    };
 
     public FileScannerWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
     }
 
-    private String getFileAuthor(String filename, MediaMetadataRetriever m) {
-        try {
-            if (filename != null && new File(filename).exists()) {
-                m.setDataSource(filename);
-                for (Integer i : authorKeys) {
-                    String author = m.extractMetadata(i);
-                    m.close();
-                    return author;
+    private String getFileAuthor(Uri filename) {
+        try (Cursor cursor = getApplicationContext().getContentResolver().query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                authorFields,
+                MediaStore.Audio.Media._ID + " = ?",
+                new String[]{ filename.getLastPathSegment() },
+                null
+        )){
+            if (cursor == null) return null;
+            while (cursor.moveToNext()) {
+                for (int i = 0; i < cursor.getColumnCount(); i++) {
+                    String result = cursor.getString(i);
+                    if (result != null && !result.isEmpty() && !result.equals("<unknown>")) {
+                        return result;
+                    }
                 }
             }
-
-        } catch (Exception ignored) {}
+        }
         return null;
     }
 
     private String findAuthor(Collection<MediaItem> mediaFiles) {
-        MediaMetadataRetriever m = new MediaMetadataRetriever();
         for (MediaItem item : mediaFiles) {
-            String author = getFileAuthor(item.filePath, m);
+            String author = getFileAuthor(item.getUri());
             if (author != null) {
                 return author;
             }
         }
-        return null;
+        return "";
     }
 
     @SuppressLint("Range")
@@ -87,12 +91,10 @@ public class FileScannerWorker extends Worker {
     }
 
     private AudioBook parseBook(String rel, List<MediaItem> mediaFiles) {
-        File directory = new File(mediaFiles.get(0).filePath).getParentFile();
-        assert directory != null;
-        String directoryPath = directory.getAbsolutePath();
+        String directory = new File(rel).getName();
         String imagePath = findImage(rel);
         String author = findAuthor(mediaFiles);
-        return new AudioBook(directory.getName(), directoryPath, imagePath, mediaFiles, author);
+        return new AudioBook(directory, imagePath, mediaFiles, author);
 
     }
 
@@ -107,7 +109,6 @@ public class FileScannerWorker extends Worker {
                     MediaStore.Audio.Media.RELATIVE_PATH,
                     MediaStore.Audio.Media.TITLE,
                     MediaStore.Audio.Media.DURATION,
-                    MediaStore.Audio.Media.DATA
                 },
                 MediaStore.Audio.Media.IS_AUDIOBOOK + " != 0",
                 null,
@@ -120,9 +121,8 @@ public class FileScannerWorker extends Worker {
                 String dir = cursor.getString(1);
                 String title = cursor.getString(2);
                 int duration = cursor.getInt(3);
-                String file = cursor.getString(4);
                 Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
-                MediaItem media = new MediaItem(file, uri.toString(), title, duration);
+                MediaItem media = new MediaItem(uri, title, duration);
                 if (!dirs.containsKey(dir)) {
                     dirs.put(dir, new ArrayList<>());
                 }

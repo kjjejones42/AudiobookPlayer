@@ -1,33 +1,37 @@
 package com.kjjejones42.audiobookplayer;
 
+import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
+import android.net.Uri;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileDescriptor;
 import java.io.Serializable;
 
 public class MediaItem implements Serializable, Comparable<MediaItem> {
-    public final String filePath;
-    public final String uri;
+
+    private final Uri uri;
     private final String displayName;
-
-    long getDuration() {
-        return duration;
-    }
-
     private final long duration;
     private transient MediaMetadataRetriever mmr;
 
     @Nullable
-    private MediaMetadataRetriever getMMR() {
+    private MediaMetadataRetriever getMMR(Context context) {
         try {
             if (mmr == null) {
-                mmr = new MediaMetadataRetriever();
-                mmr.setDataSource(filePath);
+                AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(uri, "r");
+                if (assetFileDescriptor != null) {
+                    FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
+                    mmr = new MediaMetadataRetriever();
+                    mmr.setDataSource(fileDescriptor);
+                }
             }
             return mmr;
         } catch (Exception e) {
@@ -35,24 +39,31 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
         }
     }
 
-    Bitmap getEmbeddedPicture() {
+    public Bitmap getEmbeddedPicture(Context context) {
         Bitmap result = null;
         try {
-            mmr = getMMR();
+            mmr = getMMR(context);
             if (mmr != null) {
                 ByteArrayInputStream bis = new ByteArrayInputStream(mmr.getEmbeddedPicture());
                 result = BitmapFactory.decodeStream(bis);
                 bis.close();
+                mmr.close();
             }
         } catch (Exception ignored) {}
         return result;
     }
 
-    public MediaItem(String documentUri, String uri, String displayName, long duration) {
-        this.filePath = documentUri;
-        this.uri = uri;
+    public MediaItem(Uri documentUri, String displayName, long duration) {
+        this.uri = documentUri;
         this.displayName = displayName;
         this.duration = duration;
+    }
+
+    public Uri getUri() {
+        return uri;
+    }
+    long getDuration() {
+        return duration;
     }
 
     @NonNull
@@ -66,6 +77,6 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
     }
     @Override
     public int compareTo(MediaItem o) {
-        return filePath.compareTo(o.filePath);
+        return uri.compareTo(o.uri);
     }
 }

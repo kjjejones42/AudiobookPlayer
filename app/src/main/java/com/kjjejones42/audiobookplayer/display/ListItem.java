@@ -73,7 +73,7 @@ abstract class ListItem {
 
         @Override
         public long getTimeStamp() {
-            return book.lastSavedTimestamp;
+            return book.getLastSavedTimestamp();
         }
 
         @NonNull
