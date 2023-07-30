@@ -13,50 +13,58 @@ import android.media.ThumbnailUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.palette.graphics.Palette;
+import androidx.room.ColumnInfo;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
-public class AudioBook implements Serializable {
+@Entity
+public class AudioBook {
     public static final int STATUS_IN_PROGRESS = 0;
     public static final int STATUS_NOT_BEGUN = 1;
     public static final int STATUS_FINISHED = 2;
     private static final long serialVersionUID = 0L;
     private static HashMap<Integer, String> map;
     private static int thumbnailSize;
-    public final List<MediaItem> files;
-    public final String displayName;
-    public final String author;
-    private final String imagePath;
+    @PrimaryKey
+    @NonNull
+    public String displayName;
 
-    public long getLastSavedTimestamp() {
-        return lastSavedTimestamp;
-    }
+    @ColumnInfo
+    public List<MediaItem> files;
 
+    @ColumnInfo
+    public String author;
+
+    @ColumnInfo
+    private String imagePath;
+    @ColumnInfo
     private long lastSavedTimestamp;
+    @ColumnInfo
     private int positionInTrack;
+    @ColumnInfo
     private int positionInTrackList;
+    @ColumnInfo
     private int status;
     private transient boolean generatedArt;
     private transient Bitmap thumbnail;
     private transient Bitmap art;
     private transient Palette albumArtPalette;
+    public AudioBook() {
+        displayName = "";
 
-    public AudioBook(String name, String imagePath, List<MediaItem> files, String author) {
+    }
+
+    public AudioBook(@NonNull String name, String imagePath, List<MediaItem> files, String author) {
         if (files != null) {
             Collections.sort(files);
         }
@@ -77,19 +85,6 @@ public class AudioBook implements Serializable {
         return map;
     }
 
-    private void generatePalette(Bitmap bitmap) {
-        if (bitmap != null) {
-            albumArtPalette = Palette.from(bitmap).generate();
-        }
-    }
-
-    public Palette getAlbumArtPalette(Context context) {
-        if (albumArtPalette == null) {
-            generatePalette(getAlbumArt(context));
-        }
-        return albumArtPalette;
-    }
-
     private static int getThumbnailSize(Activity activity) {
         if (thumbnailSize == 0) {
              try (TypedArray value = activity.getTheme().obtainStyledAttributes(
@@ -100,6 +95,58 @@ public class AudioBook implements Serializable {
              }
         }
         return thumbnailSize;
+    }
+
+    public long getLastSavedTimestamp() {
+        return lastSavedTimestamp;
+    }
+
+    public void setLastSavedTimestamp(long lastSavedTimestamp) {
+        this.lastSavedTimestamp = lastSavedTimestamp;
+    }
+
+    public Palette getAlbumArtPalette(Context context) {
+        if (albumArtPalette == null) {
+            generatePalette(getAlbumArt(context));
+        }
+        return albumArtPalette;
+    }
+
+    private void generatePalette(Bitmap bitmap) {
+        if (bitmap != null) {
+            albumArtPalette = Palette.from(bitmap).generate();
+        }
+    }
+
+    public Bitmap getAlbumArt(Context context) {
+        if (art != null) {
+            return art;
+        }
+        Bitmap result = null;
+        try {
+            if (imagePath != null) {
+                FileInputStream fis = new FileInputStream(imagePath);
+                result = BitmapFactory.decodeStream(fis);
+                fis.close();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (Exception ignored) {
+        }
+        if (result == null) {
+            for (MediaItem file : files) {
+                result = file.getEmbeddedPicture(context);
+                if (result != null) {
+                    break;
+                }
+            }
+        }
+        if (result == null) {
+            result = getGeneratedAlbumArt(displayName.substring(0, 1));
+        }
+        art = result;
+        generatePalette(art);
+        return art;
     }
 
     private Bitmap getGeneratedAlbumArt(String text) {
@@ -172,22 +219,6 @@ public class AudioBook implements Serializable {
         }
     }
 
-
-    public void loadFromFile(Context context) {
-        try {
-            InputStream fis = context.openFileInput(getUniqueId());
-            ObjectInputStream ois = new ObjectInputStream(fis);
-            AudioBook book = (AudioBook) ois.readObject();
-            ois.close();
-            this.positionInTrackList = book.positionInTrackList;
-            this.positionInTrack = book.positionInTrack;
-            this.status = book.status;
-            this.lastSavedTimestamp = book.lastSavedTimestamp;
-            getAlbumArt(context);
-        } catch (IOException | ClassNotFoundException ignored) {
-        }
-    }
-
     public int getStatus() {
         return status;
     }
@@ -206,54 +237,6 @@ public class AudioBook implements Serializable {
         this.status = status;
     }
 
-    public Bitmap getAlbumArt(Context context) {
-        if (art != null) {
-            return art;
-        }
-        Bitmap result = null;
-        try {
-            if (imagePath != null) {
-                FileInputStream fis = new FileInputStream(imagePath);
-                result = BitmapFactory.decodeStream(fis);
-                fis.close();
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (Exception ignored) {
-        }
-        if (result == null) {
-            for (MediaItem file : files) {
-                result = file.getEmbeddedPicture(context);
-                if (result != null) {
-                    break;
-                }
-            }
-        }
-        if (result == null) {
-            result = getGeneratedAlbumArt(displayName.substring(0, 1));
-        }
-        art = result;
-        generatePalette(art);
-        return art;
-    }
-
-    public String getUniqueId() {
-        try {
-            return URLEncoder.encode(displayName, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    public int getPositionInTrackList() {
-        return positionInTrackList;
-    }
-
-    public void setPositionInTrackList(int positionInTrackList) {
-        this.positionInTrackList = positionInTrackList;
-    }
-
     public int getPositionInTrack() {
         return positionInTrack;
     }
@@ -266,31 +249,20 @@ public class AudioBook implements Serializable {
         return files.get(getPositionInTrackList()).getDuration();
     }
 
+    public int getPositionInTrackList() {
+        return positionInTrackList;
+    }
+
+    public void setPositionInTrackList(int positionInTrackList) {
+        this.positionInTrackList = positionInTrackList;
+    }
+
     public long getTotalDuration() {
         long total = 0;
         for (MediaItem item : files) {
             total += item.getDuration();
         }
         return total;
-    }
-
-    public void saveConfig(Context context, boolean updateTime) {
-        try {
-            OutputStream fos = context.openFileOutput(getUniqueId(), Context.MODE_PRIVATE);
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-            if (updateTime) {
-                lastSavedTimestamp = new Date().getTime() / 1000L;
-            }
-            oos.writeObject(this);
-            oos.close();
-        } catch (IOException e) {
-            Utils.logError(e, context);
-            e.printStackTrace();
-        }
-    }
-
-    public void saveConfig(Context context) {
-        saveConfig(context, true);
     }
 
     @Override
@@ -301,9 +273,82 @@ public class AudioBook implements Serializable {
         return super.equals(obj);
     }
 
+    public String getUniqueId() {
+        try {
+            return URLEncoder.encode(displayName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @NonNull
     @Override
     public String toString() {
         return displayName + " " + author;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
+    }
+
+    public boolean isGeneratedArt() {
+        return generatedArt;
+    }
+
+    public void setGeneratedArt(boolean generatedArt) {
+        this.generatedArt = generatedArt;
+    }
+
+    public Bitmap getThumbnail() {
+        return thumbnail;
+    }
+
+    public void setThumbnail(Bitmap thumbnail) {
+        this.thumbnail = thumbnail;
+    }
+
+    public Bitmap getArt() {
+        return art;
+    }
+
+    public void setArt(Bitmap art) {
+        this.art = art;
+    }
+
+    public Palette getAlbumArtPalette() {
+        return albumArtPalette;
+    }
+
+    public void setAlbumArtPalette(Palette albumArtPalette) {
+        this.albumArtPalette = albumArtPalette;
+    }
+
+    @NonNull
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(@NonNull String displayName) {
+        this.displayName = displayName;
+    }
+
+    public List<MediaItem> getFiles() {
+        return files;
+    }
+
+    public void setFiles(List<MediaItem> files) {
+        this.files = files;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
     }
 }

@@ -6,17 +6,17 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileDescriptor;
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.Objects;
 
 public class MediaItem implements Serializable, Comparable<MediaItem> {
-
     private final String uri;
     private final String displayName;
     private final long duration;
@@ -24,19 +24,18 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
 
     @Nullable
     private MediaMetadataRetriever getMMR(Context context) {
-        try {
-            if (mmr == null) {
-                AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(getUri(), "r");
+        if (mmr == null) {
+            try (AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(getUri(), "r")) {
                 if (assetFileDescriptor != null) {
                     FileDescriptor fileDescriptor = assetFileDescriptor.getFileDescriptor();
                     mmr = new MediaMetadataRetriever();
                     mmr.setDataSource(fileDescriptor);
                 }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-            return mmr;
-        } catch (Exception e) {
-            return null;
         }
+        return mmr;
     }
 
     public Bitmap getEmbeddedPicture(Context context) {
@@ -53,6 +52,7 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
         return result;
     }
 
+
     public MediaItem(Uri documentUri, String displayName, long duration) {
         this.uri = documentUri.toString();
         this.displayName = displayName;
@@ -62,9 +62,12 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
     public Uri getUri() {
         return Uri.parse(uri);
     }
+
+
     long getDuration() {
         return duration;
     }
+
 
     @NonNull
     @Override
@@ -75,6 +78,19 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
         }
         return displayName.substring(0, index);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        return uri.equals(((MediaItem) o).uri);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(uri, displayName, duration, mmr);
+    }
+
     @Override
     public int compareTo(MediaItem o) {
         return uri.compareTo(o.uri);

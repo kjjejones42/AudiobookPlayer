@@ -1,5 +1,6 @@
 package com.kjjejones42.audiobookplayer.player;
 
+import android.content.Context;
 import android.support.v4.media.MediaMetadataCompat;
 
 import androidx.annotation.NonNull;
@@ -8,6 +9,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 
 public class PlayerViewModel extends ViewModel {
 
@@ -86,6 +88,15 @@ public class PlayerViewModel extends ViewModel {
             if (position > 0) {
                 this.position.setValue(position);
             }
+        }
+    }
+
+    public void updateBook(Context context) {
+        AudioBook book = audioBook.getValue();
+        if (book != null) {
+            String bookId = audioBook.getValue().displayName;
+            book = AudiobookDatabase.getInstance(context).audiobookDao().findByName(bookId);
+            audioBook.setValue(book);
         }
     }
 

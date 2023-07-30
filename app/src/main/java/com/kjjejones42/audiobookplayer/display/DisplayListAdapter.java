@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.R;
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 import com.kjjejones42.audiobookplayer.player.PlayActivity;
 
 import java.util.ArrayList;
@@ -50,8 +51,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         AudioBook book = ((ListItem.AudioBookContainer) items.get(rcv.getChildLayoutPosition(v))).book;
         new AlertDialog.Builder(v.getContext())
                 .setSingleChoiceItems(statuses, book.getStatus(), (dialog, which) -> {
-                    book.setStatus(which);
-                    book.saveConfig(v.getContext(), false);
+                    AudiobookDatabase.getInstance(v.getContext()).audiobookDao().updateStatus(book.displayName, which);
                     recalculateListFromModel();
                     dialog.dismiss();
                 }).setTitle("Choose this book's status.")
@@ -62,9 +62,8 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
     private void startAudioBook(AudioBook book) {
         Intent intent = new Intent(activity, PlayActivity.class);
-        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book);
+        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book.displayName);
         intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
-        activity.setLastBookStarted(book);
         activity.startActivity(intent);
     }
 

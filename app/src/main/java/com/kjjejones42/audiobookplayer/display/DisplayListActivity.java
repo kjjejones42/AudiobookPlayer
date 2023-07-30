@@ -1,16 +1,5 @@
 package com.kjjejones42.audiobookplayer.display;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.content.res.AppCompatResources;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
@@ -27,12 +16,24 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.kjjejones42.audiobookplayer.R;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.kjjejones42.audiobookplayer.AudioBook;
+import com.kjjejones42.audiobookplayer.R;
 import com.kjjejones42.audiobookplayer.Utils;
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 import com.kjjejones42.audiobookplayer.player.MediaPlaybackService;
 import com.kjjejones42.audiobookplayer.player.PlayActivity;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.List;
 
@@ -53,13 +54,8 @@ public class DisplayListActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private TextView emptyView;
     private SearchView searchView;
-    private AudioBook lastBookStarted;
     private MediaControllerCompat controller;
     private MediaBrowserCompat browser;
-
-    public void setLastBookStarted(AudioBook lastBookStarted) {
-        this.lastBookStarted = lastBookStarted;
-    }
 
     private final ActivityResultLauncher<String[]> activityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(),
@@ -169,23 +165,12 @@ public class DisplayListActivity extends AppCompatActivity {
     }
 
     private void resumeMostRecentBook() {
-        List<AudioBook> books = model.getSavedBooks(this).getValue();
-        if (books != null) {
-            AudioBook mostRecent = null;
-            long recent = Long.MIN_VALUE;
-            for (AudioBook book : books) {
-                if (book.getLastSavedTimestamp() > recent) {
-                    recent = book.getLastSavedTimestamp();
-                    mostRecent = book;
-                }
-            }
-            if (mostRecent != null) {
-                Intent intent = new Intent(this, MediaPlaybackService.class);
-                intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent);
-                intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.getPositionInTrackList());
-                setLastBookStarted(mostRecent);
-                startService(intent);
-            }
+        AudioBook mostRecent = AudiobookDatabase.getInstance(this).audiobookDao().getMostRecentBook();
+        if (mostRecent != null && mostRecent.getLastSavedTimestamp() > 0) {
+            Intent intent = new Intent(this, MediaPlaybackService.class);
+            intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent.displayName);
+            intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.getPositionInTrackList());
+            startService(intent);
         }
     }
 
@@ -250,15 +235,7 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        List<AudioBook> books = model.getSavedBooks(this).getValue();
-        if (books != null) {
-            for (AudioBook book : books) {
-                if (book.equals(lastBookStarted)) {
-                    book.loadFromFile(this);
-                    break;
-                }
-            }
-        }
+        model.loadFromDisk(this);
         updateScreen();
     }
 
@@ -273,19 +250,11 @@ public class DisplayListActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        model.saveToDisk(this);
         if (browser != null) {
             browser.disconnect();
         }
     }
 
-    @Override
-    protected void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        if (model != null) {
-            model.saveToDisk(this);
-        }
-    }
 
 }
 
