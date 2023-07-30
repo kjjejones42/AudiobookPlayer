@@ -91,7 +91,7 @@ public class PlayerViewModel extends ViewModel {
         }
     }
 
-    public void updateBook(Context context) {
+    public void updateBookFromDatabase(Context context) {
         AudioBook book = audioBook.getValue();
         if (book != null) {
             String bookId = audioBook.getValue().displayName;

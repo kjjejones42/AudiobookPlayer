@@ -24,7 +24,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.ColorUtils;
@@ -168,29 +167,64 @@ public class PlayActivity extends AppCompatActivity {
         }
     }
 
-
     private void setImage(Bitmap bitmap) {
         if (bitmap != null) {
             imView.setImageBitmap(bitmap);
         }
 
     }
-    private void initializeModelObservers() {
-        model.getIsPlaying().observe(this, this::setIsPlaying);
-        model.getPosition().observe(this, this::setPosition);
-        model.getMetadata().observe(this, this::setMetaData);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_play);
+
+        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
+
+        prevButton = findViewById(R.id.prevButton);
+        rewindButton = findViewById(R.id.rewindButton);
+        toggleButton = findViewById(R.id.toggleButton);
+        forwardButton = findViewById(R.id.forwardButton);
+        nextButton = findViewById(R.id.nextButton);
+        progressText = findViewById(R.id.progress_text);
+        durationText = findViewById(R.id.duration_text);
+        seekBar = findViewById(R.id.seekBar);
+        spinner = findViewById(R.id.trackChooser);
+        imView = findViewById(R.id.albumArtView);
+
+        model = new ViewModelProvider(this).get(PlayerViewModel.class);
+        initializeModelObservers();
+
+        setControlsEnabled(false);
+        seekBar.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        if (getIntent() != null) {
+            onNewIntent(getIntent());
+        }
     }
 
-    private void setIsPlaying(Boolean isPlaying) {
+    private void initializeModelObservers() {
+        model.getIsPlaying().observe(this, this::onIsPlayingSet);
+        model.getPosition().observe(this, this::onPositionSet);
+        model.getMetadata().observe(this, this::onMetadataSet);
+        model.getAudioBook().observe(this, this::onAudioBookSet);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        boolean shouldStart = intent.getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
+        String newBookId = intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE, String.class);
+        AudioBook newBook = audiobookDao.findByName(newBookId);
+        model.setStartPlayback(shouldStart);
+        if (newBook != null) {
+            model.setAudioBook(newBook);
+        }
+    }
+
+    private void onIsPlayingSet(Boolean isPlaying) {
         int image = isPlaying ? R.drawable.ic_pause : R.drawable.ic_play;
         toggleButton.setImageResource(image);
-    }
-
-    private void setPosition(Long position) {
-        if (position > 0) {
-            seekBar.setProgress(position.intValue());
-            progressText.setText(msToMMSS(position));
-        }
     }
 
     private void setDuration(Long duration) {
@@ -200,18 +234,11 @@ public class PlayActivity extends AppCompatActivity {
         }
     }
 
-    private void setMetaData(MediaMetadataCompat metadata) {
-
-        long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
-
-        if (duration != 0) {
-            setDuration(duration);
-            setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
-            int position = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER);
-            spinner.setTag(position);
-            spinner.setSelection(position);
+    private void onPositionSet(Long position) {
+        if (position > 0) {
+            seekBar.setProgress(position.intValue());
+            progressText.setText(msToMMSS(position));
         }
-
     }
 
     private void updateButtonColor(int color) {
@@ -236,28 +263,16 @@ public class PlayActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(ColorUtils.blendARGB(color, Color.BLACK, 0.25f));
     }
 
-    private void setColorFromAlbumArt(@NonNull AudioBook book) {
-        try {
-            setImage(book.getAlbumArt(this));
-            if (!book.isArtGenerated()) {
-                Palette palette = book.getAlbumArtPalette(this);
-                boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-                int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
-                PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
-                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent, getTheme()));
-                updateButtonColor(color);
-                updateStatusBarColor(color);
-            } else {
-                TypedValue tv = new TypedValue();
-                getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
-                updateButtonColor(tv.data);
-                getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
-                updateStatusBarColor(tv.data);
-            }
-        } catch (Exception e) {
-            Utils.logError(e, this);
-            e.printStackTrace();
+    private void onMetadataSet(MediaMetadataCompat metadata) {
+        long duration = metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        if (duration != 0) {
+            setDuration(duration);
+            setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART));
+            int position = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER);
+            spinner.setTag(position);
+            spinner.setSelection(position);
         }
+
     }
 
     private void buildTransportControls() {
@@ -291,63 +306,52 @@ public class PlayActivity extends AppCompatActivity {
         forwardButton.setEnabled(on);
     }
 
+    private void onAudioBookSet(AudioBook book) {
+        if (book == null) return;
+        setColorFromAlbumArt(book);
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) {
+            bar.setTitle(book.displayName);
+        }
+        ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, book.files);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(onItemSelectedListener);
+        int position = book.getPositionInTrackList();
+        spinner.setTag(position);
+        spinner.setSelection(position);
+    }
+
+    private void setColorFromAlbumArt(AudioBook book) {
+        if (book == null) return;
+        try {
+            setImage(book.getAlbumArt(this));
+            if (!book.isArtGenerated()) {
+                Palette palette = book.getAlbumArtPalette(this);
+                boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+                int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
+                PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
+                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent, getTheme()));
+                updateButtonColor(color);
+                updateStatusBarColor(color);
+            } else {
+                TypedValue tv = new TypedValue();
+                getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
+                updateButtonColor(tv.data);
+                getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
+                updateStatusBarColor(tv.data);
+            }
+        } catch (Exception e) {
+            Utils.logError(e, this);
+            e.printStackTrace();
+        }
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        setContentView(R.layout.activity_play);
-
-        prevButton = findViewById(R.id.prevButton);
-        rewindButton = findViewById(R.id.rewindButton);
-        toggleButton = findViewById(R.id.toggleButton);
-        forwardButton = findViewById(R.id.forwardButton);
-        nextButton = findViewById(R.id.nextButton);
-        progressText = findViewById(R.id.progress_text);
-        durationText = findViewById(R.id.duration_text);
-        seekBar = findViewById(R.id.seekBar);
-        spinner = findViewById(R.id.trackChooser);
-        imView = findViewById(R.id.albumArtView);
-
-        model = new ViewModelProvider(this).get(PlayerViewModel.class);
-        mediaBrowser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
-
-        setControlsEnabled(false);
-        seekBar.setOnSeekBarChangeListener(onSeekBarChangeListener);
-
-        boolean shouldStart = savedInstanceState == null;
-
-        model.setStartPlayback(getIntent().getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false));
-        Intent intent;
-
-        if ((intent = getIntent()) != null) {
-            shouldStart = shouldStart && intent.getBooleanExtra(DisplayListActivity.INTENT_START_PLAYBACK, false);
-            String newBookId = intent.getSerializableExtra(DisplayListActivity.INTENT_PLAY_FILE, String.class);
-            AudioBook newBook = audiobookDao.findByName(newBookId);
-            if (newBook != null) {
-                model.setAudioBook(newBook);
-            }
-        }
-        model.setStartPlayback(shouldStart);
-
-        AudioBook audioBook = model.getAudioBook().getValue();
-        if (audioBook != null) {
-            model.updateBook(this);
-            setColorFromAlbumArt(audioBook);
-            ActionBar bar = getSupportActionBar();
-            if (bar != null) {
-                bar.setTitle(audioBook.displayName);
-            }
-            ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, audioBook.files);
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinner.setAdapter(adapter);
-            spinner.setOnItemSelectedListener(onItemSelectedListener);
-            int position = audioBook.getPositionInTrackList();
-            spinner.setTag(position);
-            spinner.setSelection(position);
-        }
-
-        initializeModelObservers();
+    protected void onResume() {
+        super.onResume();
+        model.updateBookFromDatabase(this);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
     @Override
@@ -356,7 +360,7 @@ public class PlayActivity extends AppCompatActivity {
         mediaBrowser.connect();
         AudioBook book = model.getAudioBook().getValue();
         if (book != null) {
-            setPosition((long) book.getPositionInTrack());
+            model.setPosition(book.getPositionInTrack());
             setDuration(model.getAudioBook().getValue().getDurationOfMostRecentTrack());
         }
     }
@@ -382,13 +386,7 @@ public class PlayActivity extends AppCompatActivity {
             model.setStartPlayback(false);
             controller.getTransportControls().play();
         }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        model.updateBook(this);
-        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        model.setMetadata(controller.getMetadata());
     }
 
     @Override

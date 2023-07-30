@@ -15,11 +15,16 @@ import com.kjjejones42.audiobookplayer.AudioBook;
 
     private static AudiobookDatabase instance;
 
-    static public AudiobookDatabase getInstance(Context context) {
-        if (instance == null) {
-            instance = Room.databaseBuilder(context, AudiobookDatabase.class, "audiobook_database")
-                    .allowMainThreadQueries()
-                    .build();
+    static public  AudiobookDatabase  getInstance(Context context) {
+        if (instance != null) {
+            return instance;
+        }
+        synchronized (AudiobookDatabase.class) {
+            if (instance == null) {
+                instance = Room.databaseBuilder(context, AudiobookDatabase.class, "audiobook_database")
+                        .allowMainThreadQueries()
+                        .build();
+            }
         }
         return instance;
     }

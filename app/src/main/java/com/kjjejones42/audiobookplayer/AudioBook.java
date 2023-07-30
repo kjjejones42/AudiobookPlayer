@@ -32,7 +32,6 @@ public class AudioBook {
     public static final int STATUS_IN_PROGRESS = 0;
     public static final int STATUS_NOT_BEGUN = 1;
     public static final int STATUS_FINISHED = 2;
-    private static final long serialVersionUID = 0L;
     private static HashMap<Integer, String> map;
     private static int thumbnailSize;
     @PrimaryKey
@@ -78,9 +77,9 @@ public class AudioBook {
     public static HashMap<Integer, String> getStatusMap() {
         if (map == null) {
             map = new HashMap<>();
-            map.put(AudioBook.STATUS_FINISHED, "Finished");
-            map.put(AudioBook.STATUS_IN_PROGRESS, "In Progress");
-            map.put(AudioBook.STATUS_NOT_BEGUN, "Not Begun");
+            map.put(STATUS_FINISHED, "Finished");
+            map.put(STATUS_IN_PROGRESS, "In Progress");
+            map.put(STATUS_NOT_BEGUN, "Not Begun");
         }
         return map;
     }
@@ -225,11 +224,11 @@ public class AudioBook {
 
     public void setStatus(int status) {
         switch (status) {
-            case AudioBook.STATUS_IN_PROGRESS:
+            case STATUS_IN_PROGRESS:
                 break;
-            case AudioBook.STATUS_NOT_BEGUN:
+            case STATUS_NOT_BEGUN:
                 lastSavedTimestamp = 0L;
-            case AudioBook.STATUS_FINISHED:
+            case STATUS_FINISHED:
                 setPositionInTrackList(0);
                 setPositionInTrack(0);
                 break;
@@ -293,38 +292,6 @@ public class AudioBook {
 
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
-    }
-
-    public boolean isGeneratedArt() {
-        return generatedArt;
-    }
-
-    public void setGeneratedArt(boolean generatedArt) {
-        this.generatedArt = generatedArt;
-    }
-
-    public Bitmap getThumbnail() {
-        return thumbnail;
-    }
-
-    public void setThumbnail(Bitmap thumbnail) {
-        this.thumbnail = thumbnail;
-    }
-
-    public Bitmap getArt() {
-        return art;
-    }
-
-    public void setArt(Bitmap art) {
-        this.art = art;
-    }
-
-    public Palette getAlbumArtPalette() {
-        return albumArtPalette;
-    }
-
-    public void setAlbumArtPalette(Palette albumArtPalette) {
-        this.albumArtPalette = albumArtPalette;
     }
 
     @NonNull

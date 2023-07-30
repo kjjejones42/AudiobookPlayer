@@ -3,7 +3,9 @@ package com.kjjejones42.audiobookplayer.player;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -13,6 +15,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import com.kjjejones42.audiobookplayer.R;
+import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
 
 public class PlayerNotificationManager {
     static final private String CHANNEL_ID = "com.kjjejones42.audiobookplayer";
@@ -27,17 +30,16 @@ public class PlayerNotificationManager {
         this.mediaSession = mediaSession;
         this.context = context;
         notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
-        initializeNotification();
+        initializeNotification(context);
     }
 
-    private void initializeNotification() {
+    private void initializeNotification(Context context) {
         CharSequence name = context.getString(R.string.channel_name);
         int importance = NotificationManager.IMPORTANCE_LOW;
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
         channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
         notificationBuilder
-                .setContentIntent(mediaSession.getController().getSessionActivity())
                 .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
                         PlaybackStateCompat.ACTION_STOP))
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -82,7 +84,12 @@ public class PlayerNotificationManager {
 
         MediaDescriptionCompat description = controller.getMetadata().getDescription();
 
+        Intent intent =  new Intent(context, PlayActivity.class);
+        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookName);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_MUTABLE);
+
         notificationBuilder
+                .setContentIntent(pendingIntent)
                 .setContentText(description.getTitle())
                 .setLargeIcon(description.getIconBitmap())
                 .setOngoing(playing)
