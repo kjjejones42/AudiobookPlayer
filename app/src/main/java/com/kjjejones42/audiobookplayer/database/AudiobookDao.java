@@ -3,6 +3,7 @@ package com.kjjejones42.audiobookplayer.database;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
+import androidx.room.Update;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
 
@@ -13,6 +14,9 @@ public interface AudiobookDao {
     @Query("SELECT * FROM AudioBook")
     List<AudioBook> getAll();
 
+    @Update
+    void update(AudioBook book);
+
     @Query("SELECT * FROM AudioBook WHERE displayName = :displayName LIMIT 1")
     AudioBook findByName(String displayName);
 
@@ -21,9 +25,6 @@ public interface AudiobookDao {
 
     @Query("UPDATE AudioBook SET positionInTrackList = :positionInTrackList WHERE displayName = :displayName")
     void updatePositionInTrackList(String displayName, int positionInTrackList);
-
-    @Query("UPDATE AudioBook SET status = :status WHERE displayName = :displayName")
-    void updateStatus(String displayName, int status);
 
     @Query("SELECT positionInTrack FROM AudioBook WHERE displayName = :displayName LIMIT 1")
     int getPositionInTrack(String displayName);

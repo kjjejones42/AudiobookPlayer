@@ -117,8 +117,9 @@ public class PlayActivity extends AppCompatActivity {
                 AudioBook audioBook = model.getAudioBook().getValue();
                 mediaBrowser.disconnect();
                 if (audioBook != null) {
+                    audioBook = audiobookDao.findByName(audioBook.displayName);
                     audioBook.setStatus(AudioBook.STATUS_FINISHED);
-                    audiobookDao.updateStatus(audioBook.displayName, AudioBook.STATUS_FINISHED);
+                    audiobookDao.update(audioBook);
                 }
                 onBackPressed();
             }

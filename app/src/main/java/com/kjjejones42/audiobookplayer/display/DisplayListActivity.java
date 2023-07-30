@@ -25,6 +25,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.Operation;
 import androidx.work.WorkManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -70,21 +71,19 @@ public class DisplayListActivity extends AppCompatActivity {
         final String message = "Loading. Please wait...";
         OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).build();
         final ProgressDialog dialog = ProgressDialog.show(this, "", message, true);
-        WorkManager.getInstance(this).enqueue(request);
-        WorkManager.getInstance(this).getWorkInfoByIdLiveData(request.getId())
-            .observe(this, workInfo -> {
-                if (workInfo != null && workInfo.getState().isFinished()) {
-                        try {
-                            Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
-                            intent.putExtra(INTENT_UPDATE_MODEL, true);
-                            dialog.cancel();
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            Utils.logError(e, this);
-                            e.printStackTrace();
-                        }
-                    }
-            });
+        WorkManager.getInstance(this).enqueue(request).getState().observe(this, workInfo -> {
+            if (!workInfo.getClass().equals(Operation.State.IN_PROGRESS.class)) {
+                try {
+                    Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
+                    intent.putExtra(INTENT_UPDATE_MODEL, true);
+                    dialog.cancel();
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Utils.logError(e, this);
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
     @Override
@@ -143,7 +142,6 @@ public class DisplayListActivity extends AppCompatActivity {
 
     @SuppressLint("Range")
     void updateScreen() {
-        mAdapter.recalculateListFromModel();
         List<AudioBook> list = model.getSavedBooks(this).getValue();
         if (list != null && list.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
@@ -159,7 +157,7 @@ public class DisplayListActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (intent.getBooleanExtra(INTENT_UPDATE_MODEL, false)) {
-            model.loadFromDisk(this);
+            model.loadFromDatabase(this);
         }
         updateScreen();
     }
@@ -182,13 +180,6 @@ public class DisplayListActivity extends AppCompatActivity {
             controller.getTransportControls().pause();
         }
     }
-
-    @Override
-    protected void onRestart() {
-        mAdapter.recalculateListFromModel();
-        super.onRestart();
-    }
-
 
     final MediaBrowserCompat.ConnectionCallback connectionCallbacks = new MediaBrowserCompat.ConnectionCallback(){
         @Override
@@ -228,14 +219,14 @@ public class DisplayListActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new DisplayListAdapter(model, recyclerView, this);
         recyclerView.setAdapter(mAdapter);
-        model.loadFromDisk(this);
+        model.loadFromDatabase(this);
         updateScreen();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        model.loadFromDisk(this);
+        model.loadFromDatabase(this);
         updateScreen();
     }
 
