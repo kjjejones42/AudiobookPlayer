@@ -21,7 +21,9 @@ import com.kjjejones42.audiobookplayer.player.PlayActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 
 public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
@@ -172,7 +174,8 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         switch (items.get(position).getHeadingOrItem()) {
             case ListItem.TYPE_ITEM:
                 AudioBook book = ((ListItem.AudioBookContainer) items.get(position)).book;
-                holder.textView.setText(book.displayName + " | " + PlayActivity.msToMMSS(book.getTotalDuration()));
+                holder.duration.setText(msToReadableDuration(book.getTotalDuration()));
+                holder.textView.setText(book.displayName);
                 holder.artist.setText(book.author);
                 holder.textView.setSelected(selectedPos == position);
                 new Thread(() -> {
@@ -191,6 +194,15 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         }
     }
 
+    private String msToReadableDuration(long ms) {
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
+        long hours = TimeUnit.MILLISECONDS.toHours(ms);
+        if (hours > 0) {
+            return String.format(Locale.getDefault(), "%dh %02dm", hours, minutes);
+        }
+        return String.format(Locale.getDefault(), "%02dm", minutes);
+    }
+
     @Override
     public int getItemCount() {
         return getItems().size();
@@ -200,6 +212,8 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         final TextView textView;
         final View v;
         TextView artist;
+
+        TextView duration;
         ImageView image;
 
         MyViewHolder(View v, boolean isItem) {
@@ -209,6 +223,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                 textView = v.findViewById(R.id.listItemText);
                 image = v.findViewById(R.id.listImageView);
                 artist = v.findViewById(R.id.artist);
+                duration = v.findViewById(R.id.listItemDuration);
                 image.setVisibility(View.INVISIBLE);
             } else {
                 textView = (TextView) v;

@@ -148,6 +148,8 @@ public class DisplayListActivity extends AppCompatActivity {
         AudiobookDatabase.getInstance(this).audiobookDao()
                 .getAllAndObserve().observe(this, model::setBooks);
         model.getSavedBooks().observe(this, this::updateScreen);
+
+        askUserForDirectory();
     }
 
     private void resumeMostRecentBook() {

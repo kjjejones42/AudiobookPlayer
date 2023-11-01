@@ -6,6 +6,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.util.ArraySet;
 
 import androidx.annotation.NonNull;
 import androidx.work.Worker;
@@ -23,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FileScannerWorker extends Worker {
 
@@ -92,8 +95,7 @@ public class FileScannerWorker extends Worker {
         String directory = new File(rel).getName();
         String imagePath = findImage(rel);
         String author = findAuthor(mediaFiles);
-        return new AudioBook(directory, imagePath, mediaFiles, author);
-
+        return new AudioBook(directory, rel, imagePath, mediaFiles, author);
     }
 
     @SuppressLint("Range")
@@ -140,7 +142,13 @@ public class FileScannerWorker extends Worker {
     public Result doWork() {
         try {
             List<AudioBook> results = getList();
+            Set<String> ids = results.stream().map(x -> x.baseDir).collect(Collectors.toSet());
             AudiobookDao dao = AudiobookDatabase.getInstance(getApplicationContext()).audiobookDao();
+            Set<String> dbIds = new ArraySet<>(dao.getAllBaseDirs());
+            dbIds.removeAll(ids);
+            for (String dbId : dbIds) {
+                dao.delete(dbId);
+            }
             dao.insertAll(results);
         } catch (Exception e) {
             e.printStackTrace();

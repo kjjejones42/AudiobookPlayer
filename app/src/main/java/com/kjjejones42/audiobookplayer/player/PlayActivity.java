@@ -48,7 +48,7 @@ public class PlayActivity extends AppCompatActivity {
     public final static String INTENT_AUDIOBOOK = "AUDIOBOOK";
     public final static String INTENT_INDEX = "INDEX";
 
-    public static String msToMMSS(long ms) {
+    private static String msToMMSS(long ms) {
         long seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60;
         long hours = TimeUnit.MILLISECONDS.toHours(ms);

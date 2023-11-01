@@ -39,6 +39,9 @@ public class AudioBook {
     public String displayName;
 
     @ColumnInfo
+    public String baseDir;
+
+    @ColumnInfo
     public List<MediaItem> files;
 
     @ColumnInfo
@@ -63,10 +66,11 @@ public class AudioBook {
 
     }
 
-    public AudioBook(@NonNull String name, String imagePath, List<MediaItem> files, String author) {
+    public AudioBook(@NonNull String name, String baseDir, String imagePath, List<MediaItem> files, String author) {
         if (files != null) {
             Collections.sort(files);
         }
+        this.baseDir = baseDir;
         this.imagePath = imagePath;
         this.displayName = name;
         this.files = files;

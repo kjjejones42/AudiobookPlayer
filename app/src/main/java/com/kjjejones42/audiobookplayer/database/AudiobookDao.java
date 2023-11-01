@@ -3,6 +3,7 @@ package com.kjjejones42.audiobookplayer.database;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Update;
 
@@ -12,8 +13,6 @@ import java.util.List;
 
 @Dao
 public interface AudiobookDao {
-    @Query("SELECT * FROM AudioBook")
-    List<AudioBook> getAll();
 
     @Query("SELECT * FROM AudioBook")
     LiveData<List<AudioBook>> getAllAndObserve();
@@ -42,6 +41,12 @@ public interface AudiobookDao {
     @Query("SELECT * FROM AudioBook ORDER BY lastSavedTimestamp DESC LIMIT 1")
     AudioBook getMostRecentBook();
 
-    @Insert
+    @Query("SELECT baseDir FROM AudioBook")
+    List<String> getAllBaseDirs();
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertAll(List<AudioBook> books);
+
+    @Query("DELETE FROM AudioBook WHERE baseDir = :baseDir")
+    void delete(String baseDir);
 }
