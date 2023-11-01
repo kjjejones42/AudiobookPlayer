@@ -27,13 +27,12 @@ import java.util.Objects;
 public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.MyViewHolder> {
 
     private DisplayListViewModel model;
-    @SuppressWarnings("CanBeFinal")
     private RecyclerView rcv;
-    private DisplayListActivity activity;
+    final private DisplayListActivity activity;
     private int selectedPos = RecyclerView.NO_POSITION;
     private final View.OnClickListener onClickListener = v -> {
         int position = rcv.getChildLayoutPosition(v);
-        List<ListItem> items = model.getListItems(activity).getValue();
+        List<ListItem> items = model.getListItems().getValue();
         assert items != null;
         if (items.get(position).getHeadingOrItem() == ListItem.TYPE_ITEM) {
             AudioBook book = ((ListItem.AudioBookContainer) items.get(position)).book;
@@ -44,7 +43,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
     };
     private List<ListItem> currentItems;
     private final View.OnLongClickListener onLongClickListener = v -> {
-        List<ListItem> items = model.getListItems(activity).getValue();
+        List<ListItem> items = model.getListItems().getValue();
         String[] statuses = AudioBook.getStatusMap().values().toArray(new String[0]);
         assert items != null;
         AudiobookDao dao = AudiobookDatabase.getInstance(v.getContext()).audiobookDao();
@@ -55,7 +54,6 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
                     AudioBook book = dao.findByName(bookId);
                     book.setStatus(which);
                     dao.update(book);
-                    model.loadFromDatabase(activity);
                     dialog.dismiss();
                 }).setTitle("Choose this book's status.")
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
@@ -63,19 +61,21 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         return false;
     };
 
-    private void startAudioBook(AudioBook book) {
-        Intent intent = new Intent(activity, PlayActivity.class);
-        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book.displayName);
-        intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
-        activity.startActivity(intent);
-    }
-
     DisplayListAdapter(@NonNull DisplayListViewModel model, @NonNull RecyclerView rcv, DisplayListActivity activity) {
         this.model = model;
         this.activity = activity;
         this.rcv = rcv;
-        model.getListItems(activity).observe(activity, this::selectivelyNotify);
+        model.getListItems().observe(activity, this::selectivelyNotify);
         setHasStableIds(true);
+    }
+
+    private void startAudioBook(AudioBook book) {
+//        AudiobookDatabase.getInstance(activity).audiobookDao()
+//                .getAllAndObserve().removeObservers(activity);
+        Intent intent = new Intent(activity, PlayActivity.class);
+        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book.displayName);
+        intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true);
+        activity.startActivity(intent);
     }
 
 
@@ -120,7 +120,7 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
         if (currentItems != null) {
             return currentItems;
         }
-        return Objects.requireNonNull(model.getListItems(activity).getValue());
+        return Objects.requireNonNull(model.getListItems().getValue());
     }
 
     @Override
@@ -135,17 +135,15 @@ public class DisplayListAdapter extends RecyclerView.Adapter<DisplayListAdapter.
 
 
     void filter(String filterTerm) {
-        List<AudioBook> books = model.getSavedBooks(activity).getValue();
-        if (books != null) {
-            if (filterTerm != null) {
-                List<AudioBook> filtered = new ArrayList<>();
-                for (AudioBook book : books) {
-                    if (book.toString().toUpperCase().contains(filterTerm.toUpperCase())) {
-                        filtered.add(book);
-                    }
+        List<AudioBook> books = model.getSavedBooks().getValue();
+        if (books != null && filterTerm != null) {
+            List<AudioBook> filtered = new ArrayList<>();
+            for (AudioBook book : books) {
+                if (book.toString().toUpperCase().contains(filterTerm.toUpperCase())) {
+                    filtered.add(book);
                 }
-                model.setFilteredListItems(filtered);
             }
+            model.setFilteredListItems(filtered);
         }
     }
 

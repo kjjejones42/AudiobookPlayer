@@ -1,20 +1,16 @@
 package com.kjjejones42.audiobookplayer.display;
 
-import android.content.Context;
-
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
-import com.kjjejones42.audiobookplayer.Utils;
-import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DisplayListViewModel extends ViewModel {
 
@@ -22,25 +18,12 @@ public class DisplayListViewModel extends ViewModel {
     private final MutableLiveData<List<ListItem>> listItems = new MutableLiveData<>(new ArrayList<>());
 
     public DisplayListViewModel() {
+        books.observeForever(this::recalculateList);
     }
 
     @NonNull
-    LiveData<List<AudioBook>> getSavedBooks(Context context) {
-        if (books.getValue() == null) {
-            loadFromDatabase(context);
-        }
+    LiveData<List<AudioBook>> getSavedBooks() {
         return books;
-    }
-
-    void loadFromDatabase(Context context) {
-        try {
-            books.observeForever(this::recalculateList);
-            books.setValue(AudiobookDatabase.getInstance(context).audiobookDao().getAll());
-            listItems.setValue(listItems.getValue());
-        } catch (Exception e) {
-            Utils.logError(e, context);
-            e.printStackTrace();
-        }
     }
 
     private void recalculateList(List<AudioBook> books) {
@@ -49,19 +32,15 @@ public class DisplayListViewModel extends ViewModel {
     }
 
     private List<ListItem> getItemsFromBooks(List<AudioBook> books) {
-        List<ListItem> list = new ArrayList<>();
-        books.sort(Comparator.comparing(o -> o.displayName));
-        for (AudioBook book : books) {
-            list.add(new ListItem.AudioBookContainer(book));
-        }
-        List<Integer> letters = new ArrayList<>();
-        for (ListItem item : list) {
-            letters.add(item.getCategory());
-        }
-        letters = new ArrayList<>(new HashSet<>(letters));
-        for (Integer letter : letters) {
-            list.add(new ListItem.Heading(letter));
-        }
+        List<ListItem> list = books.stream()
+                .sorted(Comparator.comparing(o -> o.displayName))
+                .map(ListItem.AudioBookContainer::new)
+                .collect(Collectors.toList());
+        list.addAll(list.stream()
+                .map(ListItem::getCategory)
+                .distinct()
+                .map(ListItem.Heading::new)
+                .collect(Collectors.toList()));
         list.sort((o1, o2) -> {
             int i = o1.getCategory() - o2.getCategory();
             if (i == 0) {
@@ -77,15 +56,16 @@ public class DisplayListViewModel extends ViewModel {
     }
 
     @NonNull
-    LiveData<List<ListItem>> getListItems(Context context) {
-        if (listItems.getValue() == null) {
-            loadFromDatabase(context);
-        }
+    LiveData<List<ListItem>> getListItems() {
         return listItems;
     }
 
     public void setFilteredListItems(List<AudioBook> items) {
         List<ListItem> filtered = getItemsFromBooks(items);
         listItems.setValue(filtered);
+    }
+
+    public void setBooks(List<AudioBook> bookList) {
+        books.setValue(bookList);
     }
 }

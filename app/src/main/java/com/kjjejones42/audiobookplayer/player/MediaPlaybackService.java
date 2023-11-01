@@ -23,6 +23,7 @@ import androidx.media.MediaBrowserServiceCompat;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
+import com.kjjejones42.audiobookplayer.R;
 import com.kjjejones42.audiobookplayer.Utils;
 import com.kjjejones42.audiobookplayer.database.AudiobookDao;
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
@@ -36,7 +37,9 @@ import java.util.TimerTask;
 
 public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
-    final public static String EVENT_REACHED_END = "REACHED_END";
+    final public static String EVENT_REACHED_END = "EVENT_REACHED_END";
+    final private static String EVENT_REWIND = "EVENT_REWIND";
+    final private static String EVENT_FAST_FORWARD = "EVENT_FAST_FORWARD";
     final private static String TAG = "ASD";
     private final MediaPlayer mediaPlayer = new MediaPlayer();
 
@@ -214,13 +217,14 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 assert durationStr != null;
                 long duration = Long.parseLong(durationStr);
                 AudioBook book = dao.findByName(bookId);
-                return metadataBuilder
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, item.toString())
+                metadataBuilder
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, item.toString())
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, book.displayName)
                     .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, book.getAlbumArt(this))
                     .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
                     .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, book.files.indexOf(item))
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, book.getUniqueId())
-                    .build();
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, book.getUniqueId());
+            return metadataBuilder.build();
         } catch (IOException ignored) {
             return null;
         }
@@ -267,13 +271,13 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         notificationManager = new PlayerNotificationManager(mediaSession, this);
 
         stateBuilder = new PlaybackStateCompat.Builder()
+                .addCustomAction(EVENT_REWIND, "Rewind", R.drawable.ic_replay_30)
+                .addCustomAction(EVENT_FAST_FORWARD, "Forward", R.drawable.ic_forward_30)
                 .setActions(
                         PlaybackStateCompat.ACTION_PLAY |
                                 PlaybackStateCompat.ACTION_PLAY_PAUSE |
                                 PlaybackStateCompat.ACTION_STOP |
                                 PlaybackStateCompat.ACTION_PAUSE |
-                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
-                                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
                                 PlaybackStateCompat.ACTION_FAST_FORWARD |
                                 PlaybackStateCompat.ACTION_REWIND |
                                 PlaybackStateCompat.ACTION_SEEK_TO
@@ -324,9 +328,19 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         public void onCustomAction(String action, Bundle extras) {
             super.onCustomAction(action, extras);
             mediaSession.sendSessionEvent(action, extras);
-            if (EVENT_REACHED_END.equals(action)) {
-                MediaPlaybackService.this.stopForeground(STOP_FOREGROUND_REMOVE);
-                onStop();
+            switch (action) {
+                case EVENT_REACHED_END: {
+                    onStop();
+                    break;
+                }
+                case EVENT_REWIND: {
+                    onRewind();
+                    break;
+                }
+                case EVENT_FAST_FORWARD: {
+                    onFastForward();
+                    break;
+                }
             }
         }
 

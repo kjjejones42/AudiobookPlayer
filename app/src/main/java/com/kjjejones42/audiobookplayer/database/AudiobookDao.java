@@ -1,5 +1,6 @@
 package com.kjjejones42.audiobookplayer.database;
 
+import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
@@ -13,6 +14,9 @@ import java.util.List;
 public interface AudiobookDao {
     @Query("SELECT * FROM AudioBook")
     List<AudioBook> getAll();
+
+    @Query("SELECT * FROM AudioBook")
+    LiveData<List<AudioBook>> getAllAndObserve();
 
     @Update
     void update(AudioBook book);

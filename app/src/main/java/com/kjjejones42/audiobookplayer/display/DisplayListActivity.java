@@ -31,7 +31,6 @@ import androidx.work.WorkManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.R;
-import com.kjjejones42.audiobookplayer.Utils;
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 import com.kjjejones42.audiobookplayer.player.MediaPlaybackService;
 import com.kjjejones42.audiobookplayer.player.PlayActivity;
@@ -39,8 +38,6 @@ import com.kjjejones42.audiobookplayer.player.PlayActivity;
 import java.util.List;
 
 public class DisplayListActivity extends AppCompatActivity {
-
-    private static final String INTENT_UPDATE_MODEL = "com.kjjejones42.audiobookplayer.UPDATE";
     public static final String INTENT_PLAY_FILE = "com.kjjejones42.audiobookplayer.PLAY";
     public static final String INTENT_START_PLAYBACK = "com.kjjejones42.audiobookplayer.start";
 
@@ -50,7 +47,6 @@ public class DisplayListActivity extends AppCompatActivity {
     };
 
     private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
-    private DisplayListViewModel model;
     private DisplayListAdapter mAdapter;
     private RecyclerView recyclerView;
     private TextView emptyView;
@@ -73,15 +69,7 @@ public class DisplayListActivity extends AppCompatActivity {
         final ProgressDialog dialog = ProgressDialog.show(this, "", message, true);
         WorkManager.getInstance(this).enqueue(request).getState().observe(this, workInfo -> {
             if (!workInfo.getClass().equals(Operation.State.IN_PROGRESS.class)) {
-                try {
-                    Intent intent = new Intent(getApplicationContext(), DisplayListActivity.class);
-                    intent.putExtra(INTENT_UPDATE_MODEL, true);
-                    dialog.cancel();
-                    startActivity(intent);
-                } catch (Exception e) {
-                    Utils.logError(e, this);
-                    e.printStackTrace();
-                }
+                dialog.cancel();
             }
         });
     }
@@ -140,26 +128,26 @@ public class DisplayListActivity extends AppCompatActivity {
         return true;
     }
 
-    @SuppressLint("Range")
-    void updateScreen() {
-        List<AudioBook> list = model.getSavedBooks(this).getValue();
-        if (list != null && list.isEmpty()) {
-            recyclerView.setVisibility(View.GONE);
-            emptyView.setVisibility(View.VISIBLE);
-        } else {
-            recyclerView.setVisibility(View.VISIBLE);
-            emptyView.setVisibility(View.GONE);
-        }
-
-    }
-
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        if (intent.getBooleanExtra(INTENT_UPDATE_MODEL, false)) {
-            model.loadFromDatabase(this);
-        }
-        updateScreen();
+    protected void onCreate(Bundle savedInstanceState) {
+        setTheme(R.style.AppTheme);
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_display_list);
+
+        recyclerView = findViewById(R.id.recyclerView);
+        emptyView = findViewById(R.id.empty_view);
+
+        DisplayListViewModel model = new ViewModelProvider(this).get(DisplayListViewModel.class);
+        browser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        mAdapter = new DisplayListAdapter(model, recyclerView, this);
+        recyclerView.setAdapter(mAdapter);
+
+        AudiobookDatabase.getInstance(this).audiobookDao()
+                .getAllAndObserve().observe(this, model::setBooks);
+        model.getSavedBooks().observe(this, this::updateScreen);
     }
 
     private void resumeMostRecentBook() {
@@ -203,32 +191,18 @@ public class DisplayListActivity extends AppCompatActivity {
         }
     } ;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.AppTheme);
-        super.onCreate(savedInstanceState);
+    @SuppressLint("Range")
+    void updateScreen(List<AudioBook> list) {
+        if (list != null && list.isEmpty()) {
+            recyclerView.setVisibility(View.GONE);
+            emptyView.setVisibility(View.VISIBLE);
+        } else {
+            recyclerView.setVisibility(View.VISIBLE);
+            emptyView.setVisibility(View.GONE);
+        }
 
-        setContentView(R.layout.activity_display_list);
-
-        recyclerView = findViewById(R.id.recyclerView);
-        emptyView = findViewById(R.id.empty_view);
-
-        model = new ViewModelProvider(this).get(DisplayListViewModel.class);
-        browser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        mAdapter = new DisplayListAdapter(model, recyclerView, this);
-        recyclerView.setAdapter(mAdapter);
-        model.loadFromDatabase(this);
-        updateScreen();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        model.loadFromDatabase(this);
-        updateScreen();
-    }
 
     @Override
     protected void onStart() {

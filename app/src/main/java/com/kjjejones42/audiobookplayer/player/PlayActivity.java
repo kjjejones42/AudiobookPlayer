@@ -169,9 +169,7 @@ public class PlayActivity extends AppCompatActivity {
     }
 
     private void setImage(Bitmap bitmap) {
-        if (bitmap != null) {
-            imView.setImageBitmap(bitmap);
-        }
+        imView.setImageBitmap(bitmap);
 
     }
     @Override
