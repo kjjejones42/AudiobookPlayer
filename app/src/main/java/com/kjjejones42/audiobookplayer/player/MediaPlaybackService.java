@@ -14,6 +14,7 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
@@ -53,25 +54,50 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
     private Timer updateTask;
     private boolean isMediaPlayerPrepared;
     private int intentId;
+    private final AudioManager.OnAudioFocusChangeListener onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+
+        int lastKnownAudioFocusState;
+        boolean wasPlayingWhenTransientLoss;
+
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            MediaControllerCompat.TransportControls controls = mediaSession.getController().getTransportControls();
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    switch(lastKnownAudioFocusState) {
+                        case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                        case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                            if(wasPlayingWhenTransientLoss) {
+                                controls.play();
+                            }
+                            break;
+                        default:
+                            controls.play();
+                    }
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    controls.pause();
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    wasPlayingWhenTransientLoss = mediaPlayer.isPlaying();
+                    controls.pause();
+                    break;
+            }
+            lastKnownAudioFocusState = focusChange;
+        }
+    };
 
     private final AudiobookDao dao = AudiobookDatabase.getInstance(this).audiobookDao();
 
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    private boolean hasBeenInterrupted;
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
                 mediaSession.getController().getTransportControls().pause();
-            }
-        }
-    };
-    private final AudioManager.OnAudioFocusChangeListener onAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
-        @Override
-        public void onAudioFocusChange(int focusChange) {
-            if (focusChange != AudioManager.AUDIOFOCUS_GAIN) {
-                mediaSession.getController().getTransportControls().pause();
-            } else {
-                mediaSession.getController().getTransportControls().play();
+                hasBeenInterrupted = true;
             }
         }
     };
@@ -289,7 +315,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         mediaSession.setCallback(new MySessionCallback());
         setSessionToken(mediaSession.getSessionToken());
 
-        registerReceiver(broadcastReceiver, intentFilter);
     }
 
     @Override
@@ -300,10 +325,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
         mediaPlayer.release();
         mediaSession.release();
-        try {
-            unregisterReceiver(broadcastReceiver);
-        } catch (Exception ignored) {
-        }
     }
 
     private void updateNotification() {
@@ -346,6 +367,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
         @Override
         public void onPlay() {
+            if (hasBeenInterrupted) {
+                hasBeenInterrupted = false;
+                return;
+            }
+            registerReceiver(broadcastReceiver, intentFilter);
             AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
             if (getIsMediaPlayerPrepared() && !isMediaPlayerPlaying()) {
                 int result;
@@ -407,6 +433,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
         @Override
         public void onStop() {
+            unregisterReceiver(broadcastReceiver);
             if (getIsMediaPlayerPrepared()) {
                 AudioManager am = (AudioManager) MediaPlaybackService.this.getSystemService(Context.AUDIO_SERVICE);
                 am.abandonAudioFocusRequest(audioFocusRequest);
