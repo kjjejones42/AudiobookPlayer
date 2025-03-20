@@ -133,7 +133,7 @@ public class AudioBook {
                 fis.close();
             }
         } catch (FileNotFoundException e) {
-            Utils.writeToFile(e, "Couldn't get album art", null);
+            Utils.writeToFile(e, "Couldn't get album art", context);
         } catch (Exception ignored) {
         }
         if (result == null) {
@@ -207,7 +207,7 @@ public class AudioBook {
             fis.close();
         } catch (FileNotFoundException ignored) {
         } catch (Exception e) {
-            Utils.writeToFile(e, "Couldn't load thumbnail", null);
+            Utils.writeToFile(e, "Couldn't load thumbnail", context);
         }
     }
 
@@ -218,7 +218,7 @@ public class AudioBook {
             thumbnail.compress(Bitmap.CompressFormat.PNG, 100, fos);
             fos.close();
         } catch (Exception e) {
-            Utils.writeToFile(e, "Couldn't save thumbnail", null);
+            Utils.writeToFile(e, "Couldn't save thumbnail", context);
         }
     }
 
