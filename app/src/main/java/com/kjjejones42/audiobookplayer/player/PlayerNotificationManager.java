@@ -44,9 +44,10 @@ public class PlayerNotificationManager {
 
         MediaDescriptionCompat description = controller.getMetadata().getDescription();
 
-        Intent intent =  new Intent(context, PlayActivity.class);
+        Intent intent = new Intent(context, PlayActivity.class);
         intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookName);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_MUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent,
+                PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         MediaStyle style = new MediaStyle()
                 .setMediaSession(mediaSession.getSessionToken())
