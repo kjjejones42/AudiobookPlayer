@@ -127,13 +127,13 @@ public class AudioBook {
         }
         Bitmap result = null;
         try {
-            if (imagePath != null) {
+            if (imagePath != null && !imagePath.isEmpty()) {
                 FileInputStream fis = new FileInputStream(imagePath);
                 result = BitmapFactory.decodeStream(fis);
                 fis.close();
             }
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Utils.writeToFile(e, "Couldn't get album art", null);
         } catch (Exception ignored) {
         }
         if (result == null) {
@@ -207,7 +207,7 @@ public class AudioBook {
             fis.close();
         } catch (FileNotFoundException ignored) {
         } catch (Exception e) {
-            e.printStackTrace();
+            Utils.writeToFile(e, "Couldn't load thumbnail", null);
         }
     }
 
@@ -218,7 +218,7 @@ public class AudioBook {
             thumbnail.compress(Bitmap.CompressFormat.PNG, 100, fos);
             fos.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            Utils.writeToFile(e, "Couldn't save thumbnail", null);
         }
     }
 

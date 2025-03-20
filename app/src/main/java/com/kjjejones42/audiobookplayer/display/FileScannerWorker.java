@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters;
 
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
+import com.kjjejones42.audiobookplayer.Utils;
 import com.kjjejones42.audiobookplayer.database.AudiobookDao;
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 
@@ -151,7 +152,7 @@ public class FileScannerWorker extends Worker {
             }
             dao.insertAll(results);
         } catch (Exception e) {
-            e.printStackTrace();
+            Utils.logError(e, getApplicationContext());
             return Result.failure();
         }
         return Result.success();
