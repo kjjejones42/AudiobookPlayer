@@ -2,7 +2,6 @@ package com.kjjejones42.audiobookplayer.player;
 
 import android.content.Context;
 import android.support.v4.media.MediaMetadataCompat;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -72,7 +71,6 @@ public class PlayerViewModel extends ViewModel {
     }
 
     void setIsPlaying(boolean isPlaying) {
-        Log.w("", "setIsPlaying | " + isPlaying);
         Boolean b = this.isPlaying.getValue();
         if (b != null && b != isPlaying) {
             this.isPlaying.setValue(isPlaying);
@@ -85,7 +83,6 @@ public class PlayerViewModel extends ViewModel {
     }
 
     void setPosition(long position) {
-        Log.w("", "Set Position" + position);
         Long l = this.position.getValue();
         if (l != null && l != position) {
             if (position > 0) {

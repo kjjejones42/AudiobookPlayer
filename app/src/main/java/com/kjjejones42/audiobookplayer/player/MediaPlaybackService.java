@@ -17,7 +17,6 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -115,7 +114,6 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 }
 
                 int positionInTrackList = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
-                Log.w("", "positionInTrackList " + positionInTrackList);
                 bookId = intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK, String.class);
                 assert bookId != null;
 
