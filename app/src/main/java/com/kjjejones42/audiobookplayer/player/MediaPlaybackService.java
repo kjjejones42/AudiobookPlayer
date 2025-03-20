@@ -17,6 +17,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -25,7 +26,6 @@ import androidx.media.MediaBrowserServiceCompat;
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
 import com.kjjejones42.audiobookplayer.R;
-import com.kjjejones42.audiobookplayer.Utils;
 import com.kjjejones42.audiobookplayer.database.AudiobookDao;
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
@@ -64,6 +64,9 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             MediaControllerCompat.TransportControls controls = mediaSession.getController().getTransportControls();
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_GAIN:
+                case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT:
+                case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE:
+                case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK:
                     switch(lastKnownAudioFocusState) {
                         case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                         case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
@@ -88,7 +91,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
     };
 
-    private final AudiobookDao dao = AudiobookDatabase.getInstance(this).audiobookDao();
+    private AudiobookDao dao;
 
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     private boolean hasBeenInterrupted;
@@ -101,7 +104,43 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
             }
         }
     };
-    private final MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        intentId = startId;
+        if (intent != null) {
+            try {
+                if (updateTask != null) {
+                    updateTask.cancel();
+                }
+
+                int positionInTrackList = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
+                Log.w("", "positionInTrackList " + positionInTrackList);
+                bookId = intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK, String.class);
+                assert bookId != null;
+
+                Intent resumeIntent = new Intent(this, PlayActivity.class);
+                resumeIntent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookId);
+                mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_IMMUTABLE));
+                int positionInTrack = getDao().getPositionInTrack(bookId);
+                if (getDao().getStatus(bookId) == AudioBook.STATUS_FINISHED) {
+                    updateStatus(AudioBook.STATUS_IN_PROGRESS);
+                } else {
+                    if (positionInTrackList != getDao().getPositionInTrackList(bookId))  {
+                        positionInTrack = 1;
+                        getDao().updatePositionInTrack(bookId, 1, System.currentTimeMillis());
+                    }
+                }
+                setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, positionInTrack, 1).build());
+                playTrack(positionInTrackList);
+
+            } catch (Exception e) {
+                onError();
+                throw e;
+            }
+        }
+        return super.onStartCommand(intent, flags, startId);
+    }    private final MediaPlayer.OnCompletionListener onCompletionListener = new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
             int state = mediaSession.getController().getPlaybackState().getState();
@@ -110,8 +149,8 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 if (updateTask != null) {
                     updateTask.cancel();
                 }
-                dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis());
-                playTrack(dao.getPositionInTrackList(bookId) + 1);
+                getDao().updatePositionInTrack(bookId, 1, System.currentTimeMillis());
+                playTrack(getDao().getPositionInTrackList(bookId) + 1);
             }
         }
     };
@@ -147,15 +186,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
     }
 
-    @SuppressWarnings("SynchronizeOnNonFinalField")
-    private void setPlaybackState(PlaybackStateCompat state) {
-        synchronized (mediaSession) {
-            int positionInTrack = (int) state.getPosition();
-            if (positionInTrack != 0) {
-                dao.updatePositionInTrack(bookId, (int) state.getPosition(), System.currentTimeMillis());
-            }
-            mediaSession.setPlaybackState(state);
+    private AudiobookDao getDao() {
+        if (dao == null) {
+            dao = AudiobookDatabase.getInstance(this).audiobookDao();
         }
+        return dao;
     }
 
     private boolean isPlaying() {
@@ -165,69 +200,53 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         return mediaSession.getController().getPlaybackState().getState() == PlaybackStateCompat.STATE_PLAYING;
     }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        intentId = startId;
-        if (intent != null) {
-            try {
-                if (updateTask != null) {
-                    updateTask.cancel();
-                }
-
-                int positionInTrackList = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0);
-                bookId = intent.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK, String.class);
-                assert bookId != null;
-
-                Intent resumeIntent = new Intent(this, PlayActivity.class);
-                resumeIntent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookId);
-                mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_IMMUTABLE));
-                int positionInTrack = dao.getPositionInTrack(bookId);
-                if (dao.getStatus(bookId) == AudioBook.STATUS_FINISHED) {
-                    updateStatus(AudioBook.STATUS_IN_PROGRESS);
-                } else {
-                    if (positionInTrackList != dao.getPositionInTrackList(bookId))  {
-                        positionInTrack = 1;
-                        dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis());
-                    }
-                }
-                setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, positionInTrack, 1).build());
-                playTrack(positionInTrackList);
-
-            } catch (Exception e) {
-                Utils.logError(e, getApplicationContext());
-                e.printStackTrace();
-                onError();
-            }
-        }
-        return super.onStartCommand(intent, flags, startId);
-    }
-
     private void updateStatus(int status) {
-        AudioBook book = dao.findByName(bookId);
+        AudioBook book = getDao().findByName(bookId);
         book.setStatus(status);
-        dao.update(book);
+        getDao().update(book);
     }
 
-    private void initialiseTimer() {
+    @SuppressWarnings("SynchronizeOnNonFinalField")
+    private void setPlaybackState(PlaybackStateCompat state) {
+        synchronized (mediaSession) {
+            int positionInTrack = (int) state.getPosition();
+            if (positionInTrack != 0) {
+                getDao().updatePositionInTrack(bookId, (int) state.getPosition(), System.currentTimeMillis());
+            }
+            mediaSession.setPlaybackState(state);
+        }
+    }
+
+    private void playTrack(int positionInTrackList) {
+        if (positionInTrackList < 0) {
+            return;
+        }
+        List<MediaItem> files = getDao().findByName(bookId).files;
+        if (positionInTrackList >= files.size()) {
+            updateStatus(AudioBook.STATUS_FINISHED);
+            mediaSession.getController().getTransportControls().sendCustomAction(EVENT_REACHED_END, null);
+            return;
+        }
+        getDao().updatePositionInTrackList(bookId, positionInTrackList);
+        MediaItem mediaItem = files.get(positionInTrackList);
+        mediaPlayer.reset();
+        isMediaPlayerPrepared = false;
         if (updateTask != null) {
             updateTask.cancel();
         }
-        updateTask = new Timer();
-        updateTask.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    int position;
-                    if (isMediaPlayerPlaying() && (position = mediaPlayer.getCurrentPosition()) != 0) {
-                        PlaybackStateCompat state = mediaSession.getController().getPlaybackState();
-                        stateBuilder.setState(state.getState(), position, 1);
-                        setPlaybackState(stateBuilder.build());
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-        }, 0, 1000);
-
+        mediaPlayer.setAudioAttributes(getAudioAttributes());
+        try {
+            mediaPlayer.setOnCompletionListener(onCompletionListener);
+            mediaPlayer.setDataSource(this, mediaItem.getUri());
+            mediaPlayer.prepare();
+            isMediaPlayerPrepared = true;
+            mediaSession.setMetadata(trackToMetaData(mediaItem));
+            mediaSession.getController().getTransportControls().seekTo(getDao().getPositionInTrack(bookId));
+            mediaSession.getController().getTransportControls().play();
+        } catch (IOException e) {
+            onError();
+            throw new RuntimeException(e);
+        }
     }
 
     private void onError() {
@@ -242,7 +261,7 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 assert durationStr != null;
                 long duration = Long.parseLong(durationStr);
-                AudioBook book = dao.findByName(bookId);
+                AudioBook book = getDao().findByName(bookId);
                 metadataBuilder
                     .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, item.toString())
                     .putString(MediaMetadataCompat.METADATA_KEY_TITLE, book.displayName)
@@ -256,37 +275,26 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
     }
 
-    private void playTrack(int positionInTrackList) {
-        if (positionInTrackList < 0) {
-            return;
-        }
-        List<MediaItem> files = dao.findByName(bookId).files;
-        if (positionInTrackList >= files.size()) {
-            updateStatus(AudioBook.STATUS_FINISHED);
-            mediaSession.getController().getTransportControls().sendCustomAction(EVENT_REACHED_END, null);
-            return;
-        }
-        dao.updatePositionInTrackList(bookId, positionInTrackList);
-        MediaItem mediaItem = files.get(positionInTrackList);
-        mediaPlayer.reset();
-        isMediaPlayerPrepared = false;
+    private void initialiseTimer() {
         if (updateTask != null) {
             updateTask.cancel();
         }
-        mediaPlayer.setAudioAttributes(getAudioAttributes());
-        try {
-            mediaPlayer.setOnCompletionListener(onCompletionListener);
-            mediaPlayer.setDataSource(this, mediaItem.getUri());
-            mediaPlayer.prepare();
-            isMediaPlayerPrepared = true;
-            mediaSession.setMetadata(trackToMetaData(mediaItem));
-            mediaSession.getController().getTransportControls().seekTo(dao.getPositionInTrack(bookId));
-            mediaSession.getController().getTransportControls().play();
-        } catch (IOException e) {
-            Utils.logError(e, mediaItem.getUri().toString(), getApplicationContext());
-            e.printStackTrace();
-            onError();
-        }
+        updateTask = new Timer();
+        updateTask.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    int position;
+                    if (isMediaPlayerPlaying() && (position = mediaPlayer.getCurrentPosition()) != 0) {
+                        PlaybackStateCompat state = mediaSession.getController().getPlaybackState();
+                        stateBuilder.setState(state.getState(), position, 1);
+                        setPlaybackState(stateBuilder.build());
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }, 0, 1000);
+
     }
 
     @Override
@@ -378,11 +386,11 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                 result = am.requestAudioFocus(getRequest());
                 if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
                     mediaSession.setActive(true);
-                    if (dao.getStatus(bookId) == AudioBook.STATUS_NOT_BEGUN) {
+                    if (getDao().getStatus(bookId) == AudioBook.STATUS_NOT_BEGUN) {
                         updateStatus(AudioBook.STATUS_IN_PROGRESS);
                     }
                     PlaybackStateCompat newState = stateBuilder
-                            .setState(PlaybackStateCompat.STATE_PLAYING, dao.getPositionInTrack(bookId), 1)
+                            .setState(PlaybackStateCompat.STATE_PLAYING, getDao().getPositionInTrack(bookId), 1)
                             .build();
                     setPlaybackState(newState);
                     mediaPlayer.start();
@@ -414,20 +422,13 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
 
         @Override
         public void onPause() {
-            if (getIsMediaPlayerPrepared()) {
-                try {
-                    if (isMediaPlayerPlaying()) {
-                        PlaybackStateCompat newState = stateBuilder
-                                .setState(PlaybackStateCompat.STATE_PAUSED, mediaPlayer.getCurrentPosition(), 1)
-                                .build();
-                        setPlaybackState(newState);
-                        mediaPlayer.pause();
-                        updateNotification();
-                    }
-                } catch (IllegalStateException e) {
-                    Utils.logError(e, getApplicationContext());
-                    e.printStackTrace();
-                }
+            if (getIsMediaPlayerPrepared() && isMediaPlayerPlaying()) {
+                PlaybackStateCompat newState = stateBuilder
+                        .setState(PlaybackStateCompat.STATE_PAUSED, mediaPlayer.getCurrentPosition(), 1)
+                        .build();
+                setPlaybackState(newState);
+                mediaPlayer.pause();
+                updateNotification();
             }
         }
 
@@ -464,6 +465,19 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
         }
 
         @Override
+        public void onSkipToNext() {
+            super.onSkipToNext();
+            if (getIsMediaPlayerPrepared()) {
+                onPause();
+                getDao().updatePositionInTrack(bookId, 1, System.currentTimeMillis());
+                setPlaybackState(
+                        stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 1, 1)
+                                .build());
+                playTrack(getDao().getPositionInTrackList(bookId)+ 1);
+            }
+        }
+
+        @Override
         public void onSkipToPrevious() {
             super.onSkipToPrevious();
             if (getIsMediaPlayerPrepared()) {
@@ -471,26 +485,15 @@ public class MediaPlaybackService extends MediaBrowserServiceCompat {
                     mediaSession.getController().getTransportControls().seekTo(1);
                 } else {
                     onPause();
-                    dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis());
+                    getDao().updatePositionInTrack(bookId, 1, System.currentTimeMillis());
                     setPlaybackState(stateBuilder
                             .setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, 1, 1)
                             .build());
-                    playTrack(dao.getPositionInTrackList(bookId) - 1);
+                    playTrack(getDao().getPositionInTrackList(bookId) - 1);
                 }
             }
         }
-
-        @Override
-        public void onSkipToNext() {
-            super.onSkipToNext();
-            if (getIsMediaPlayerPrepared()) {
-                onPause();
-                dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis());
-                setPlaybackState(
-                        stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 1, 1)
-                                .build());
-                playTrack(dao.getPositionInTrackList(bookId)+ 1);
-            }
-        }
     }
+
+
 }

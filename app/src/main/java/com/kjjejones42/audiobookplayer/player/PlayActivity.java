@@ -33,7 +33,6 @@ import androidx.palette.graphics.Palette;
 import com.kjjejones42.audiobookplayer.AudioBook;
 import com.kjjejones42.audiobookplayer.MediaItem;
 import com.kjjejones42.audiobookplayer.R;
-import com.kjjejones42.audiobookplayer.Utils;
 import com.kjjejones42.audiobookplayer.database.AudiobookDao;
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
 import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
@@ -42,6 +41,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class PlayActivity extends AppCompatActivity {
 
@@ -157,15 +157,10 @@ public class PlayActivity extends AppCompatActivity {
     private void initialiseMediaSession(int trackNo) {
         AudioBook book = model.getAudioBook().getValue();
         if (controller == null || book == null) return;
-        try {
-            Intent intent = new Intent(this, MediaPlaybackService.class);
-            intent.putExtra(INTENT_AUDIOBOOK, book.displayName);
-            intent.putExtra(INTENT_INDEX, trackNo);
-            startService(intent);
-        } catch (Exception e) {
-            Utils.logError(e, this);
-            e.printStackTrace();
-        }
+        Intent intent = new Intent(this, MediaPlaybackService.class);
+        intent.putExtra(INTENT_AUDIOBOOK, book.displayName);
+        intent.putExtra(INTENT_INDEX, trackNo);
+        startService(intent);
     }
 
     private void setImage(Bitmap bitmap) {
@@ -312,37 +307,33 @@ public class PlayActivity extends AppCompatActivity {
         if (bar != null) {
             bar.setTitle(book.displayName);
         }
-        ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, book.files);
+        List<MediaItem> sortedFiles = book.files.stream().sorted().collect(Collectors.toList());
+        ArrayAdapter<MediaItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, sortedFiles);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         spinner.setOnItemSelectedListener(onItemSelectedListener);
-        int position = book.getPositionInTrackList();
+        int position = Math.min(sortedFiles.size() - 1, book.getPositionInTrackList());
         spinner.setTag(position);
         spinner.setSelection(position);
     }
 
     private void setColorFromAlbumArt(AudioBook book) {
         if (book == null) return;
-        try {
-            setImage(book.getAlbumArt(this));
-            if (!book.isArtGenerated()) {
-                Palette palette = book.getAlbumArtPalette(this);
-                boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-                int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
-                PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
-                int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent, getTheme()));
-                updateButtonColor(color);
-                updateStatusBarColor(color);
-            } else {
-                TypedValue tv = new TypedValue();
-                getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
-                updateButtonColor(tv.data);
-                getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
-                updateStatusBarColor(tv.data);
-            }
-        } catch (Exception e) {
-            Utils.logError(e, this);
-            e.printStackTrace();
+        setImage(book.getAlbumArt(this));
+        if (!book.isArtGenerated()) {
+            Palette palette = book.getAlbumArtPalette(this);
+            boolean nightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+            int backColor = nightMode ? palette.getDarkMutedColor(Color.TRANSPARENT) : palette.getLightMutedColor(Color.TRANSPARENT);
+            PlayActivity.this.findViewById(R.id.playerBackground).setBackgroundColor(backColor);
+            int color = palette.getVibrantColor(getResources().getColor(R.color.colorAccent, getTheme()));
+            updateButtonColor(color);
+            updateStatusBarColor(color);
+        } else {
+            TypedValue tv = new TypedValue();
+            getTheme().resolveAttribute(R.attr.colorAccent, tv, true);
+            updateButtonColor(tv.data);
+            getTheme().resolveAttribute(R.attr.colorPrimary, tv, true);
+            updateStatusBarColor(tv.data);
         }
     }
 
@@ -385,7 +376,6 @@ public class PlayActivity extends AppCompatActivity {
             model.setStartPlayback(false);
             controller.getTransportControls().play();
         }
-        model.setMetadata(controller.getMetadata());
     }
 
     @Override

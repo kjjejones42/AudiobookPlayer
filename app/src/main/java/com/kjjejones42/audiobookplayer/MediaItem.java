@@ -93,6 +93,7 @@ public class MediaItem implements Serializable, Comparable<MediaItem> {
 
     @Override
     public int compareTo(MediaItem o) {
-        return uri.compareTo(o.uri);
+        if (o == null) return 0;
+        return displayName.compareTo(o.displayName);
     }
 }
