@@ -152,7 +152,7 @@ public class FileScannerWorker extends Worker {
             }
             dao.insertAll(results);
         } catch (Exception e) {
-            Utils.logError(e, getApplicationContext());
+            Utils.logError(e, "Error scanning files", getApplicationContext());
             return Result.failure();
         }
         return Result.success();
