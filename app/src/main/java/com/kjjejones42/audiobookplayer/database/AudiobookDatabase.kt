@@ -1,33 +1,36 @@
-package com.kjjejones42.audiobookplayer.database;
+package com.kjjejones42.audiobookplayer.database
 
-import android.content.Context;
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room.databaseBuilder
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import com.kjjejones42.audiobookplayer.AudioBook
 
-import androidx.room.Database;
-import androidx.room.Room;
-import androidx.room.RoomDatabase;
-import androidx.room.TypeConverters;
+@Database(entities = [AudioBook::class], version = 1)
+@TypeConverters(DataConverter::class)
+abstract class AudiobookDatabase : RoomDatabase() {
+    abstract fun audiobookDao(): AudiobookDao
 
-import com.kjjejones42.audiobookplayer.AudioBook;
+    companion object {
+        private var instance: AudiobookDatabase? = null
 
-@Database(entities = { AudioBook.class }, version = 1)
-@TypeConverters({ DataConverter.class })
- public abstract class AudiobookDatabase extends RoomDatabase {
-
-    private static AudiobookDatabase instance;
-
-    static public  AudiobookDatabase  getInstance(Context context) {
-        if (instance != null) {
-            return instance;
-        }
-        synchronized (AudiobookDatabase.class) {
-            if (instance == null) {
-                instance = Room.databaseBuilder(context, AudiobookDatabase.class, "audiobook_database")
-                        .allowMainThreadQueries()
-                        .build();
+        @JvmStatic
+        fun getInstance(context: Context): AudiobookDatabase {
+            if (instance != null) {
+                return instance!!
             }
+            synchronized(AudiobookDatabase::class.java) {
+                if (instance == null) {
+                    instance = databaseBuilder(
+                        context,
+                        AudiobookDatabase::class.java, "audiobook_database"
+                    )
+                        .allowMainThreadQueries()
+                        .build()
+                }
+            }
+            return instance!!
         }
-        return instance;
     }
-
-    public abstract AudiobookDao audiobookDao();
 }

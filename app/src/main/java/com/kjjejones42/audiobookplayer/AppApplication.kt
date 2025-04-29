@@ -1,23 +1,23 @@
-package com.kjjejones42.audiobookplayer;
+package com.kjjejones42.audiobookplayer
 
-import android.app.Application;
-import android.content.Context;
+import android.app.Application
+import android.content.Context
 
-public class AppApplication extends Application {
-    private static AppApplication instance;
-
-    public static Context getContext() {
-        return instance;
+class AppApplication : Application() {
+    override fun onCreate() {
+        instance = this
+        super.onCreate()
+        val defaultHandler = checkNotNull(Thread.getDefaultUncaughtExceptionHandler())
+        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
+            logError(e, this)
+            defaultHandler.uncaughtException(thread, e)
+        }
     }
 
-    public void onCreate () {
-        instance = this;
-        super.onCreate();
-        Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
-        assert defaultHandler != null;
-        Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
-            Utils.logError(e, this);
-            defaultHandler.uncaughtException(thread, e);
-        });
+    companion object {
+        private lateinit var instance: AppApplication
+
+        val context: Context
+            get() = instance
     }
 }

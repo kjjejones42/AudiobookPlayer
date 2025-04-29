@@ -1,126 +1,64 @@
-package com.kjjejones42.audiobookplayer.display;
+package com.kjjejones42.audiobookplayer.display
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import com.kjjejones42.audiobookplayer.AudioBook;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.AudioBook.Companion.statusMap
 
 abstract class ListItem {
+    abstract val id: Long
+    abstract val category: Int
+    abstract val timeStamp: Long
+    abstract val headingOrItem: Int
 
-    final static int TYPE_HEADING = 0;
-    final static int TYPE_ITEM = 1;
+    override fun equals(obj: Any?): Boolean {
+        if (obj is ListItem) {
+            return obj.toString() == this.toString()
+        }
+        return super.equals(obj)
+    }
 
-    final private static Map<String, Long> idMap = new HashMap<>();
+    override fun hashCode(): Int {
+        return javaClass.hashCode()
+    }
 
-    static long getId(String name) {
-        long id;
-        if (idMap.containsKey(name)) {
-            Long value = idMap.get(name);
-            if (value == null) {
-                throw new RuntimeException();
+    class AudioBookContainer internal constructor(val book: AudioBook) : ListItem() {
+        override val id: Long = getId(book.uniqueId)
+
+        override val category: Int = book.getStatus()
+
+        override val timeStamp: Long = book.lastSavedTimestamp
+
+        override val headingOrItem: Int = TYPE_ITEM
+    }
+
+    class Heading internal constructor(override val category: Int) : ListItem() {
+        val headingTitle: String? = statusMap!![category]
+        override val timeStamp: Long = 0
+        override val headingOrItem: Int = TYPE_HEADING
+        override val id: Long = getId(headingTitle)
+
+        override fun toString(): String {
+            return headingTitle!!
+        }
+    }
+
+    companion object {
+        const val TYPE_HEADING: Int = 0
+        const val TYPE_ITEM: Int = 1
+
+        private val idMap: MutableMap<String?, Long> = HashMap()
+
+        fun getId(name: String?): Long {
+            val id: Long
+            if (idMap.containsKey(name)) {
+                val value =
+                    idMap[name]
+                        ?: throw RuntimeException()
+                id = value
+            } else {
+                id = idMap.entries.size.toLong()
+                idMap[name] = id
             }
-            id = value;
-        } else {
-            id = idMap.entrySet().size();
-            idMap.put(name, id);
+            return id
         }
-        return id;
-    }
-
-    public abstract long getId();
-
-    public abstract int getCategory();
-
-    public abstract long getTimeStamp();
-
-    public abstract int getHeadingOrItem();
-
-    @Override
-    public boolean equals(@Nullable Object obj) {
-        if (obj instanceof ListItem) {
-            return obj.toString().equals(this.toString());
-        }
-        return super.equals(obj);
-    }
-
-    public static class AudioBookContainer extends ListItem {
-        final AudioBook book;
-        final private long id;
-
-        AudioBookContainer(AudioBook book) {
-            this.book = book;
-            this.id = getId(book.getUniqueId());
-        }
-
-        @Override
-        public long getId() {
-            return id;
-        }
-
-        @Override
-        public int getCategory() {
-            return book.getStatus();
-        }
-
-        @Override
-        public int getHeadingOrItem() {
-            return TYPE_ITEM;
-        }
-
-
-        @Override
-        public long getTimeStamp() {
-            return book.getLastSavedTimestamp();
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return book.displayName;
-        }
-    }
-
-    public static class Heading extends ListItem {
-        final private int category;
-        final private long id;
-
-        Heading(int title) {
-            this.category = title;
-            this.id = getId(getHeadingTitle());
-        }
-
-        @Override
-        public long getId() {
-            return id;
-        }
-
-        @Override
-        public int getCategory() {
-            return category;
-        }
-
-        @Override
-        public int getHeadingOrItem() {
-            return TYPE_HEADING;
-        }
-
-        @Override
-        public long getTimeStamp() {
-            return 0;
-        }
-
-        String getHeadingTitle() {
-            return AudioBook.getStatusMap().get(category);
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return getHeadingTitle();
-        }
-
     }
 }

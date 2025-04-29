@@ -1,227 +1,228 @@
-package com.kjjejones42.audiobookplayer.display;
+package com.kjjejones42.audiobookplayer.display
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.os.Bundle;
-import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.session.MediaControllerCompat;
-import android.support.v4.media.session.PlaybackStateCompat;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.SearchView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.ProgressDialog
+import android.content.ComponentName
+import android.content.Intent
+import android.os.Bundle
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.widget.SearchView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.work.OneTimeWorkRequest
+import androidx.work.Operation
+import androidx.work.Operation.State.IN_PROGRESS
+import androidx.work.WorkManager
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.R
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
+import com.kjjejones42.audiobookplayer.player.MediaPlaybackService
+import com.kjjejones42.audiobookplayer.player.PlayActivity
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.content.res.AppCompatResources;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.Operation;
-import androidx.work.WorkManager;
+class DisplayListActivity : AppCompatActivity() {
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.kjjejones42.audiobookplayer.AudioBook;
-import com.kjjejones42.audiobookplayer.R;
-import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
-import com.kjjejones42.audiobookplayer.player.MediaPlaybackService;
-import com.kjjejones42.audiobookplayer.player.PlayActivity;
+    private var mAdapter: DisplayListAdapter? = null
+    private lateinit var recyclerView: RecyclerView
+    private var emptyView: TextView? = null
+    private var searchView: SearchView? = null
+    private var controller: MediaControllerCompat? = null
+    private var browser: MediaBrowserCompat? = null
 
-import java.util.List;
+    private val activityResultLauncher = registerForActivityResult(
+        RequestMultiplePermissions()
+    ) { _ -> askUserForDirectory() }
 
-public class DisplayListActivity extends AppCompatActivity {
-    public static final String INTENT_PLAY_FILE = "com.kjjejones42.audiobookplayer.PLAY";
-    public static final String INTENT_START_PLAYBACK = "com.kjjejones42.audiobookplayer.start";
-
-    private final String[] PERMISSIONS = new String[] {
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_AUDIO
-    };
-
-    private static final int MY_PERMISSIONS_REQUEST_READ_STORAGE = 3;
-    private DisplayListAdapter mAdapter;
-    private RecyclerView recyclerView;
-    private TextView emptyView;
-    private SearchView searchView;
-    private MediaControllerCompat controller;
-    private MediaBrowserCompat browser;
-
-    private final ActivityResultLauncher<String[]> activityResultLauncher = registerForActivityResult(
-            new ActivityResultContracts.RequestMultiplePermissions(),
-            x -> askUserForDirectory()
-    );
-
-    public void chooseDirectory(@SuppressWarnings("unused") MenuItem item) {
-        activityResultLauncher.launch(PERMISSIONS);
+    fun chooseDirectory(item: MenuItem?) {
+        activityResultLauncher.launch(PERMISSIONS)
     }
 
-    private void askUserForDirectory() {
-        final String message = "Loading. Please wait...";
-        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(FileScannerWorker.class).build();
-        final ProgressDialog dialog = ProgressDialog.show(this, "", message, true);
-        WorkManager.getInstance(this).enqueue(request).getState().observe(this, workInfo -> {
-            if (!workInfo.getClass().equals(Operation.State.IN_PROGRESS.class)) {
-                dialog.cancel();
+    private fun askUserForDirectory() {
+        val message = "Loading. Please wait..."
+        val request = OneTimeWorkRequest.Builder(FileScannerWorker::class.java).build()
+        val dialog = ProgressDialog.show(this, "", message, true)
+        WorkManager.getInstance(this).enqueue(request).state.observe(
+            this
+        ) { workInfo: Operation.State ->
+            if (workInfo.javaClass != IN_PROGRESS::class.java) {
+                dialog.cancel()
             }
-        });
+        }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == MY_PERMISSIONS_REQUEST_READ_STORAGE) {
-            int total = grantResults.length;
-            for (int i = 0; i < permissions.length; i++) {
-                total += grantResults[i];
+            var total = grantResults.size
+            for (i in permissions.indices) {
+                total += grantResults[i]
             }
-            boolean allApproved = total == grantResults.length;
-            String result = allApproved ? "All" : "Not all";
-            Toast.makeText(this, result + " permissions granted.", Toast.LENGTH_LONG).show();
+            val allApproved = total == grantResults.size
+            val result = if (allApproved) "All" else "Not all"
+            Toast.makeText(this, "$result permissions granted.", Toast.LENGTH_LONG).show()
             if (allApproved) {
-                askUserForDirectory();
+                askUserForDirectory()
             }
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        if (searchView != null && !searchView.isIconified()) {
-            searchView.setQuery("",false);
-            searchView.clearFocus();
-            searchView.setIconified(true);
+    override fun onBackPressed() {
+        if (searchView != null && !searchView!!.isIconified) {
+            searchView!!.setQuery("", false)
+            searchView!!.clearFocus()
+            searchView!!.isIconified = true
         } else {
-            super.onBackPressed();
+            super.onBackPressed()
         }
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu, menu);
-        searchView = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
-        assert searchView != null;
-        searchView.setSubmitButtonEnabled(false);
-        searchView.setOnCloseListener(() -> {
-            mAdapter.filter(null);
-            return false;
-        });
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                mAdapter.filter(query);
-                return false;
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu, menu)
+        searchView = menu.findItem(R.id.app_bar_search).actionView as SearchView?
+        checkNotNull(searchView)
+        searchView!!.isSubmitButtonEnabled = false
+        searchView!!.setOnCloseListener {
+            mAdapter!!.filter(null)
+            false
+        }
+        searchView!!.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                mAdapter!!.filter(query)
+                return false
             }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                mAdapter.filter(newText);
-                return false;
+            override fun onQueryTextChange(newText: String): Boolean {
+                mAdapter!!.filter(newText)
+                return false
             }
-        });
-        return true;
+        })
+        return true
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.AppTheme);
-        super.onCreate(savedInstanceState);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.AppTheme)
+        super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_display_list);
+        setContentView(R.layout.activity_display_list)
 
-        recyclerView = findViewById(R.id.recyclerView);
-        emptyView = findViewById(R.id.empty_view);
+        recyclerView = findViewById(R.id.recyclerView)
+        emptyView = findViewById(R.id.empty_view)
 
-        DisplayListViewModel model = new ViewModelProvider(this).get(DisplayListViewModel.class);
-        browser = new MediaBrowserCompat(this, new ComponentName(this, MediaPlaybackService.class), connectionCallbacks, null);
+        val model = ViewModelProvider(this)[DisplayListViewModel::class.java]
+        browser = MediaBrowserCompat(
+            this, ComponentName(
+                this,
+                MediaPlaybackService::class.java
+            ), connectionCallbacks, null
+        )
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        mAdapter = new DisplayListAdapter(model, recyclerView, this);
-        recyclerView.setAdapter(mAdapter);
+        recyclerView.setLayoutManager(LinearLayoutManager(this))
+        mAdapter = DisplayListAdapter(model, recyclerView, this)
+        recyclerView.setAdapter(mAdapter)
 
-        AudiobookDatabase.getInstance(this).audiobookDao()
-                .getAllAndObserve().observe(this, model::setBooks);
-        model.getSavedBooks().observe(this, this::updateScreen);
+        getInstance(this).audiobookDao()
+            ?.allAndObserve!!.observe(
+                this
+            ) { bookList -> model.setBooks(bookList) }
+        model.savedBooks.observe(
+            this
+        ) { list: List<AudioBook?>? -> this.updateScreen(list) }
 
-        askUserForDirectory();
+        askUserForDirectory()
     }
 
-    private void resumeMostRecentBook() {
-        AudioBook mostRecent = AudiobookDatabase.getInstance(this).audiobookDao().getMostRecentBook();
-        if (mostRecent != null && mostRecent.getLastSavedTimestamp() > 0) {
-            Intent intent = new Intent(this, MediaPlaybackService.class);
-            intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent.displayName);
-            intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.getPositionInTrackList());
-            startService(intent);
+    private fun resumeMostRecentBook() {
+        val mostRecent = getInstance(this)
+            .audiobookDao()!!.mostRecentBook
+        if (mostRecent != null && mostRecent.lastSavedTimestamp > 0) {
+            val intent = Intent(this, MediaPlaybackService::class.java)
+            intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent.displayName)
+            intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.positionInTrackList)
+            startService(intent)
         }
     }
 
 
-    public void onFloatingActionButtonClick(@SuppressWarnings("unused") View v) {
-        if (controller.getPlaybackState() == null || controller.getPlaybackState().getState() != PlaybackStateCompat.STATE_PLAYING) {
-            resumeMostRecentBook();
+    fun onFloatingActionButtonClick(@Suppress("unused") v: View?) {
+        if (controller!!.playbackState == null || controller!!.playbackState.state != PlaybackStateCompat.STATE_PLAYING) {
+            resumeMostRecentBook()
         } else {
-            controller.getTransportControls().pause();
+            controller!!.transportControls.pause()
         }
     }
 
-    final MediaBrowserCompat.ConnectionCallback connectionCallbacks = new MediaBrowserCompat.ConnectionCallback(){
-        @Override
-        public void onConnected() {
-            super.onConnected();
-            controller = new MediaControllerCompat(
-                    DisplayListActivity.this,
-                    browser.getSessionToken());
-            controller.registerCallback(new MediaControllerCompat.Callback() {
-                @Override
-                public void onPlaybackStateChanged(PlaybackStateCompat state) {
-                    if (state != null) {
-                        FloatingActionButton fab = findViewById(R.id.fab);
-                        int icon = (state.getState() == PlaybackStateCompat.STATE_PLAYING) ?
-                                R.drawable.ic_pause : R.drawable.ic_play;
-                        fab.setImageDrawable(AppCompatResources.getDrawable(getBaseContext(), icon));
+    private val connectionCallbacks: MediaBrowserCompat.ConnectionCallback =
+        object : MediaBrowserCompat.ConnectionCallback() {
+            override fun onConnected() {
+                super.onConnected()
+                controller = MediaControllerCompat(
+                    this@DisplayListActivity,
+                    browser!!.sessionToken
+                )
+                controller!!.registerCallback(object : MediaControllerCompat.Callback() {
+                    override fun onPlaybackStateChanged(state: PlaybackStateCompat) {
+                        val fab = findViewById<FloatingActionButton>(R.id.fab)
+                        val icon =
+                            if (state.state == PlaybackStateCompat.STATE_PLAYING) R.drawable.ic_pause else R.drawable.ic_play
+                        fab.setImageDrawable(AppCompatResources.getDrawable(baseContext, icon))
+                        super.onPlaybackStateChanged(state)
                     }
-                    super.onPlaybackStateChanged(state);
-                }
-            });
+                })
+            }
         }
-    } ;
 
     @SuppressLint("Range")
-    void updateScreen(List<AudioBook> list) {
+    fun updateScreen(list: List<AudioBook?>?) {
         if (list != null && list.isEmpty()) {
-            recyclerView.setVisibility(View.GONE);
-            emptyView.setVisibility(View.VISIBLE);
+            recyclerView!!.visibility = View.GONE
+            emptyView!!.visibility = View.VISIBLE
         } else {
-            recyclerView.setVisibility(View.VISIBLE);
-            emptyView.setVisibility(View.GONE);
+            recyclerView!!.visibility = View.VISIBLE
+            emptyView!!.visibility = View.GONE
         }
-
     }
 
 
-    @Override
-    protected void onStart() {
-        super.onStart();
+    override fun onStart() {
+        super.onStart()
         if (browser != null) {
-            browser.connect();
+            browser!!.connect()
         }
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
+    override fun onStop() {
+        super.onStop()
         if (browser != null) {
-            browser.disconnect();
+            browser!!.disconnect()
         }
     }
 
 
+    companion object {
+        private val PERMISSIONS = arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_AUDIO
+        )
+        const val INTENT_PLAY_FILE: String = "com.kjjejones42.audiobookplayer.PLAY"
+        const val INTENT_START_PLAYBACK: String = "com.kjjejones42.audiobookplayer.start"
+
+        private const val MY_PERMISSIONS_REQUEST_READ_STORAGE = 3
+    }
 }
 

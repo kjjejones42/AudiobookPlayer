@@ -1,75 +1,78 @@
-package com.kjjejones42.audiobookplayer.player;
+package com.kjjejones42.audiobookplayer.player
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
-import android.support.v4.media.MediaDescriptionCompat;
-import android.support.v4.media.session.MediaControllerCompat;
-import android.support.v4.media.session.MediaSessionCompat;
-import android.support.v4.media.session.PlaybackStateCompat;
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import androidx.media.app.NotificationCompat
+import androidx.media.session.MediaButtonReceiver
+import com.kjjejones42.audiobookplayer.R
+import com.kjjejones42.audiobookplayer.display.DisplayListActivity
 
-import androidx.core.app.NotificationCompat;
-import androidx.media.app.NotificationCompat.MediaStyle;
-import androidx.media.session.MediaButtonReceiver;
+private const val CHANNEL_ID = "com.kjjejones42.audiobookplayer"
 
-import com.kjjejones42.audiobookplayer.R;
-import com.kjjejones42.audiobookplayer.display.DisplayListActivity;
+class PlayerNotificationManager(
+    private val mediaSession: MediaSessionCompat,
+    private val context: Context
+) {
 
-public class PlayerNotificationManager {
-    static final private String CHANNEL_ID = "com.kjjejones42.audiobookplayer";
-    private final MediaSessionCompat mediaSession;
 
-    private final Context context;
-
-    public PlayerNotificationManager(MediaSessionCompat mediaSession, Context context) {
-        this.mediaSession = mediaSession;
-        this.context = context;
-        initializeNotification(context);
+    init {
+        initializeNotification(context)
     }
 
-    private void initializeNotification(Context context) {
-        CharSequence name = context.getString(R.string.channel_name);
-        int importance = NotificationManager.IMPORTANCE_LOW;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-        channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
+    private fun initializeNotification(context: Context) {
+        val name: CharSequence = context.getString(R.string.channel_name)
+        val importance = NotificationManager.IMPORTANCE_LOW
+        val channel = NotificationChannel(CHANNEL_ID, name, importance)
+        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    public Notification updateNotification(boolean playing, String bookName) {
+    fun updateNotification(playing: Boolean, bookName: String?): Notification {
+        val controller = mediaSession.controller
 
-        MediaControllerCompat controller = mediaSession.getController();
+        val description = controller.metadata.description
 
-        MediaDescriptionCompat description = controller.getMetadata().getDescription();
+        val intent = Intent(context, PlayActivity::class.java)
+        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookName)
+        val pendingIntent = PendingIntent.getActivity(
+            context, 1, intent,
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-        Intent intent = new Intent(context, PlayActivity.class);
-        intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookName);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent,
-                PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        val style = NotificationCompat.MediaStyle()
+            .setMediaSession(mediaSession.sessionToken)
+            .setShowActionsInCompactView(1, 2, 3)
+            .setShowCancelButton(true)
+            .setCancelButtonIntent(
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    context,
+                    PlaybackStateCompat.ACTION_STOP
+                )
+            )
 
-        MediaStyle style = new MediaStyle()
-                .setMediaSession(mediaSession.getSessionToken())
-                .setShowActionsInCompactView(1, 2, 3)
-                .setShowCancelButton(true)
-                .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                        PlaybackStateCompat.ACTION_STOP));
-
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, CHANNEL_ID);
+        val notificationBuilder = androidx.core.app.NotificationCompat.Builder(context, CHANNEL_ID)
         notificationBuilder
-                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                        PlaybackStateCompat.ACTION_STOP))
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setSmallIcon(R.drawable.ic_logo)
-                .setShowWhen(false)
-                .setStyle(style)
-                .setContentIntent(pendingIntent)
-                .setContentTitle(description.getTitle())
-                .setContentText(description.getSubtitle())
-                .setLargeIcon(description.getIconBitmap())
-                .setOngoing(playing);
-        return notificationBuilder.build();
+            .setDeleteIntent(
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    context,
+                    PlaybackStateCompat.ACTION_STOP
+                )
+            )
+            .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
+            .setSmallIcon(R.drawable.ic_logo)
+            .setShowWhen(false)
+            .setStyle(style)
+            .setContentIntent(pendingIntent)
+            .setContentTitle(description.title)
+            .setContentText(description.subtitle)
+            .setLargeIcon(description.iconBitmap)
+            .setOngoing(playing)
+        return notificationBuilder.build()
     }
-
 }

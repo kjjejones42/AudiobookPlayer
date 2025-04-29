@@ -1,113 +1,91 @@
-package com.kjjejones42.audiobookplayer.player;
+package com.kjjejones42.audiobookplayer.player
 
-import android.content.Context;
-import android.support.v4.media.MediaMetadataCompat;
+import android.content.Context
+import android.support.v4.media.MediaMetadataCompat
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
+class PlayerViewModel : ViewModel() {
+    private val _isPlaying = MutableLiveData<Boolean>()
+    private val _position = MutableLiveData<Long>()
+    private val _metadata = MutableLiveData<MediaMetadataCompat>()
+    private val _audioBook = MutableLiveData<AudioBook?>()
+    private val _startPlayback = MutableLiveData<Boolean>()
 
-import com.kjjejones42.audiobookplayer.AudioBook;
-import com.kjjejones42.audiobookplayer.database.AudiobookDatabase;
+    val isPlaying: LiveData<Boolean> get() = _isPlaying
+    val audioBook: LiveData<AudioBook?> get() = _audioBook
+    val position: LiveData<Long> get() = _position
+    val metadata: LiveData<MediaMetadataCompat> get() = _metadata
+    val startPlayback: LiveData<Boolean> get() = _startPlayback
 
-public class PlayerViewModel extends ViewModel {
-
-    static private MediaMetadataCompat emptyMetadata;
-
-    private final MutableLiveData<Boolean> isPlaying = new MutableLiveData<>();
-    private final MutableLiveData<Long> position = new MutableLiveData<>();
-    private final MutableLiveData<MediaMetadataCompat> metadata = new MutableLiveData<>();
-    private final MutableLiveData<AudioBook> audioBook = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> startPlayback = new MutableLiveData<>();
-
-    @NonNull
-    LiveData<AudioBook> getAudioBook() {
-        return audioBook;
+    fun setAudioBook(audioBook: AudioBook?) {
+        _audioBook.value = audioBook
     }
 
-    void setAudioBook(AudioBook audioBook) {
-        this.audioBook.setValue(audioBook);
-    }
-
-    LiveData<Boolean> getStartPlayback() {
-        return startPlayback;
-    }
-
-    void setStartPlayback(boolean startPlayback) {
-        Boolean b = this.startPlayback.getValue();
+    fun setStartPlayback(startPlayback: Boolean) {
+        val b = _startPlayback.value
         if (b != null && b != startPlayback) {
-            this.startPlayback.setValue(startPlayback);
+            _startPlayback.value = startPlayback
         }
     }
 
-    public PlayerViewModel(){
-        super();
-        isPlaying.setValue(true);
-        clear();
+    init {
+        setIsPlaying(true)
+        clear()
     }
 
-    private MediaMetadataCompat getEmptyMetadata(){
-        if (emptyMetadata == null){
-            emptyMetadata = new MediaMetadataCompat.Builder()
-                            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "")
-                            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, null)
-                            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0L)
-                            .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, 0)
-                            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "")
-                            .build();
+    private val emptyMetadata: MediaMetadataCompat
+        get() {
+            if (Companion.emptyMetadata == null) {
+                Companion.emptyMetadata = MediaMetadataCompat.Builder()
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "")
+                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, null)
+                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0L)
+                    .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, 0)
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "")
+                    .build()
+            }
+            return Companion.emptyMetadata!!
         }
-        return emptyMetadata;
+
+    private fun clear() {
+        _position.value = 0L
+        _metadata.value = emptyMetadata
     }
 
-    private void clear() {
-        position.setValue(0L);
-        metadata.setValue(getEmptyMetadata());
-    }
-
-    @NonNull
-    LiveData<Boolean> getIsPlaying() {
-        return isPlaying;
-    }
-
-    void setIsPlaying(boolean isPlaying) {
-        Boolean b = this.isPlaying.getValue();
+    fun setIsPlaying(isPlaying: Boolean) {
+        val b = this.isPlaying.value
         if (b != null && b != isPlaying) {
-            this.isPlaying.setValue(isPlaying);
+            _isPlaying.value = isPlaying
         }
     }
 
-    @NonNull
-    LiveData<Long> getPosition() {
-        return position;
-    }
-
-    void setPosition(long position) {
-        Long l = this.position.getValue();
+    fun setPosition(position: Long) {
+        val l = this.position.value
         if (l != null && l != position) {
             if (position > 0) {
-                this.position.setValue(position);
+                _position.value = position
             }
         }
     }
 
-    public void updateBookFromDatabase(Context context) {
-        AudioBook book = audioBook.getValue();
+    fun updateBookFromDatabase(context: Context) {
+        var book = audioBook.value
         if (book != null) {
-            String bookId = audioBook.getValue().displayName;
-            book = AudiobookDatabase.getInstance(context).audiobookDao().findByName(bookId);
-            audioBook.setValue(book);
+            val bookId = audioBook.value!!.displayName
+            book = getInstance(context).audiobookDao()!!.findByName(bookId)
+            setAudioBook(book)
         }
     }
 
-    @NonNull
-    LiveData<MediaMetadataCompat> getMetadata() {
-        return metadata;
+    fun setMetadata(metadata: MediaMetadataCompat) {
+        _metadata.value = metadata
     }
 
-    void setMetadata(MediaMetadataCompat metadata){
-        this.metadata.setValue(metadata);
-        }
-
-
+    companion object {
+        private var emptyMetadata: MediaMetadataCompat? = null
+    }
 }

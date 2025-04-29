@@ -1,52 +1,48 @@
-package com.kjjejones42.audiobookplayer.database;
+package com.kjjejones42.audiobookplayer.database
 
-import androidx.lifecycle.LiveData;
-import androidx.room.Dao;
-import androidx.room.Insert;
-import androidx.room.OnConflictStrategy;
-import androidx.room.Query;
-import androidx.room.Update;
-
-import com.kjjejones42.audiobookplayer.AudioBook;
-
-import java.util.List;
+import androidx.lifecycle.LiveData
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.kjjejones42.audiobookplayer.AudioBook
 
 @Dao
-public interface AudiobookDao {
-
-    @Query("SELECT * FROM AudioBook")
-    LiveData<List<AudioBook>> getAllAndObserve();
+interface AudiobookDao {
+    @get:Query("SELECT * FROM AudioBook")
+    val allAndObserve: LiveData<List<AudioBook>>
 
     @Update
-    void update(AudioBook book);
+    fun update(book: AudioBook?)
 
     @Query("SELECT * FROM AudioBook WHERE displayName = :displayName LIMIT 1")
-    AudioBook findByName(String displayName);
+    fun findByName(displayName: String?): AudioBook?
 
     @Query("UPDATE AudioBook SET positionInTrack = :positionInTrack, lastSavedTimestamp = :currentTimeStamp WHERE displayName = :displayName")
-    void updatePositionInTrack(String displayName, int positionInTrack, long currentTimeStamp);
+    fun updatePositionInTrack(displayName: String?, positionInTrack: Int, currentTimeStamp: Long)
 
     @Query("UPDATE AudioBook SET positionInTrackList = :positionInTrackList WHERE displayName = :displayName")
-    void updatePositionInTrackList(String displayName, int positionInTrackList);
+    fun updatePositionInTrackList(displayName: String?, positionInTrackList: Int)
 
     @Query("SELECT positionInTrack FROM AudioBook WHERE displayName = :displayName LIMIT 1")
-    int getPositionInTrack(String displayName);
+    fun getPositionInTrack(displayName: String?): Int
 
     @Query("SELECT positionInTrackList FROM AudioBook WHERE displayName = :displayName LIMIT 1")
-    int getPositionInTrackList(String displayName);
+    fun getPositionInTrackList(displayName: String?): Int
 
     @Query("SELECT status FROM AudioBook WHERE displayName = :displayName LIMIT 1")
-    int getStatus(String displayName);
+    fun getStatus(displayName: String?): Int
 
-    @Query("SELECT * FROM AudioBook ORDER BY lastSavedTimestamp DESC LIMIT 1")
-    AudioBook getMostRecentBook();
+    @get:Query("SELECT * FROM AudioBook ORDER BY lastSavedTimestamp DESC LIMIT 1")
+    val mostRecentBook: AudioBook?
 
-    @Query("SELECT baseDir FROM AudioBook")
-    List<String> getAllBaseDirs();
+    @get:Query("SELECT baseDir FROM AudioBook")
+    val allBaseDirs: List<String?>?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    void insertAll(List<AudioBook> books);
+    fun insertAll(books: List<AudioBook?>?)
 
     @Query("DELETE FROM AudioBook WHERE baseDir = :baseDir")
-    void delete(String baseDir);
+    fun delete(baseDir: String?)
 }

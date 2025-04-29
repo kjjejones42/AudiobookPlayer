@@ -1,43 +1,43 @@
-package com.kjjejones42.audiobookplayer.database;
+package com.kjjejones42.audiobookplayer.database
 
-import androidx.room.TypeConverter;
+import androidx.room.TypeConverter
+import com.kjjejones42.audiobookplayer.MediaItem
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import java.util.Base64
 
-import com.kjjejones42.audiobookplayer.MediaItem;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.Base64;
-import java.util.List;
-
-public class DataConverter {
+class DataConverter {
     @TypeConverter
-    public String fromMediaItemList(List<MediaItem> list) {
+    fun fromMediaItemList(list: List<MediaItem?>?): String? {
         try {
-            if (list == null) return null;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream( baos );
-            oos.writeObject(list);
-            oos.close();
-            return Base64.getEncoder().encodeToString(baos.toByteArray());
-        } catch (IOException ignored) {
-            return null;
+            if (list == null) return null
+            val baos = ByteArrayOutputStream()
+            val oos = ObjectOutputStream(baos)
+            oos.writeObject(list)
+            oos.close()
+            return Base64.getEncoder().encodeToString(baos.toByteArray())
+        } catch (ignored: IOException) {
+            return null
         }
     }
+
     @TypeConverter
-    @SuppressWarnings("unchecked")
-    public List<MediaItem> toMediaItemList(String string) {
+    @Suppress("UNCHECKED_CAST")
+    fun toMediaItemList(string: String?): List<MediaItem>? {
         try {
-            if (string == null) return null;
-            byte[] data = Base64.getDecoder().decode(string);
-            ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(data));
-            Object o = ois.readObject();
-            ois.close();
-            return (List<MediaItem>) o;
-        } catch (IOException | ClassNotFoundException ignored) {
-            return null;
+            if (string == null) return null
+            val data = Base64.getDecoder().decode(string)
+            val ois = ObjectInputStream(ByteArrayInputStream(data))
+            val o = ois.readObject()
+            ois.close()
+            return o as List<MediaItem>
+        } catch (ignored: IOException) {
+            return null
+        } catch (ignored: ClassNotFoundException) {
+            return null
         }
     }
 }

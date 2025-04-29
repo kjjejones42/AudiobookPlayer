@@ -1,325 +1,297 @@
-package com.kjjejones42.audiobookplayer;
+package com.kjjejones42.audiobookplayer
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.res.TypedArray;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.media.ThumbnailUtils;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.palette.graphics.Palette;
-import androidx.room.ColumnInfo;
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import android.app.Activity
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.media.ThumbnailUtils
+import androidx.core.graphics.createBitmap
+import androidx.palette.graphics.Palette
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.FileOutputStream
+import java.io.UnsupportedEncodingException
+import java.net.URLEncoder
+import java.util.Collections
+import kotlin.math.ceil
+import kotlin.math.max
 
 @Entity
-public class AudioBook {
-    public static final int STATUS_IN_PROGRESS = 0;
-    public static final int STATUS_NOT_BEGUN = 1;
-    public static final int STATUS_FINISHED = 2;
-    private static HashMap<Integer, String> map;
-    private static int thumbnailSize;
+class AudioBook {
+    @JvmField
     @PrimaryKey
-    @NonNull
-    public String displayName;
+    var displayName: String
+
+    @JvmField
+    @ColumnInfo
+    var baseDir: String? = null
+
+    @JvmField
+    @ColumnInfo
+    var files: List<MediaItem>? = null
+
+    @JvmField
+    @ColumnInfo
+    var author: String? = null
+
+    @JvmField
+    @ColumnInfo
+    var imagePath: String? = null
+
+    @JvmField
+    @ColumnInfo
+    var lastSavedTimestamp: Long = 0
+
+    @JvmField
+    @ColumnInfo
+    var positionInTrack: Int = 0
+
+    @JvmField
+    @ColumnInfo
+    var positionInTrackList: Int = 0
 
     @ColumnInfo
-    public String baseDir;
+    private var status = 0
 
-    @ColumnInfo
-    public List<MediaItem> files;
+    @Transient
+    var isArtGenerated: Boolean = false
+        private set
 
-    @ColumnInfo
-    public String author;
+    @Transient
+    private var thumbnail: Bitmap? = null
 
-    @ColumnInfo
-    private String imagePath;
-    @ColumnInfo
-    private long lastSavedTimestamp;
-    @ColumnInfo
-    private int positionInTrack;
-    @ColumnInfo
-    private int positionInTrackList;
-    @ColumnInfo
-    private int status;
-    private transient boolean generatedArt;
-    private transient Bitmap thumbnail;
-    private transient Bitmap art;
-    private transient Palette albumArtPalette;
-    public AudioBook() {
-        displayName = "";
+    @Transient
+    private var art: Bitmap? = null
 
+    @Transient
+    private var albumArtPalette: Palette? = null
+
+    constructor() {
+        displayName = ""
     }
 
-    public AudioBook(@NonNull String name, String baseDir, String imagePath, List<MediaItem> files, String author) {
+    constructor(
+        name: String,
+        baseDir: String?,
+        imagePath: String?,
+        files: List<MediaItem>?,
+        author: String?
+    ) {
         if (files != null) {
-            Collections.sort(files);
+            Collections.sort(files)
         }
-        this.baseDir = baseDir;
-        this.imagePath = imagePath;
-        this.displayName = name;
-        this.files = files;
-        this.status = STATUS_NOT_BEGUN;
-        this.author = author == null ? "" : author;
+        this.baseDir = baseDir
+        this.imagePath = imagePath
+        this.displayName = name
+        this.files = files
+        this.status = STATUS_NOT_BEGUN
+        this.author = author ?: ""
     }
 
-    public static HashMap<Integer, String> getStatusMap() {
-        if (map == null) {
-            map = new HashMap<>();
-            map.put(STATUS_FINISHED, "Finished");
-            map.put(STATUS_IN_PROGRESS, "In Progress");
-            map.put(STATUS_NOT_BEGUN, "Not Begun");
-        }
-        return map;
-    }
-
-    private static int getThumbnailSize(Activity activity) {
-        if (thumbnailSize == 0) {
-             try (TypedArray value = activity.getTheme().obtainStyledAttributes(
-                    new int[]{ android.R.attr.listPreferredItemHeight }
-            )) {
-                 float height = value.getDimension(0, .0F);
-                 thumbnailSize = (int) Math.round(Math.ceil(height));
-             }
-        }
-        return thumbnailSize;
-    }
-
-    public long getLastSavedTimestamp() {
-        return lastSavedTimestamp;
-    }
-
-    public void setLastSavedTimestamp(long lastSavedTimestamp) {
-        this.lastSavedTimestamp = lastSavedTimestamp;
-    }
-
-    public Palette getAlbumArtPalette(Context context) {
+    fun getAlbumArtPalette(context: Context): Palette? {
         if (albumArtPalette == null) {
-            generatePalette(getAlbumArt(context));
+            generatePalette(getAlbumArt(context))
         }
-        return albumArtPalette;
+        return albumArtPalette
     }
 
-    private void generatePalette(Bitmap bitmap) {
+    private fun generatePalette(bitmap: Bitmap?) {
         if (bitmap != null) {
-            albumArtPalette = Palette.from(bitmap).generate();
+            albumArtPalette = Palette.from(bitmap).generate()
         }
     }
 
-    public Bitmap getAlbumArt(Context context) {
+    fun getAlbumArt(context: Context): Bitmap {
         if (art != null) {
-            return art;
+            return art as Bitmap
         }
-        Bitmap result = null;
+        var result: Bitmap? = null
         try {
-            if (imagePath != null && !imagePath.isEmpty()) {
-                FileInputStream fis = new FileInputStream(imagePath);
-                result = BitmapFactory.decodeStream(fis);
-                fis.close();
+            if (imagePath != null && imagePath!!.isNotEmpty()) {
+                val fis = FileInputStream(imagePath)
+                result = BitmapFactory.decodeStream(fis)
+                fis.close()
             }
-        } catch (FileNotFoundException e) {
-            Utils.logError(e, "Couldn't get album art", context);
-        } catch (Exception ignored) {
+        } catch (e: FileNotFoundException) {
+            logError(e, "Couldn't get album art", context)
+        } catch (ignored: Exception) {
         }
         if (result == null) {
-            for (MediaItem file : files) {
-                result = file.getEmbeddedPicture(context);
+            for (file in files!!) {
+                result = file.getEmbeddedPicture(context)
                 if (result != null) {
-                    break;
+                    break
                 }
             }
         }
         if (result == null) {
-            result = getGeneratedAlbumArt(displayName.substring(0, 1));
+            result = getGeneratedAlbumArt(displayName.substring(0, 1))
         }
-        art = result;
-        generatePalette(art);
-        return art;
+        art = result
+        generatePalette(art)
+        return art!!
     }
 
-    private Bitmap getGeneratedAlbumArt(String text) {
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setTextSize((float) 600);
-        paint.setColor(Color.GRAY);
-        paint.setTextAlign(Paint.Align.LEFT);
-        float baseline = -paint.ascent();
-        int width = (int) (paint.measureText(text) + 0.5f);
-        int height = (int) (baseline + paint.descent() + 0.5f);
-        int size = Math.max(width, height);
-        Bitmap image = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(image);
-        canvas.drawColor(Color.TRANSPARENT);
-        canvas.drawText(text,
-                (size - width) / 2.0f,
-                baseline,
-                paint);
-        generatedArt = true;
-        return image;
+    private fun getGeneratedAlbumArt(text: String): Bitmap {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.textSize = 600f
+        paint.color = Color.GRAY
+        paint.textAlign = Paint.Align.LEFT
+        val baseline = -paint.ascent()
+        val width = (paint.measureText(text) + 0.5f).toInt()
+        val height = (baseline + paint.descent() + 0.5f).toInt()
+        val size = max(width.toDouble(), height.toDouble()).toInt()
+        val image = createBitmap(size, size)
+        val canvas = Canvas(image)
+        canvas.drawColor(Color.TRANSPARENT)
+        canvas.drawText(
+            text,
+            (size - width) / 2.0f,
+            baseline,
+            paint
+        )
+        isArtGenerated = true
+        return image
     }
 
-    public boolean isArtGenerated() {
-        return generatedArt;
-    }
-
-    public Bitmap getThumbnail(Activity activity) {
-        getThumbnailSize(activity);
+    fun getThumbnail(activity: Activity): Bitmap? {
+        getThumbnailSize(activity)
         if (thumbnail == null) {
-            loadThumbnail(activity);
+            loadThumbnail(activity)
             if (thumbnail == null) {
-                generateThumbnailFromAlbumArt(activity, getAlbumArt(activity));
+                generateThumbnailFromAlbumArt(activity, getAlbumArt(activity))
             }
         }
-        return thumbnail;
+        return thumbnail
     }
 
-    private File getThumbnailFile(Context context) {
-        return new File(context.getCacheDir(), getUniqueId() + ".thumbnail");
+    private fun getThumbnailFile(context: Context): File {
+        return File(context.cacheDir, "$uniqueId.thumbnail")
     }
 
-    private void generateThumbnailFromAlbumArt(Activity activity, Bitmap bitmap) {
-        int size = getThumbnailSize(activity);
-        thumbnail = ThumbnailUtils.extractThumbnail(bitmap, size, size);
+    private fun generateThumbnailFromAlbumArt(activity: Activity, bitmap: Bitmap) {
+        val size = getThumbnailSize(activity)
+        thumbnail = ThumbnailUtils.extractThumbnail(bitmap, size, size)
         if (thumbnail != null) {
-            saveThumbnail(activity);
+            saveThumbnail(activity)
         }
     }
 
-    private void loadThumbnail(Context context) {
+    private fun loadThumbnail(context: Context) {
         try {
-            File file = getThumbnailFile(context);
-            FileInputStream fis = new FileInputStream(file);
-            thumbnail = BitmapFactory.decodeStream(fis);
-            fis.close();
-        } catch (FileNotFoundException ignored) {
-        } catch (Exception e) {
-            Utils.logError(e, "Couldn't load thumbnail", context);
+            val file = getThumbnailFile(context)
+            val fis = FileInputStream(file)
+            thumbnail = BitmapFactory.decodeStream(fis)
+            fis.close()
+        } catch (ignored: FileNotFoundException) {
+        } catch (e: Exception) {
+            logError(e, "Couldn't load thumbnail", context)
         }
     }
 
-    private void saveThumbnail(Context context) {
+    private fun saveThumbnail(context: Context) {
         try {
-            File file = getThumbnailFile(context);
-            FileOutputStream fos = new FileOutputStream(file);
-            thumbnail.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            fos.close();
-        } catch (Exception e) {
-            Utils.logError(e, "Couldn't save thumbnail", context);
+            val file = getThumbnailFile(context)
+            val fos = FileOutputStream(file)
+            thumbnail!!.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            fos.close()
+        } catch (e: Exception) {
+            logError(e, "Couldn't save thumbnail", context)
         }
     }
 
-    public int getStatus() {
-        return status;
+    fun getStatus(): Int {
+        return status
     }
 
-    public void setStatus(int status) {
-        switch (status) {
-            case STATUS_IN_PROGRESS:
-                break;
-            case STATUS_NOT_BEGUN:
-                lastSavedTimestamp = 0L;
-            case STATUS_FINISHED:
-                setPositionInTrackList(0);
-                setPositionInTrack(0);
-                break;
+    fun setStatus(status: Int) {
+        when (status) {
+            STATUS_IN_PROGRESS -> {}
+            STATUS_NOT_BEGUN -> {
+                lastSavedTimestamp = 0L
+                positionInTrackList = 0
+                positionInTrack = 0
+            }
+
+            STATUS_FINISHED -> {
+                positionInTrackList = 0
+                positionInTrack = 0
+            }
         }
-        this.status = status;
+        this.status = status
     }
 
-    public int getPositionInTrack() {
-        return positionInTrack;
-    }
+    val durationOfMostRecentTrack: Long
+        get() = files!![positionInTrackList].duration
 
-    public void setPositionInTrack(int positionInTrack) {
-        this.positionInTrack = positionInTrack;
-    }
-
-    public long getDurationOfMostRecentTrack() {
-        return files.get(getPositionInTrackList()).getDuration();
-    }
-
-    public int getPositionInTrackList() {
-        return positionInTrackList;
-    }
-
-    public void setPositionInTrackList(int positionInTrackList) {
-        this.positionInTrackList = positionInTrackList;
-    }
-
-    public long getTotalDuration() {
-        long total = 0;
-        for (MediaItem item : files) {
-            total += item.getDuration();
+    val totalDuration: Long
+        get() {
+            var total: Long = 0
+            for (item in files!!) {
+                total += item.duration
+            }
+            return total
         }
-        return total;
-    }
 
-    @Override
-    public boolean equals(@Nullable Object obj) {
-        if (obj instanceof AudioBook) {
-            return this.getUniqueId().equals(((AudioBook) obj).getUniqueId());
+    override fun equals(other: Any?): Boolean {
+        if (other is AudioBook) {
+            return this.uniqueId == other.uniqueId
         }
-        return super.equals(obj);
+        return super.equals(other)
     }
 
-    public String getUniqueId() {
-        try {
-            return URLEncoder.encode(displayName, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
+    val uniqueId: String
+        get() {
+            try {
+                return URLEncoder.encode(displayName, "UTF-8")
+            } catch (e: UnsupportedEncodingException) {
+                throw RuntimeException(e)
+            }
         }
+
+    override fun toString(): String {
+        return "$displayName $author"
     }
 
-    @NonNull
-    @Override
-    public String toString() {
-        return displayName + " " + author;
+    override fun hashCode(): Int {
+        return javaClass.hashCode()
     }
 
-    public String getImagePath() {
-        return imagePath;
-    }
+    companion object {
+        const val STATUS_IN_PROGRESS: Int = 0
+        const val STATUS_NOT_BEGUN: Int = 1
+        const val STATUS_FINISHED: Int = 2
+        private var map: HashMap<Int, String>? = null
+        private var thumbnailSize = 0
+        @JvmStatic
+        val statusMap: HashMap<Int, String>?
+            get() {
+                if (map == null) {
+                    map = HashMap()
+                    map!![STATUS_FINISHED] = "Finished"
+                    map!![STATUS_IN_PROGRESS] = "In Progress"
+                    map!![STATUS_NOT_BEGUN] = "Not Begun"
+                }
+                return map
+            }
 
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
-    }
-
-    @NonNull
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public void setDisplayName(@NonNull String displayName) {
-        this.displayName = displayName;
-    }
-
-    public List<MediaItem> getFiles() {
-        return files;
-    }
-
-    public void setFiles(List<MediaItem> files) {
-        this.files = files;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
+        private fun getThumbnailSize(activity: Activity): Int {
+            if (thumbnailSize == 0) {
+                activity.theme.obtainStyledAttributes(
+                    intArrayOf(android.R.attr.listPreferredItemHeight)
+                ).use { value ->
+                    val height = value.getDimension(0, .0f)
+                    thumbnailSize = Math.round(ceil(height.toDouble())).toInt()
+                }
+            }
+            return thumbnailSize
+        }
     }
 }
