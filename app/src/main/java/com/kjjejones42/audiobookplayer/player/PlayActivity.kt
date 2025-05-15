@@ -118,10 +118,7 @@ class PlayActivity : AppCompatActivity() {
                     else -> {
                         model.setPosition(state.position)
                         val isPlaying = state.state == PlaybackStateCompat.STATE_PLAYING
-                        val b = model.isPlaying.value
-                        if (b != null && isPlaying != b) {
-                            model.setIsPlaying(isPlaying)
-                        }
+                        model.setIsPlaying(isPlaying)
                     }
                 }
             }
@@ -152,12 +149,7 @@ class PlayActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_play)
 
-        mediaBrowser = MediaBrowserCompat(
-            this, ComponentName(
-                this,
-                MediaPlaybackService::class.java
-            ), connectionCallbacks, null
-        )
+        mediaBrowser = MediaBrowserCompat(this, ComponentName(this, MediaPlaybackService::class.java), connectionCallbacks, null)
 
         prevButton = findViewById(R.id.prevButton)
         rewindButton = findViewById(R.id.rewindButton)
@@ -183,16 +175,16 @@ class PlayActivity : AppCompatActivity() {
     private fun initializeModelObservers() {
         model.isPlaying.observe(
             this
-        ) { isPlaying: Boolean -> this.onIsPlayingSet(isPlaying) }
+        ) { isPlaying -> this.onIsPlayingSet(isPlaying) }
         model.position.observe(
             this
-        ) { position: Long -> this.onPositionSet(position) }
+        ) { position -> this.onPositionSet(position) }
         model.metadata.observe(
             this
-        ) { metadata: MediaMetadataCompat -> this.onMetadataSet(metadata) }
+        ) { metadata -> this.onMetadataSet(metadata) }
         model.audioBook.observe(
             this
-        ) { book: AudioBook? -> this.onAudioBookSet(book) }
+        ) { book -> this.onAudioBookSet(book) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -259,7 +251,7 @@ class PlayActivity : AppCompatActivity() {
 
     private fun buildTransportControls() {
         controller!!.registerCallback(controllerCallback)
-        toggleButton.setOnClickListener { v: View? ->
+        toggleButton.setOnClickListener {
             val pbState = controller!!.playbackState.state
             if (pbState == PlaybackStateCompat.STATE_PLAYING) {
                 controller!!.transportControls.pause()
@@ -267,13 +259,13 @@ class PlayActivity : AppCompatActivity() {
                 controller!!.transportControls.play()
             }
         }
-        prevButton.setOnClickListener { v: View? -> controller!!.transportControls.skipToPrevious() }
-        nextButton.setOnClickListener { v: View? ->
+        prevButton.setOnClickListener { controller!!.transportControls.skipToPrevious() }
+        nextButton.setOnClickListener {
             controller!!.transportControls.skipToNext()
             model.setPosition(0)
         }
-        rewindButton.setOnClickListener { v: View? -> controller!!.transportControls.rewind() }
-        forwardButton.setOnClickListener { v: View? -> controller!!.transportControls.fastForward() }
+        rewindButton.setOnClickListener { controller!!.transportControls.rewind() }
+        forwardButton.setOnClickListener { controller!!.transportControls.fastForward() }
         setControlsEnabled(true)
     }
 

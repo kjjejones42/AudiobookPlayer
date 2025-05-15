@@ -9,11 +9,11 @@ abstract class ListItem {
     abstract val timeStamp: Long
     abstract val headingOrItem: Int
 
-    override fun equals(obj: Any?): Boolean {
-        if (obj is ListItem) {
-            return obj.toString() == this.toString()
+    override fun equals(other: Any?): Boolean {
+        if (other is ListItem) {
+            return other.toString() == this.toString()
         }
-        return super.equals(obj)
+        return super.equals(other)
     }
 
     override fun hashCode(): Int {
@@ -50,9 +50,7 @@ abstract class ListItem {
         fun getId(name: String?): Long {
             val id: Long
             if (idMap.containsKey(name)) {
-                val value =
-                    idMap[name]
-                        ?: throw RuntimeException()
+                val value = idMap[name] ?: throw RuntimeException()
                 id = value
             } else {
                 id = idMap.entries.size.toLong()

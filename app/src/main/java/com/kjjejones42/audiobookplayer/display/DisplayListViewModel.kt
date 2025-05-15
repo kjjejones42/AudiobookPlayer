@@ -26,12 +26,12 @@ class DisplayListViewModel : ViewModel() {
 
     private fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
         val list: MutableList<ListItem> = books.stream()
-            .sorted(Comparator.comparing { o: AudioBook -> o.displayName })
+            .sorted(Comparator.comparing { o -> o.displayName })
             .filter { book -> book != null}
             .map { book -> AudioBookContainer(book) }
             .collect(Collectors.toList())
 
-        list.stream()
+        list.toList().stream()
             .map { obj -> obj.category }
             .distinct()
             .map { category -> Heading(category) }

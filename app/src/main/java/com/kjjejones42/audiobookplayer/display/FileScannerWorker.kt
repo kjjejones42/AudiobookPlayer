@@ -121,18 +121,14 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
 
     override fun doWork(): Result {
         try {
-            val results = list
-            val ids =
-                results.stream().map { x: AudioBook? -> x!!.baseDir }.collect(Collectors.toSet())
+            val ids = list.stream().map { x -> x!!.baseDir }.collect(Collectors.toSet())
             val dao = getInstance(applicationContext).audiobookDao()
-            val dbIds: MutableSet<String?> = ArraySet(
-                dao!!.allBaseDirs
-            )
+            val dbIds: MutableSet<String?> = ArraySet(dao.allBaseDirs)
             dbIds.removeAll(ids)
             for (dbId in dbIds) {
                 dao.delete(dbId)
             }
-            dao.insertAll(results)
+            dao.insertAll(list.filterNotNull())
         } catch (e: Exception) {
             logError(
                 e, "Error scanning files",

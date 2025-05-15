@@ -2,7 +2,6 @@ package com.kjjejones42.audiobookplayer.display
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.content.DialogInterface
 import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
@@ -29,7 +28,7 @@ class DisplayListAdapter internal constructor(
 ) :
     RecyclerView.Adapter<MyViewHolder>() {
     private var selectedPos = RecyclerView.NO_POSITION
-    private val onClickListener = View.OnClickListener { v: View? ->
+    private val onClickListener = View.OnClickListener { v ->
         val position = rcv.getChildLayoutPosition(v!!)
         val items = checkNotNull(
             model.listItems.value
@@ -42,7 +41,7 @@ class DisplayListAdapter internal constructor(
         }
     }
     private var currentItems: List<ListItem>? = null
-    private val onLongClickListener = OnLongClickListener { v: View ->
+    private val onLongClickListener = OnLongClickListener { v ->
         val items = model.listItems.value
         val statuses = statusMap!!.values.toTypedArray<String>()
         checkNotNull(items)
@@ -52,8 +51,8 @@ class DisplayListAdapter internal constructor(
         AlertDialog.Builder(v.context)
             .setSingleChoiceItems(
                 statuses,
-                dao!!.getStatus(bookId)
-            ) { dialog: DialogInterface, which: Int ->
+                dao.getStatus(bookId)
+            ) { dialog, which ->
                 val book = dao.findByName(bookId)
                 book!!.setStatus(which)
                 dao.update(book)
@@ -61,19 +60,13 @@ class DisplayListAdapter internal constructor(
             }.setTitle("Choose this book's status.")
             .setNegativeButton(
                 "Cancel"
-            ) { dialog: DialogInterface, which: Int -> dialog.dismiss() }
+            ) { dialog, _ -> dialog.dismiss() }
             .show()
         false
     }
 
     init {
-        model.listItems.observe(
-            activity
-        ) { newItems: List<ListItem> ->
-            this.selectivelyNotify(
-                newItems
-            )
-        }
+        model.listItems.observe(activity) { newItems -> this.selectivelyNotify(newItems) }
         setHasStableIds(true)
     }
 
@@ -111,7 +104,7 @@ class DisplayListAdapter internal constructor(
                 indexes.add(i)
             }
         }
-        indexes.sortWith { o1: Int, o2: Int -> o2 - o1 }
+        indexes.sortWith { o1, o2 -> o2 - o1 }
         if (remove) {
             for (i in indexes) {
                 notifyItemRemoved(i)
@@ -212,9 +205,7 @@ class DisplayListAdapter internal constructor(
         return items.size
     }
 
-    class MyViewHolder(val v: View, isItem: Boolean) : RecyclerView.ViewHolder(
-        v
-    ) {
+    class MyViewHolder(val v: View, isItem: Boolean) : RecyclerView.ViewHolder(v) {
         var textView: TextView? = null
         var artist: TextView? = null
 

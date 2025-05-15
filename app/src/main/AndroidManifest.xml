@@ -30,9 +30,8 @@
         </activity>
 
         <service android:name=".player.MediaPlaybackService"
-            android:permission="android.permission.READ_EXTERNAL_STORAGE"
             android:foregroundServiceType="mediaPlayback"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>

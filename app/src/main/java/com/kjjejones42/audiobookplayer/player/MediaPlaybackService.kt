@@ -354,17 +354,9 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
             super.onCustomAction(action, extras)
             mediaSession.sendSessionEvent(action, extras)
             when (action) {
-                EVENT_REACHED_END -> {
-                    onStop()
-                }
-
-                EVENT_REWIND -> {
-                    onRewind()
-                }
-
-                EVENT_FAST_FORWARD -> {
-                    onFastForward()
-                }
+                EVENT_REACHED_END -> onStop()
+                EVENT_REWIND -> onRewind()
+                EVENT_FAST_FORWARD -> onFastForward()
             }
         }
 

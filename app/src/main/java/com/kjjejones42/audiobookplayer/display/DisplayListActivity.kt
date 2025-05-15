@@ -22,7 +22,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.OneTimeWorkRequest
-import androidx.work.Operation
 import androidx.work.Operation.State.IN_PROGRESS
 import androidx.work.WorkManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -34,12 +33,12 @@ import com.kjjejones42.audiobookplayer.player.PlayActivity
 
 class DisplayListActivity : AppCompatActivity() {
 
-    private var mAdapter: DisplayListAdapter? = null
+    private lateinit var mAdapter: DisplayListAdapter
     private lateinit var recyclerView: RecyclerView
-    private var emptyView: TextView? = null
+    private lateinit var emptyView: TextView
     private var searchView: SearchView? = null
     private var controller: MediaControllerCompat? = null
-    private var browser: MediaBrowserCompat? = null
+    private lateinit var browser: MediaBrowserCompat
 
     private val activityResultLauncher = registerForActivityResult(
         RequestMultiplePermissions()
@@ -53,12 +52,8 @@ class DisplayListActivity : AppCompatActivity() {
         val message = "Loading. Please wait..."
         val request = OneTimeWorkRequest.Builder(FileScannerWorker::class.java).build()
         val dialog = ProgressDialog.show(this, "", message, true)
-        WorkManager.getInstance(this).enqueue(request).state.observe(
-            this
-        ) { workInfo: Operation.State ->
-            if (workInfo.javaClass != IN_PROGRESS::class.java) {
-                dialog.cancel()
-            }
+        WorkManager.getInstance(this).enqueue(request).state.observe(this) {
+            workInfo -> if (workInfo.javaClass != IN_PROGRESS::class.java) dialog.cancel()
         }
     }
 
@@ -98,17 +93,17 @@ class DisplayListActivity : AppCompatActivity() {
         checkNotNull(searchView)
         searchView!!.isSubmitButtonEnabled = false
         searchView!!.setOnCloseListener {
-            mAdapter!!.filter(null)
+            mAdapter.filter(null)
             false
         }
         searchView!!.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String): Boolean {
-                mAdapter!!.filter(query)
+                mAdapter.filter(query)
                 return false
             }
 
             override fun onQueryTextChange(newText: String): Boolean {
-                mAdapter!!.filter(newText)
+                mAdapter.filter(newText)
                 return false
             }
         })
@@ -136,20 +131,14 @@ class DisplayListActivity : AppCompatActivity() {
         mAdapter = DisplayListAdapter(model, recyclerView, this)
         recyclerView.setAdapter(mAdapter)
 
-        getInstance(this).audiobookDao()
-            ?.allAndObserve!!.observe(
-                this
-            ) { bookList -> model.setBooks(bookList) }
-        model.savedBooks.observe(
-            this
-        ) { list: List<AudioBook?>? -> this.updateScreen(list) }
+        getInstance(this).audiobookDao().allAndObserve.observe(this) { bookList -> model.setBooks(bookList) }
+        model.savedBooks.observe(this) { list -> this.updateScreen(list) }
 
         askUserForDirectory()
     }
 
     private fun resumeMostRecentBook() {
-        val mostRecent = getInstance(this)
-            .audiobookDao()!!.mostRecentBook
+        val mostRecent = getInstance(this).audiobookDao().mostRecentBook
         if (mostRecent != null && mostRecent.lastSavedTimestamp > 0) {
             val intent = Intent(this, MediaPlaybackService::class.java)
             intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent.displayName)
@@ -158,12 +147,13 @@ class DisplayListActivity : AppCompatActivity() {
         }
     }
 
-
     fun onFloatingActionButtonClick(@Suppress("unused") v: View?) {
-        if (controller!!.playbackState == null || controller!!.playbackState.state != PlaybackStateCompat.STATE_PLAYING) {
-            resumeMostRecentBook()
-        } else {
-            controller!!.transportControls.pause()
+        controller?.let {
+            if (it.playbackState == null || it.playbackState.state != PlaybackStateCompat.STATE_PLAYING) {
+                resumeMostRecentBook()
+            } else {
+                it.transportControls.pause()
+            }
         }
     }
 
@@ -171,15 +161,11 @@ class DisplayListActivity : AppCompatActivity() {
         object : MediaBrowserCompat.ConnectionCallback() {
             override fun onConnected() {
                 super.onConnected()
-                controller = MediaControllerCompat(
-                    this@DisplayListActivity,
-                    browser!!.sessionToken
-                )
+                controller = MediaControllerCompat(this@DisplayListActivity, browser.sessionToken)
                 controller!!.registerCallback(object : MediaControllerCompat.Callback() {
                     override fun onPlaybackStateChanged(state: PlaybackStateCompat) {
                         val fab = findViewById<FloatingActionButton>(R.id.fab)
-                        val icon =
-                            if (state.state == PlaybackStateCompat.STATE_PLAYING) R.drawable.ic_pause else R.drawable.ic_play
+                        val icon = if (state.state == PlaybackStateCompat.STATE_PLAYING) R.drawable.ic_pause else R.drawable.ic_play
                         fab.setImageDrawable(AppCompatResources.getDrawable(baseContext, icon))
                         super.onPlaybackStateChanged(state)
                     }
@@ -189,28 +175,20 @@ class DisplayListActivity : AppCompatActivity() {
 
     @SuppressLint("Range")
     fun updateScreen(list: List<AudioBook?>?) {
-        if (list != null && list.isEmpty()) {
-            recyclerView!!.visibility = View.GONE
-            emptyView!!.visibility = View.VISIBLE
-        } else {
-            recyclerView!!.visibility = View.VISIBLE
-            emptyView!!.visibility = View.GONE
-        }
+        val listVisible = list != null && list.isEmpty()
+        recyclerView.visibility = if (listVisible) View.GONE else View.VISIBLE
+        emptyView.visibility = if (listVisible) View.VISIBLE else View.GONE
     }
 
 
     override fun onStart() {
         super.onStart()
-        if (browser != null) {
-            browser!!.connect()
-        }
+        browser.connect()
     }
 
     override fun onStop() {
         super.onStop()
-        if (browser != null) {
-            browser!!.disconnect()
-        }
+        browser.disconnect()
     }
 
 

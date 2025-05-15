@@ -14,7 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private var logFileUri: Uri? = null
+private var LOG_FILE_URI: Uri? = null
 private const val fileName = "AudioBookPlayerError.log"
 
 fun logError(e: Throwable, context: Context?) {
@@ -45,20 +45,19 @@ private fun writeToFile(e: Throwable, message: String, context: Context?) {
 }
 
 private fun getLogFileUri(context: Context): Uri? {
-    if (logFileUri == null) {
+    if (LOG_FILE_URI == null) {
         val uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        val relativePath =
-            String.format("%s/%s/", Environment.DIRECTORY_DOCUMENTS, context.packageName)
+        val relativePath = String.format("%s/%s/", Environment.DIRECTORY_DOCUMENTS, context.packageName)
         val resolver = context.contentResolver
-        logFileUri = queryLogFileUri(resolver, uri, relativePath)
-        if (logFileUri == null) {
+        LOG_FILE_URI = queryLogFileUri(resolver, uri, relativePath)
+        if (LOG_FILE_URI == null) {
             val contentValues = ContentValues()
             contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
-            logFileUri = resolver.insert(uri, contentValues)
+            LOG_FILE_URI = resolver.insert(uri, contentValues)
         }
     }
-    return logFileUri
+    return LOG_FILE_URI
 }
 
 private fun currentDateTime(): String {
@@ -66,12 +65,9 @@ private fun currentDateTime(): String {
     return format.format(Date())
 }
 
-private fun queryLogFileUri(
-    resolver: ContentResolver, uri: Uri, relativePath: String
-): Uri? {
+private fun queryLogFileUri(resolver: ContentResolver, uri: Uri, relativePath: String): Uri? {
     val selection = arrayOf(MediaStore.MediaColumns._ID)
-    val where = String.format(
-        "%s = ? AND %s = ?",
+    val where = "%s = ? AND %s = ?".format(
         MediaStore.MediaColumns.DISPLAY_NAME,
         MediaStore.MediaColumns.RELATIVE_PATH
     )

@@ -14,7 +14,7 @@ interface AudiobookDao {
     val allAndObserve: LiveData<List<AudioBook>>
 
     @Update
-    fun update(book: AudioBook?)
+    fun update(book: AudioBook)
 
     @Query("SELECT * FROM AudioBook WHERE displayName = :displayName LIMIT 1")
     fun findByName(displayName: String?): AudioBook?
@@ -41,7 +41,7 @@ interface AudiobookDao {
     val allBaseDirs: List<String?>?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insertAll(books: List<AudioBook?>?)
+    fun insertAll(books: List<AudioBook>)
 
     @Query("DELETE FROM AudioBook WHERE baseDir = :baseDir")
     fun delete(baseDir: String?)

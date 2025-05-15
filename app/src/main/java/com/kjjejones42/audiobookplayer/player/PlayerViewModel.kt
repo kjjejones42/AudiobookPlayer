@@ -58,14 +58,14 @@ class PlayerViewModel : ViewModel() {
 
     fun setIsPlaying(isPlaying: Boolean) {
         val b = this.isPlaying.value
-        if (b != null && b != isPlaying) {
+        if (b == null || b != isPlaying) {
             _isPlaying.value = isPlaying
         }
     }
 
     fun setPosition(position: Long) {
         val l = this.position.value
-        if (l != null && l != position) {
+        if (l == null || l != position) {
             if (position > 0) {
                 _position.value = position
             }
@@ -73,10 +73,9 @@ class PlayerViewModel : ViewModel() {
     }
 
     fun updateBookFromDatabase(context: Context) {
-        var book = audioBook.value
+        val bookId = audioBook.value!!.displayName
+        val book = getInstance(context).audiobookDao().findByName(bookId)
         if (book != null) {
-            val bookId = audioBook.value!!.displayName
-            book = getInstance(context).audiobookDao()!!.findByName(bookId)
             setAudioBook(book)
         }
     }
