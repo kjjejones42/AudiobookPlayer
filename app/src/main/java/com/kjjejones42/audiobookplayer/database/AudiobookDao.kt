@@ -38,7 +38,7 @@ interface AudiobookDao {
     val mostRecentBook: AudioBook?
 
     @get:Query("SELECT baseDir FROM AudioBook")
-    val allBaseDirs: List<String?>?
+    val allBaseDirs: List<String>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertAll(books: List<AudioBook>)

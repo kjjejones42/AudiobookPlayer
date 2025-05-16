@@ -47,7 +47,7 @@ private fun writeToFile(e: Throwable, message: String, context: Context?) {
 private fun getLogFileUri(context: Context): Uri? {
     if (LOG_FILE_URI == null) {
         val uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        val relativePath = String.format("%s/%s/", Environment.DIRECTORY_DOCUMENTS, context.packageName)
+        val relativePath = "${Environment.DIRECTORY_DOCUMENTS}/${context.packageName}/"
         val resolver = context.contentResolver
         LOG_FILE_URI = queryLogFileUri(resolver, uri, relativePath)
         if (LOG_FILE_URI == null) {
@@ -67,10 +67,7 @@ private fun currentDateTime(): String {
 
 private fun queryLogFileUri(resolver: ContentResolver, uri: Uri, relativePath: String): Uri? {
     val selection = arrayOf(MediaStore.MediaColumns._ID)
-    val where = "%s = ? AND %s = ?".format(
-        MediaStore.MediaColumns.DISPLAY_NAME,
-        MediaStore.MediaColumns.RELATIVE_PATH
-    )
+    val where = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} = ?"
     val args = arrayOf(fileName, relativePath)
     resolver.query(uri, selection, where, args, null).use { cursor ->
         if (cursor != null && cursor.moveToNext()) {

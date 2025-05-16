@@ -7,52 +7,38 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
 import java.io.ByteArrayInputStream
-import java.io.IOException
 import java.io.Serializable
 import java.util.Objects
 
-class MediaItem(documentUri: Uri, private val displayName: String, @JvmField val duration: Long) :
-    Serializable, Comparable<MediaItem?> {
-    private val uri = documentUri.toString()
+class MediaItem(uri: Uri, private val displayName: String, @JvmField val duration: Long) :
+Serializable, Comparable<MediaItem?> {
 
-    @Transient
-    private var mmr: MediaMetadataRetriever? = null
+    private var _uri = uri.toString()
+    var uri: Uri
+        get() = _uri.toUri()
+        set(value) {
+            _uri = value.toString()
+        }
 
     private fun getMMR(context: Context): MediaMetadataRetriever? {
-        if (mmr == null) {
-            try {
-                context.contentResolver.openAssetFileDescriptor(getUri(), "r")
-                    .use { assetFileDescriptor ->
-                        if (assetFileDescriptor != null) {
-                            val fileDescriptor = assetFileDescriptor.fileDescriptor
-                            mmr = MediaMetadataRetriever()
-                            mmr!!.setDataSource(fileDescriptor)
-                        }
-                    }
-            } catch (e: IOException) {
-                throw RuntimeException(e)
+        return try {
+            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use {
+                val fileDescriptor = it.fileDescriptor
+                MediaMetadataRetriever().also {it.setDataSource(fileDescriptor)}
             }
+        } catch (e: Exception) {
+            throw RuntimeException(e)
         }
-        return mmr
     }
 
     fun getEmbeddedPicture(context: Context): Bitmap? {
-        var result: Bitmap? = null
-        try {
-            mmr = getMMR(context)
-            if (mmr != null) {
-                val bis = ByteArrayInputStream(mmr!!.embeddedPicture)
-                result = BitmapFactory.decodeStream(bis)
-                bis.close()
-                mmr!!.close()
+        return try {
+            getMMR(context)?.use {
+                ByteArrayInputStream(it.embeddedPicture).use {
+                    BitmapFactory.decodeStream(it)
+                }
             }
-        } catch (ignored: Exception) {
-        }
-        return result
-    }
-
-    fun getUri(): Uri {
-        return uri.toUri()
+        } catch (_: Exception) { null }
     }
 
 
@@ -71,7 +57,7 @@ class MediaItem(documentUri: Uri, private val displayName: String, @JvmField val
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(uri, displayName, duration, mmr)
+        return Objects.hash(uri, displayName, duration)
     }
 
     override fun compareTo(other: MediaItem?): Int {

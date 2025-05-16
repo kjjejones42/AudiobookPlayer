@@ -29,9 +29,21 @@ import com.kjjejones42.audiobookplayer.AudioBook
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
 import com.kjjejones42.audiobookplayer.player.MediaPlaybackService
-import com.kjjejones42.audiobookplayer.player.PlayActivity
+import com.kjjejones42.audiobookplayer.player.PlayActivity.Companion.INTENT_AUDIOBOOK
+import com.kjjejones42.audiobookplayer.player.PlayActivity.Companion.INTENT_INDEX
 
 class DisplayListActivity : AppCompatActivity() {
+
+    companion object {
+        private val PERMISSIONS = arrayOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_AUDIO
+        )
+        const val INTENT_PLAY_FILE: String = "com.kjjejones42.audiobookplayer.PLAY"
+        const val INTENT_START_PLAYBACK: String = "com.kjjejones42.audiobookplayer.start"
+
+        private const val MY_PERMISSIONS_REQUEST_READ_STORAGE = 3
+    }
 
     private lateinit var mAdapter: DisplayListAdapter
     private lateinit var recyclerView: RecyclerView
@@ -40,9 +52,7 @@ class DisplayListActivity : AppCompatActivity() {
     private var controller: MediaControllerCompat? = null
     private lateinit var browser: MediaBrowserCompat
 
-    private val activityResultLauncher = registerForActivityResult(
-        RequestMultiplePermissions()
-    ) { _ -> askUserForDirectory() }
+    private val activityResultLauncher = registerForActivityResult(RequestMultiplePermissions()) { askUserForDirectory() }
 
     fun chooseDirectory(item: MenuItem?) {
         activityResultLauncher.launch(PERMISSIONS)
@@ -52,9 +62,10 @@ class DisplayListActivity : AppCompatActivity() {
         val message = "Loading. Please wait..."
         val request = OneTimeWorkRequest.Builder(FileScannerWorker::class.java).build()
         val dialog = ProgressDialog.show(this, "", message, true)
-        WorkManager.getInstance(this).enqueue(request).state.observe(this) {
-            workInfo -> if (workInfo.javaClass != IN_PROGRESS::class.java) dialog.cancel()
-        }
+        WorkManager.getInstance(this)
+            .enqueue(request)
+            .state
+            .observe(this) { if (it.javaClass != IN_PROGRESS::class.java) dialog.cancel() }
     }
 
     override fun onRequestPermissionsResult(
@@ -64,11 +75,7 @@ class DisplayListActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == MY_PERMISSIONS_REQUEST_READ_STORAGE) {
-            var total = grantResults.size
-            for (i in permissions.indices) {
-                total += grantResults[i]
-            }
-            val allApproved = total == grantResults.size
+            val allApproved = grantResults.all { it == 1 }
             val result = if (allApproved) "All" else "Not all"
             Toast.makeText(this, "$result permissions granted.", Toast.LENGTH_LONG).show()
             if (allApproved) {
@@ -78,35 +85,34 @@ class DisplayListActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (searchView != null && !searchView!!.isIconified) {
-            searchView!!.setQuery("", false)
-            searchView!!.clearFocus()
-            searchView!!.isIconified = true
-        } else {
-            super.onBackPressed()
-        }
+        searchView?.takeIf { !it.isIconified }?.let {
+            it.setQuery("", false)
+            it.clearFocus()
+            it.isIconified = true
+        } ?: super.onBackPressed()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu, menu)
         searchView = menu.findItem(R.id.app_bar_search).actionView as SearchView?
-        checkNotNull(searchView)
-        searchView!!.isSubmitButtonEnabled = false
-        searchView!!.setOnCloseListener {
-            mAdapter.filter(null)
-            false
-        }
-        searchView!!.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String): Boolean {
-                mAdapter.filter(query)
-                return false
+        searchView?.let {
+            it.isSubmitButtonEnabled = false
+            it.setOnCloseListener {
+                mAdapter.filter(null)
+                false
             }
+            it.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String): Boolean {
+                    mAdapter.filter(query)
+                    return false
+                }
 
-            override fun onQueryTextChange(newText: String): Boolean {
-                mAdapter.filter(newText)
-                return false
-            }
-        })
+                override fun onQueryTextChange(newText: String): Boolean {
+                    mAdapter.filter(newText)
+                    return false
+                }
+            })
+        }
         return true
     }
 
@@ -120,31 +126,28 @@ class DisplayListActivity : AppCompatActivity() {
         emptyView = findViewById(R.id.empty_view)
 
         val model = ViewModelProvider(this)[DisplayListViewModel::class.java]
-        browser = MediaBrowserCompat(
-            this, ComponentName(
-                this,
-                MediaPlaybackService::class.java
-            ), connectionCallbacks, null
-        )
+        val serviceComponent = ComponentName(this, MediaPlaybackService::class.java)
+        browser = MediaBrowserCompat(this, serviceComponent, connectionCallbacks, null)
 
         recyclerView.setLayoutManager(LinearLayoutManager(this))
         mAdapter = DisplayListAdapter(model, recyclerView, this)
         recyclerView.setAdapter(mAdapter)
 
-        getInstance(this).audiobookDao().allAndObserve.observe(this) { bookList -> model.setBooks(bookList) }
-        model.savedBooks.observe(this) { list -> this.updateScreen(list) }
+        getInstance(this).audiobookDao().allAndObserve.observe(this) { model.setBooks(it) }
+        model.savedBooks.observe(this) { this.updateScreen(it) }
 
         askUserForDirectory()
     }
 
     private fun resumeMostRecentBook() {
-        val mostRecent = getInstance(this).audiobookDao().mostRecentBook
-        if (mostRecent != null && mostRecent.lastSavedTimestamp > 0) {
-            val intent = Intent(this, MediaPlaybackService::class.java)
-            intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, mostRecent.displayName)
-            intent.putExtra(PlayActivity.INTENT_INDEX, mostRecent.positionInTrackList)
-            startService(intent)
-        }
+        getInstance(this).audiobookDao().mostRecentBook
+            ?.takeIf { it.lastSavedTimestamp > 0 }
+            ?.let {
+                val intent = Intent(this, MediaPlaybackService::class.java)
+                intent.putExtra(INTENT_AUDIOBOOK, it.displayName)
+                intent.putExtra(INTENT_INDEX, it.positionInTrackList)
+                startService(intent)
+            }
     }
 
     fun onFloatingActionButtonClick(@Suppress("unused") v: View?) {
@@ -189,18 +192,6 @@ class DisplayListActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         browser.disconnect()
-    }
-
-
-    companion object {
-        private val PERMISSIONS = arrayOf(
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_AUDIO
-        )
-        const val INTENT_PLAY_FILE: String = "com.kjjejones42.audiobookplayer.PLAY"
-        const val INTENT_START_PLAYBACK: String = "com.kjjejones42.audiobookplayer.start"
-
-        private const val MY_PERMISSIONS_REQUEST_READ_STORAGE = 3
     }
 }
 

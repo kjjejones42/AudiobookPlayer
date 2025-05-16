@@ -4,6 +4,14 @@ import android.app.Application
 import android.content.Context
 
 class AppApplication : Application() {
+
+    companion object {
+        private lateinit var instance: AppApplication
+
+        val context: Context
+            get() = instance
+    }
+
     override fun onCreate() {
         instance = this
         super.onCreate()
@@ -12,12 +20,5 @@ class AppApplication : Application() {
             logError(e, this)
             defaultHandler.uncaughtException(thread, e)
         }
-    }
-
-    companion object {
-        private lateinit var instance: AppApplication
-
-        val context: Context
-            get() = instance
     }
 }

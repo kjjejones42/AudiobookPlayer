@@ -22,43 +22,57 @@ import java.net.URLEncoder
 import java.util.Collections
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.roundToInt
+
+
+enum class AudioBookStatus(val value: Int, val displayName: String) {
+    IN_PROGRESS(0, "In Progress"),
+    NOT_BEGUN(1, "Not Begun"),
+    FINISHED(2, "Finished"),
+}
 
 @Entity
 class AudioBook {
-    @JvmField
+
+    companion object {
+        private var thumbnailSize = 0
+
+        private fun getThumbnailSize(activity: Activity): Int {
+            if (thumbnailSize == 0) {
+                activity.theme.obtainStyledAttributes(
+                    intArrayOf(android.R.attr.listPreferredItemHeight)
+                ).use { thumbnailSize = ceil(it.getDimension(0, .0f).toDouble()).roundToInt() }
+            }
+            return thumbnailSize
+        }
+    }
+
     @PrimaryKey
     var displayName: String
 
-    @JvmField
     @ColumnInfo
     var baseDir: String? = null
 
-    @JvmField
     @ColumnInfo
     var files: List<MediaItem>? = null
 
-    @JvmField
     @ColumnInfo
     var author: String? = null
 
-    @JvmField
     @ColumnInfo
     var imagePath: String? = null
 
-    @JvmField
     @ColumnInfo
     var lastSavedTimestamp: Long = 0
 
-    @JvmField
     @ColumnInfo
     var positionInTrack: Int = 0
 
-    @JvmField
     @ColumnInfo
     var positionInTrackList: Int = 0
 
     @ColumnInfo
-    private var status = 0
+    var status = 0
 
     @Transient
     var isArtGenerated: Boolean = false
@@ -77,21 +91,13 @@ class AudioBook {
         displayName = ""
     }
 
-    constructor(
-        name: String,
-        baseDir: String?,
-        imagePath: String?,
-        files: List<MediaItem>?,
-        author: String?
-    ) {
-        if (files != null) {
-            Collections.sort(files)
-        }
+    constructor(name: String, baseDir: String?, imagePath: String?, files: List<MediaItem>?, author: String?) {
+        files?.let { Collections.sort(it) }
         this.baseDir = baseDir
         this.imagePath = imagePath
         this.displayName = name
         this.files = files
-        this.status = STATUS_NOT_BEGUN
+        this.status = AudioBookStatus.NOT_BEGUN.value
         this.author = author ?: ""
     }
 
@@ -103,40 +109,29 @@ class AudioBook {
     }
 
     private fun generatePalette(bitmap: Bitmap?) {
-        if (bitmap != null) {
-            albumArtPalette = Palette.from(bitmap).generate()
-        }
+        bitmap?.let { albumArtPalette = Palette.from(it).generate() }
     }
 
     fun getAlbumArt(context: Context): Bitmap {
-        if (art != null) {
-            return art as Bitmap
-        }
-        var result: Bitmap? = null
-        try {
-            if (imagePath != null && imagePath!!.isNotEmpty()) {
-                val fis = FileInputStream(imagePath)
-                result = BitmapFactory.decodeStream(fis)
-                fis.close()
+        art?.let { return it }
+        val result = try {
+            imagePath?.takeIf { it.isNotEmpty() }?.let {
+                FileInputStream(it).use {
+                    BitmapFactory.decodeStream(it)
+                }
             }
         } catch (e: FileNotFoundException) {
             logError(e, "Couldn't get album art", context)
-        } catch (ignored: Exception) {
+            null
+        } catch (_: Exception) {
+            null
         }
-        if (result == null) {
-            for (file in files!!) {
-                result = file.getEmbeddedPicture(context)
-                if (result != null) {
-                    break
-                }
-            }
-        }
-        if (result == null) {
-            result = getGeneratedAlbumArt(displayName.substring(0, 1))
-        }
+        ?: files?.firstNotNullOfOrNull { it.getEmbeddedPicture(context) }
+        ?: getGeneratedAlbumArt(displayName.first().toString())
+
         art = result
-        generatePalette(art)
-        return art!!
+        generatePalette(result)
+        return result
     }
 
     private fun getGeneratedAlbumArt(text: String): Bitmap {
@@ -163,88 +158,77 @@ class AudioBook {
 
     fun getThumbnail(activity: Activity): Bitmap? {
         getThumbnailSize(activity)
-        if (thumbnail == null) {
-            loadThumbnail(activity)
-            if (thumbnail == null) {
-                generateThumbnailFromAlbumArt(activity, getAlbumArt(activity))
-            }
-        }
         return thumbnail
+            ?: loadThumbnail(activity)
+            ?: generateThumbnailFromAlbumArt(activity, getAlbumArt(activity))
+            .also { thumbnail = it }
     }
 
     private fun getThumbnailFile(context: Context): File {
         return File(context.cacheDir, "$uniqueId.thumbnail")
     }
 
-    private fun generateThumbnailFromAlbumArt(activity: Activity, bitmap: Bitmap) {
+    private fun generateThumbnailFromAlbumArt(activity: Activity, bitmap: Bitmap): Bitmap {
         val size = getThumbnailSize(activity)
-        thumbnail = ThumbnailUtils.extractThumbnail(bitmap, size, size)
-        if (thumbnail != null) {
-            saveThumbnail(activity)
-        }
+        val thumbnail = ThumbnailUtils.extractThumbnail(bitmap, size, size)
+        saveThumbnailToFile(activity, thumbnail)
+        return thumbnail
     }
 
-    private fun loadThumbnail(context: Context) {
+    private fun loadThumbnail(context: Context): Bitmap? {
         try {
             val file = getThumbnailFile(context)
-            val fis = FileInputStream(file)
-            thumbnail = BitmapFactory.decodeStream(fis)
-            fis.close()
-        } catch (ignored: FileNotFoundException) {
+            FileInputStream(file).use {
+                return BitmapFactory.decodeStream(it)
+            }
+        } catch (_: FileNotFoundException) {
         } catch (e: Exception) {
             logError(e, "Couldn't load thumbnail", context)
         }
+        return null
     }
 
-    private fun saveThumbnail(context: Context) {
+    private fun saveThumbnailToFile(context: Context, thumbnail: Bitmap) {
         try {
             val file = getThumbnailFile(context)
-            val fos = FileOutputStream(file)
-            thumbnail!!.compress(Bitmap.CompressFormat.PNG, 100, fos)
-            fos.close()
+            FileOutputStream(file).use {
+                thumbnail.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
         } catch (e: Exception) {
             logError(e, "Couldn't save thumbnail", context)
         }
     }
 
-    fun getStatus(): Int {
-        return status
-    }
-
-    fun setStatus(status: Int) {
+    fun setStatus(status: AudioBookStatus) {
+        this.status = status.value
         when (status) {
-            STATUS_IN_PROGRESS -> {}
-            STATUS_NOT_BEGUN -> {
+            AudioBookStatus.IN_PROGRESS -> {}
+            AudioBookStatus.NOT_BEGUN -> {
                 lastSavedTimestamp = 0L
                 positionInTrackList = 0
                 positionInTrack = 0
             }
-
-            STATUS_FINISHED -> {
+            AudioBookStatus.FINISHED -> {
                 positionInTrackList = 0
                 positionInTrack = 0
             }
         }
-        this.status = status
     }
 
     val durationOfMostRecentTrack: Long
-        get() = files!![positionInTrackList].duration
+        get() = files?.get(positionInTrackList)?.duration ?: 0
 
     val totalDuration: Long
         get() {
-            var total: Long = 0
-            for (item in files!!) {
-                total += item.duration
-            }
-            return total
+            return files?.sumOf { it.duration } ?: 0
         }
 
     override fun equals(other: Any?): Boolean {
-        if (other is AudioBook) {
-            return this.uniqueId == other.uniqueId
+        return if (other is AudioBook) {
+            this.uniqueId == other.uniqueId
+        } else {
+            super.equals(other)
         }
-        return super.equals(other)
     }
 
     val uniqueId: String
@@ -262,36 +246,5 @@ class AudioBook {
 
     override fun hashCode(): Int {
         return javaClass.hashCode()
-    }
-
-    companion object {
-        const val STATUS_IN_PROGRESS: Int = 0
-        const val STATUS_NOT_BEGUN: Int = 1
-        const val STATUS_FINISHED: Int = 2
-        private var map: HashMap<Int, String>? = null
-        private var thumbnailSize = 0
-        @JvmStatic
-        val statusMap: HashMap<Int, String>?
-            get() {
-                if (map == null) {
-                    map = HashMap()
-                    map!![STATUS_FINISHED] = "Finished"
-                    map!![STATUS_IN_PROGRESS] = "In Progress"
-                    map!![STATUS_NOT_BEGUN] = "Not Begun"
-                }
-                return map
-            }
-
-        private fun getThumbnailSize(activity: Activity): Int {
-            if (thumbnailSize == 0) {
-                activity.theme.obtainStyledAttributes(
-                    intArrayOf(android.R.attr.listPreferredItemHeight)
-                ).use { value ->
-                    val height = value.getDimension(0, .0f)
-                    thumbnailSize = Math.round(ceil(height.toDouble())).toInt()
-                }
-            }
-            return thumbnailSize
-        }
     }
 }

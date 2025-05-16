@@ -20,7 +20,6 @@ class PlayerNotificationManager(
     private val context: Context
 ) {
 
-
     init {
         initializeNotification(context)
     }
@@ -56,8 +55,7 @@ class PlayerNotificationManager(
                 )
             )
 
-        val notificationBuilder = androidx.core.app.NotificationCompat.Builder(context, CHANNEL_ID)
-        notificationBuilder
+        return androidx.core.app.NotificationCompat.Builder(context, CHANNEL_ID)
             .setDeleteIntent(
                 MediaButtonReceiver.buildMediaButtonPendingIntent(
                     context,
@@ -73,6 +71,6 @@ class PlayerNotificationManager(
             .setContentText(description.subtitle)
             .setLargeIcon(description.iconBitmap)
             .setOngoing(playing)
-        return notificationBuilder.build()
+            .build()
     }
 }

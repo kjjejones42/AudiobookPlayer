@@ -11,7 +11,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.kjjejones42.audiobookplayer.AudioBook
-import com.kjjejones42.audiobookplayer.AudioBook.Companion.statusMap
+import com.kjjejones42.audiobookplayer.AudioBookStatus
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
 import com.kjjejones42.audiobookplayer.display.DisplayListAdapter.MyViewHolder
@@ -21,6 +21,15 @@ import com.kjjejones42.audiobookplayer.player.PlayActivity
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+private fun msToReadableDuration(ms: Long): String {
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
+    val hours = TimeUnit.MILLISECONDS.toHours(ms)
+    if (hours > 0) {
+        return String.format(Locale.getDefault(), "%dh %02dm", hours, minutes)
+    }
+    return String.format(Locale.getDefault(), "%02dm", minutes)
+}
+
 class DisplayListAdapter internal constructor(
     private var model: DisplayListViewModel,
     private var rcv: RecyclerView,
@@ -28,45 +37,37 @@ class DisplayListAdapter internal constructor(
 ) :
     RecyclerView.Adapter<MyViewHolder>() {
     private var selectedPos = RecyclerView.NO_POSITION
-    private val onClickListener = View.OnClickListener { v ->
-        val position = rcv.getChildLayoutPosition(v!!)
-        val items = checkNotNull(
-            model.listItems.value
-        )
-        if (items[position].headingOrItem == ListItem.TYPE_ITEM) {
-            val book = (items[position] as AudioBookContainer).book
+    private val onClickListener = View.OnClickListener {
+        val position = rcv.getChildLayoutPosition(it)
+        model.listItems.value?.takeIf { it[position].type == ListItemType.ITEM }?.let {
             selectedPos = position
             notifyItemChanged(position)
-            startAudioBook(book)
+            startAudioBook((it[position] as AudioBookContainer).book)
         }
     }
     private var currentItems: List<ListItem>? = null
     private val onLongClickListener = OnLongClickListener { v ->
-        val items = model.listItems.value
-        val statuses = statusMap!!.values.toTypedArray<String>()
-        checkNotNull(items)
-        val dao = getInstance(v.context).audiobookDao()
-        val container = (items[rcv.getChildLayoutPosition(v)] as AudioBookContainer)
-        val bookId = container.book.displayName
-        AlertDialog.Builder(v.context)
-            .setSingleChoiceItems(
-                statuses,
-                dao.getStatus(bookId)
-            ) { dialog, which ->
-                val book = dao.findByName(bookId)
-                book!!.setStatus(which)
-                dao.update(book)
-                dialog.dismiss()
-            }.setTitle("Choose this book's status.")
-            .setNegativeButton(
-                "Cancel"
-            ) { dialog, _ -> dialog.dismiss() }
-            .show()
+        model.listItems.value?.let {
+            val statuses = AudioBookStatus.entries.map { it.displayName }.toTypedArray()
+            val dao = getInstance(v.context).audiobookDao()
+            val container = (it[rcv.getChildLayoutPosition(v)] as AudioBookContainer)
+            val bookId = container.book.displayName
+            AlertDialog.Builder(v.context)
+                .setSingleChoiceItems(statuses, dao.getStatus(bookId)) { dialog, which ->
+                    dao.findByName(bookId)?.let {
+                        it.setStatus(AudioBookStatus.entries[which])
+                        dao.update(it)
+                    }
+                    dialog.dismiss()
+                }.setTitle("Choose this book's status.")
+                .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+                .show()
+        }
         false
     }
 
     init {
-        model.listItems.observe(activity) { newItems -> this.selectivelyNotify(newItems) }
+        model.listItems.observe(activity) { this.selectivelyNotify(it) }
         setHasStableIds(true)
     }
 
@@ -98,30 +99,22 @@ class DisplayListAdapter internal constructor(
         val remove = oldItems.size > newItems.size
         val larger = if (remove) oldItems else newItems
         val smaller = if (remove) newItems else oldItems
-        val indexes: MutableList<Int> = ArrayList()
-        for (i in larger.indices) {
-            if (!smaller.contains(larger[i])) {
-                indexes.add(i)
+        larger.indices
+            .filter { !smaller.contains(larger[it]) }
+            .sortedDescending()
+            .forEach {
+                if (remove) {
+                    notifyItemRemoved(it)
+                } else {
+                    notifyItemInserted(it)
+                }
             }
-        }
-        indexes.sortWith { o1, o2 -> o2 - o1 }
-        if (remove) {
-            for (i in indexes) {
-                notifyItemRemoved(i)
-            }
-        } else {
-            for (i in indexes) {
-                notifyItemInserted(i)
-            }
-        }
         rcv.scrollToPosition(0)
     }
 
     private val items: List<ListItem>
         get() {
-            if (currentItems != null) {
-                return currentItems as List<ListItem>
-            }
+            currentItems?.let { return it }
             return model.listItems.value ?: emptyList()
         }
 
@@ -130,36 +123,26 @@ class DisplayListAdapter internal constructor(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return items[position].headingOrItem
+        return items[position].type.value
     }
 
 
     fun filter(filterTerm: String?) {
-        val books = model.savedBooks.value
-        if (books != null && filterTerm != null) {
-            val filtered: MutableList<AudioBook> = ArrayList()
-            for (book in books) {
-                if (book.toString().uppercase(Locale.getDefault()).contains(
-                        filterTerm.uppercase(
-                            Locale.getDefault()
-                        )
-                    )
-                ) {
-                    filtered.add(book)
-                }
-            }
+        model.savedBooks.value?.takeIf { filterTerm != null }?.let {
+            val filtered = it
+                .filter { it.toString().uppercase().contains(filterTerm!!.uppercase()) }
+                .toList()
             model.setFilteredListItems(filtered)
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
-        val v: View
-        if (viewType == ListItem.TYPE_HEADING) {
-            v = LayoutInflater.from(parent.context)
+        if (viewType == ListItemType.HEADING.value) {
+            val v = LayoutInflater.from(parent.context)
                 .inflate(R.layout.display_list_group, parent, false)
             return MyViewHolder(v, false)
         } else {
-            v = LayoutInflater.from(parent.context)
+            val v = LayoutInflater.from(parent.context)
                 .inflate(R.layout.display_list_item, parent, false)
             v.setOnClickListener(onClickListener)
             v.setOnLongClickListener(onLongClickListener)
@@ -169,8 +152,8 @@ class DisplayListAdapter internal constructor(
 
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
-        when (items[position].headingOrItem) {
-            ListItem.TYPE_ITEM -> {
+        when (items[position].type) {
+            ListItemType.ITEM -> {
                 val book = (items[position] as AudioBookContainer).book
                 holder.duration!!.text = msToReadableDuration(book.totalDuration)
                 holder.textView!!.text = book.displayName
@@ -185,20 +168,11 @@ class DisplayListAdapter internal constructor(
                 }.start()
             }
 
-            ListItem.TYPE_HEADING -> {
+            ListItemType.HEADING -> {
                 val title = (items[position] as Heading).headingTitle
                 holder.textView!!.text = title
             }
         }
-    }
-
-    private fun msToReadableDuration(ms: Long): String {
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
-        val hours = TimeUnit.MILLISECONDS.toHours(ms)
-        if (hours > 0) {
-            return String.format(Locale.getDefault(), "%dh %02dm", hours, minutes)
-        }
-        return String.format(Locale.getDefault(), "%02dm", minutes)
     }
 
     override fun getItemCount(): Int {

@@ -28,13 +28,23 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.toDrawable
 import androidx.lifecycle.ViewModelProvider
 import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.AudioBookStatus
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
 import com.kjjejones42.audiobookplayer.display.DisplayListActivity
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import java.util.stream.Collectors
 import kotlin.math.min
+
+private fun msToMMSS(ms: Long): String {
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
+    val hours = TimeUnit.MILLISECONDS.toHours(ms)
+    if (hours > 0) {
+        return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+    }
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+}
 
 class PlayActivity : AppCompatActivity() {
     private lateinit var spinner: Spinner
@@ -55,9 +65,8 @@ class PlayActivity : AppCompatActivity() {
     private val onSeekBarChangeListener: OnSeekBarChangeListener =
         object : OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                if (fromUser && controller != null) {
-                    controller!!.transportControls.seekTo(progress.toLong())
-                }
+                controller?.takeIf { fromUser }
+                    ?.transportControls?.seekTo(progress.toLong())
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {
@@ -69,12 +78,7 @@ class PlayActivity : AppCompatActivity() {
 
     private val onItemSelectedListener: AdapterView.OnItemSelectedListener =
         object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?,
-                view: View,
-                position: Int,
-                id: Long
-            ) {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View, position: Int, id: Long) {
                 if (spinner.tag as Int != position) {
                     initialiseMediaSession(position)
                 }
@@ -88,7 +92,7 @@ class PlayActivity : AppCompatActivity() {
         object : MediaControllerCompat.Callback() {
             override fun onMetadataChanged(metadata: MediaMetadataCompat) {
                 model.setMetadata(metadata)
-                onPlaybackStateChanged(controller!!.playbackState)
+                controller?.let { onPlaybackStateChanged(it.playbackState) }
             }
 
             override fun onSessionEvent(event: String, extras: Bundle) {
@@ -96,10 +100,10 @@ class PlayActivity : AppCompatActivity() {
                 if (MediaPlaybackService.EVENT_REACHED_END == event) {
                     var audioBook = model.audioBook.value
                     mediaBrowser.disconnect()
-                    if (audioBook != null) {
-                        audioBook = audiobookDao.findByName(audioBook.displayName)
-                        audioBook!!.setStatus(AudioBook.STATUS_FINISHED)
-                        audiobookDao.update(audioBook)
+                    audioBook?.let {
+                        audioBook = it
+                        it.setStatus(AudioBookStatus.FINISHED)
+                        audiobookDao.update(it)
                     }
                     onBackPressed()
                 }
@@ -167,24 +171,14 @@ class PlayActivity : AppCompatActivity() {
 
         setControlsEnabled(false)
         seekBar.setOnSeekBarChangeListener(onSeekBarChangeListener)
-        if (intent != null) {
-            onNewIntent(intent)
-        }
+        intent?.let { onNewIntent(it) }
     }
 
     private fun initializeModelObservers() {
-        model.isPlaying.observe(
-            this
-        ) { isPlaying -> this.onIsPlayingSet(isPlaying) }
-        model.position.observe(
-            this
-        ) { position -> this.onPositionSet(position) }
-        model.metadata.observe(
-            this
-        ) { metadata -> this.onMetadataSet(metadata) }
-        model.audioBook.observe(
-            this
-        ) { book -> this.onAudioBookSet(book) }
+        model.isPlaying.observe(this) { this.onIsPlayingSet(it) }
+        model.position.observe(this) { this.onPositionSet(it) }
+        model.metadata.observe(this) { this.onMetadataSet(it) }
+        model.audioBook.observe(this) { this.onAudioBookSet(it) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -194,11 +188,8 @@ class PlayActivity : AppCompatActivity() {
             DisplayListActivity.INTENT_PLAY_FILE,
             String::class.java
         )
-        val newBook = audiobookDao.findByName(newBookId)
         model.setStartPlayback(shouldStart)
-        if (newBook != null) {
-            model.setAudioBook(newBook)
-        }
+        audiobookDao.findByName(newBookId)?.let { model.setAudioBook(it) }
     }
 
     private fun onIsPlayingSet(isPlaying: Boolean) {
@@ -222,19 +213,15 @@ class PlayActivity : AppCompatActivity() {
 
     private fun updateButtonColor(color: Int) {
         val list = listOf(prevButton, rewindButton, toggleButton, nextButton, forwardButton)
-        for (b in list) {
-            b.background?.setTint(color)
-        }
-        val bar = supportActionBar
-        bar?.setBackgroundDrawable(color.toDrawable())
+        list.forEach { it.background?.setTint(color) }
+        supportActionBar?.setBackgroundDrawable(color.toDrawable())
         window.statusBarColor = ColorUtils.blendARGB(color, Color.BLACK, 0.25f)
         seekBar.thumb.setTint(color)
         seekBar.progressDrawable.setTint(color)
     }
 
     private fun updateStatusBarColor(color: Int) {
-        val bar = supportActionBar
-        bar?.setBackgroundDrawable(color.toDrawable())
+        supportActionBar?.setBackgroundDrawable(color.toDrawable())
         window.statusBarColor = ColorUtils.blendARGB(color, Color.BLACK, 0.25f)
     }
 
@@ -250,29 +237,30 @@ class PlayActivity : AppCompatActivity() {
     }
 
     private fun buildTransportControls() {
-        controller!!.registerCallback(controllerCallback)
-        toggleButton.setOnClickListener {
-            val pbState = controller!!.playbackState.state
-            if (pbState == PlaybackStateCompat.STATE_PLAYING) {
-                controller!!.transportControls.pause()
-            } else {
-                controller!!.transportControls.play()
+        controller?.let {
+            val controller = it
+            it.registerCallback(controllerCallback)
+            toggleButton.setOnClickListener {
+                if (controller.playbackState.state == PlaybackStateCompat.STATE_PLAYING) {
+                    controller.transportControls.pause()
+                } else {
+                    controller.transportControls.play()
+                }
             }
+            prevButton.setOnClickListener { controller.transportControls.skipToPrevious() }
+            nextButton.setOnClickListener {
+                controller.transportControls.skipToNext()
+                model.setPosition(0)
+            }
+            rewindButton.setOnClickListener { controller.transportControls.rewind() }
+            forwardButton.setOnClickListener { controller.transportControls.fastForward() }
+            setControlsEnabled(true)
         }
-        prevButton.setOnClickListener { controller!!.transportControls.skipToPrevious() }
-        nextButton.setOnClickListener {
-            controller!!.transportControls.skipToNext()
-            model.setPosition(0)
-        }
-        rewindButton.setOnClickListener { controller!!.transportControls.rewind() }
-        forwardButton.setOnClickListener { controller!!.transportControls.fastForward() }
-        setControlsEnabled(true)
     }
 
     private fun setControlsEnabled(on: Boolean) {
-        val visibility = if (on) View.VISIBLE else View.INVISIBLE
+        seekBar.visibility = if (on) View.VISIBLE else View.INVISIBLE
         seekBar.isEnabled = on
-        seekBar.visibility = visibility
         nextButton.isEnabled = on
         prevButton.isEnabled = on
         toggleButton.isEnabled = on
@@ -281,47 +269,48 @@ class PlayActivity : AppCompatActivity() {
     }
 
     private fun onAudioBookSet(book: AudioBook?) {
-        if (book == null) return
-        setColorFromAlbumArt(book)
-        val bar = supportActionBar
-        bar?.title = book.displayName
-        val sortedFiles = book.files!!.stream().sorted().collect(Collectors.toList())
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortedFiles)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinner.adapter = adapter
-        spinner.onItemSelectedListener = onItemSelectedListener
-        val position =
-            min((sortedFiles.size - 1).toDouble(), book.positionInTrackList.toDouble()).toInt()
-        spinner.tag = position
-        spinner.setSelection(position)
+        book?.let {
+            setColorFromAlbumArt(it)
+            supportActionBar?.title = it.displayName
+            val positionInTrackList = it.positionInTrackList
+            it.files?.let {
+                val sortedFiles = it.sorted().toList()
+                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortedFiles)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinner.adapter = adapter
+                spinner.onItemSelectedListener = onItemSelectedListener
+                val position = min((sortedFiles.size - 1), positionInTrackList)
+                spinner.tag = position
+                spinner.setSelection(position)
+
+            }
+        }
     }
 
     private fun setColorFromAlbumArt(book: AudioBook?) {
-        if (book == null) return
-        setImage(book.getAlbumArt(this))
-        if (!book.isArtGenerated) {
-            val palette = book.getAlbumArtPalette(this)
-            val nightMode =
-                (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            val backColor =
-                if (nightMode) palette!!.getDarkMutedColor(Color.TRANSPARENT) else palette!!.getLightMutedColor(
-                    Color.TRANSPARENT
-                )
-            findViewById<View>(R.id.playerBackground).setBackgroundColor(backColor)
-            val color = palette.getVibrantColor(
-                resources.getColor(
-                    R.color.colorAccent,
-                    theme
-                )
-            )
-            updateButtonColor(color)
-            updateStatusBarColor(color)
-        } else {
-            val tv = TypedValue()
-            theme.resolveAttribute(R.attr.colorAccent, tv, true)
-            updateButtonColor(tv.data)
-            theme.resolveAttribute(R.attr.colorPrimary, tv, true)
-            updateStatusBarColor(tv.data)
+        book?.let {
+            setImage(it.getAlbumArt(this))
+            if (!it.isArtGenerated) {
+                book.getAlbumArtPalette(this)?.let {
+                    val nightMode =
+                        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                    val backColor = if (nightMode) {
+                        it.getDarkMutedColor(Color.TRANSPARENT)
+                    } else {
+                        it.getLightMutedColor(Color.TRANSPARENT)
+                    }
+                    findViewById<View>(R.id.playerBackground).setBackgroundColor(backColor)
+                    val color = it.getVibrantColor(resources.getColor(R.color.colorAccent, theme))
+                    updateButtonColor(color)
+                    updateStatusBarColor(color)
+                }
+            } else {
+                val tv = TypedValue()
+                theme.resolveAttribute(R.attr.colorAccent, tv, true)
+                updateButtonColor(tv.data)
+                theme.resolveAttribute(R.attr.colorPrimary, tv, true)
+                updateStatusBarColor(tv.data)
+            }
         }
     }
 
@@ -334,57 +323,40 @@ class PlayActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         mediaBrowser.connect()
-        val book = model.audioBook.value
-        if (book != null) {
-            model.setPosition(book.positionInTrack.toLong())
-            setDuration(model.audioBook.value!!.durationOfMostRecentTrack)
+        model.audioBook.value?.let {
+            model.setPosition(it.positionInTrack.toLong())
+            setDuration(it.durationOfMostRecentTrack)
         }
     }
 
     private fun onConnected() {
-        val audioBook = model.audioBook.value
-        controller = MediaControllerCompat(
-            this@PlayActivity,
-            mediaBrowser.sessionToken
-        )
+        controller = MediaControllerCompat(this@PlayActivity, mediaBrowser.sessionToken)
+        val controller = checkNotNull(controller)
         MediaControllerCompat.setMediaController(this@PlayActivity, controller)
         buildTransportControls()
-        if (audioBook != null) {
-            if (audioBook.uniqueId != controller!!.metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)) {
-                initialiseMediaSession(audioBook.positionInTrackList)
+        model.audioBook.value?.let{
+            if (it.uniqueId != controller.metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)) {
+                initialiseMediaSession(it.positionInTrackList)
             } else {
-                model.setMetadata(controller!!.metadata)
-                model.setPosition(controller!!.playbackState.position)
-                model.setIsPlaying(controller!!.playbackState.state == PlaybackStateCompat.STATE_PLAYING)
+                model.setMetadata(controller.metadata)
+                model.setPosition(controller.playbackState.position)
+                model.setIsPlaying(controller.playbackState.state == PlaybackStateCompat.STATE_PLAYING)
             }
         }
-        val b = model.startPlayback.value
-        if (b != null && b) {
+        model.startPlayback.value?.takeIf { it }.also {
             model.setStartPlayback(false)
-            controller!!.transportControls.play()
+            controller.transportControls.play()
         }
     }
 
     override fun onStop() {
         super.onStop()
-        if (controller != null) {
-            controller!!.unregisterCallback(controllerCallback)
-        }
+        controller?.unregisterCallback(controllerCallback)
         mediaBrowser.disconnect()
     }
 
     companion object {
         const val INTENT_AUDIOBOOK: String = "AUDIOBOOK"
         const val INTENT_INDEX: String = "INDEX"
-
-        private fun msToMMSS(ms: Long): String {
-            val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
-            val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
-            val hours = TimeUnit.MILLISECONDS.toHours(ms)
-            if (hours > 0) {
-                return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
-            }
-            return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-        }
     }
 }

@@ -10,27 +10,22 @@ import com.kjjejones42.audiobookplayer.AudioBook
 @Database(entities = [AudioBook::class], version = 1)
 @TypeConverters(DataConverter::class)
 abstract class AudiobookDatabase : RoomDatabase() {
-    abstract fun audiobookDao(): AudiobookDao
 
     companion object {
+        @Volatile
         private var instance: AudiobookDatabase? = null
 
-        @JvmStatic
-        fun getInstance(context: Context): AudiobookDatabase {
-            if (instance != null) {
-                return instance!!
-            }
-            synchronized(AudiobookDatabase::class.java) {
-                if (instance == null) {
-                    instance = databaseBuilder(
-                        context,
-                        AudiobookDatabase::class.java, "audiobook_database"
-                    )
-                        .allowMainThreadQueries()
-                        .build()
-                }
-            }
-            return instance!!
+        private fun buildDatabase(context: Context): AudiobookDatabase {
+            return databaseBuilder(context, AudiobookDatabase::class.java, "audiobook_database")
+                .allowMainThreadQueries()
+                .build()
         }
+
+        fun getInstance(context: Context): AudiobookDatabase =
+            instance ?: synchronized(this) {
+                instance ?: buildDatabase(context).also { instance = it }
+            }
     }
+
+    abstract fun audiobookDao(): AudiobookDao
 }

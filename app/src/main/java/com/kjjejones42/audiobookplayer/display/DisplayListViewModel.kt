@@ -6,61 +6,40 @@ import androidx.lifecycle.ViewModel
 import com.kjjejones42.audiobookplayer.AudioBook
 import com.kjjejones42.audiobookplayer.display.ListItem.AudioBookContainer
 import com.kjjejones42.audiobookplayer.display.ListItem.Heading
-import java.util.stream.Collectors
 
 class DisplayListViewModel : ViewModel() {
-    private val books = MutableLiveData<List<AudioBook>>(ArrayList())
-    val listItems = MutableLiveData<List<ListItem>>(ArrayList())
+    private val _savedBooks = MutableLiveData<List<AudioBook>>(ArrayList())
+    val savedBooks: LiveData<List<AudioBook>>
+        get() = _savedBooks
+
+    private val _listItems = MutableLiveData<List<ListItem>>(ArrayList())
+    val listItems: LiveData<List<ListItem>>
+        get() = _listItems
 
     init {
-        books.observeForever { books -> this.recalculateList(books) }
-    }
-
-    val savedBooks: LiveData<List<AudioBook>>
-        get() = books
-
-    private fun recalculateList(books: List<AudioBook>) {
-        val list = getItemsFromBooks(books)
-        listItems.value = list
+        _savedBooks.observeForever { setFilteredListItems(it) }
     }
 
     private fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
-        val list: MutableList<ListItem> = books.stream()
-            .sorted(Comparator.comparing { o -> o.displayName })
-            .filter { book -> book != null}
-            .map { book -> AudioBookContainer(book) }
-            .collect(Collectors.toList())
+        val list = books
+            .sortedBy { it.displayName }
+            .map { AudioBookContainer(it) }
+            .toMutableList<ListItem>()
 
-        list.toList().stream()
-            .map { obj -> obj.category }
+        list.toList()
+            .map { it.category }
             .distinct()
-            .map { category -> Heading(category) }
-            .forEach{item -> list.add(item)}
+            .map { Heading(it) }
+            .forEach{ list.add(it) }
 
-        list.sortWith { o1, o2 ->
-            val i = o1.category - o2.category
-            if (i == 0) {
-                val j = o1.headingOrItem - o2.headingOrItem
-                if (j == 0) {
-                    return@sortWith (o2.timeStamp - o1.timeStamp).toInt()
-                }
-                return@sortWith j
-            }
-            i
-        }
-        return list
-    }
-
-    fun getListItems(): LiveData<List<ListItem>> {
-        return listItems
+        return list.sortedWith(compareBy( {it.category}, {it.type.value}, {-it.timeStamp} ))
     }
 
     fun setFilteredListItems(items: List<AudioBook>) {
-        val filtered = getItemsFromBooks(items)
-        listItems.value = filtered
+        _listItems.value = getItemsFromBooks(items)
     }
 
     fun setBooks(bookList: List<AudioBook>) {
-        books.value = bookList
+        _savedBooks.value = bookList
     }
 }

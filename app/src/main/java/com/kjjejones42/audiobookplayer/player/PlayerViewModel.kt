@@ -9,16 +9,32 @@ import com.kjjejones42.audiobookplayer.AudioBook
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
 
 class PlayerViewModel : ViewModel() {
-    private val _isPlaying = MutableLiveData<Boolean>()
-    private val _position = MutableLiveData<Long>()
-    private val _metadata = MutableLiveData<MediaMetadataCompat>()
-    private val _audioBook = MutableLiveData<AudioBook?>()
-    private val _startPlayback = MutableLiveData<Boolean>()
 
+    companion object {
+        private val emptyMetadata: MediaMetadataCompat by lazy {
+            MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "")
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, null)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0L)
+                .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, 0)
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "")
+                .build()
+        }
+    }
+
+    private val _isPlaying = MutableLiveData<Boolean>()
     val isPlaying: LiveData<Boolean> get() = _isPlaying
-    val audioBook: LiveData<AudioBook?> get() = _audioBook
+
+    private val _position = MutableLiveData<Long>()
     val position: LiveData<Long> get() = _position
+
+    private val _metadata = MutableLiveData<MediaMetadataCompat>()
     val metadata: LiveData<MediaMetadataCompat> get() = _metadata
+
+    private val _audioBook = MutableLiveData<AudioBook?>()
+    val audioBook: LiveData<AudioBook?> get() = _audioBook
+
+    private val _startPlayback = MutableLiveData<Boolean>()
     val startPlayback: LiveData<Boolean> get() = _startPlayback
 
     fun setAudioBook(audioBook: AudioBook?) {
@@ -26,57 +42,8 @@ class PlayerViewModel : ViewModel() {
     }
 
     fun setStartPlayback(startPlayback: Boolean) {
-        val b = _startPlayback.value
-        if (b != null && b != startPlayback) {
+        if (startPlayback != _startPlayback.value) {
             _startPlayback.value = startPlayback
-        }
-    }
-
-    init {
-        setIsPlaying(true)
-        clear()
-    }
-
-    private val emptyMetadata: MediaMetadataCompat
-        get() {
-            if (Companion.emptyMetadata == null) {
-                Companion.emptyMetadata = MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, "")
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, null)
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0L)
-                    .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, 0)
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "")
-                    .build()
-            }
-            return Companion.emptyMetadata!!
-        }
-
-    private fun clear() {
-        _position.value = 0L
-        _metadata.value = emptyMetadata
-    }
-
-    fun setIsPlaying(isPlaying: Boolean) {
-        val b = this.isPlaying.value
-        if (b == null || b != isPlaying) {
-            _isPlaying.value = isPlaying
-        }
-    }
-
-    fun setPosition(position: Long) {
-        val l = this.position.value
-        if (l == null || l != position) {
-            if (position > 0) {
-                _position.value = position
-            }
-        }
-    }
-
-    fun updateBookFromDatabase(context: Context) {
-        val bookId = audioBook.value!!.displayName
-        val book = getInstance(context).audiobookDao().findByName(bookId)
-        if (book != null) {
-            setAudioBook(book)
         }
     }
 
@@ -84,7 +51,32 @@ class PlayerViewModel : ViewModel() {
         _metadata.value = metadata
     }
 
-    companion object {
-        private var emptyMetadata: MediaMetadataCompat? = null
+    init {
+        setIsPlaying(true)
+        clear()
+    }
+
+    private fun clear() {
+        _position.value = 0L
+        _metadata.value = emptyMetadata
+    }
+
+    fun setIsPlaying(isPlaying: Boolean) {
+        if (isPlaying != _isPlaying.value) {
+            _isPlaying.value = isPlaying
+        }
+    }
+
+    fun setPosition(position: Long) {
+        if (position > 0 && this.position.value != position) {
+            _position.value = position
+        }
+    }
+
+    fun updateBookFromDatabase(context: Context) {
+        audioBook.value?.displayName?.let {
+            val book = getInstance(context).audiobookDao().findByName(it)
+            book?.let { setAudioBook(it) }
+        }
     }
 }

@@ -18,7 +18,7 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
-import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.AudioBookStatus
 import com.kjjejones42.audiobookplayer.MediaItem
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.AudiobookDao
@@ -29,6 +29,14 @@ import java.util.Timer
 import java.util.TimerTask
 
 class MediaPlaybackService : MediaBrowserServiceCompat() {
+
+    companion object {
+        const val EVENT_REACHED_END: String = "EVENT_REACHED_END"
+        private const val EVENT_REWIND = "EVENT_REWIND"
+        private const val EVENT_FAST_FORWARD = "EVENT_FAST_FORWARD"
+        private const val TAG = "ASD"
+    }
+
     private val mediaPlayer = MediaPlayer()
 
     private var notificationManager: PlayerNotificationManager? = null
@@ -38,35 +46,32 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     private var audioFocusRequest: AudioFocusRequest? = null
     private var audioAttributes: AudioAttributes? = null
         get() {
-            if (field == null) {
-                field = AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
-            }
-            return field
+            return field ?: AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build().also { field = it }
         }
     private var bookId: String? = null
     private var updateTask: Timer? = null
     private var isMediaPlayerPrepared = false
     private var intentId = 0
-    private val onAudioFocusChangeListener: OnAudioFocusChangeListener =
-        object : OnAudioFocusChangeListener {
-            var lastKnownAudioFocusState: Int = 0
-            var wasPlayingWhenTransientLoss: Boolean = false
-
+    private val onAudioFocusChangeListener: OnAudioFocusChangeListener = object : OnAudioFocusChangeListener {
+            var lastKnownAudioFocusState = 0
+            var wasPlayingWhenTransientLoss = false
             override fun onAudioFocusChange(focusChange: Int) {
                 val controls = mediaSession.controller.transportControls
                 when (focusChange) {
-                    AudioManager.AUDIOFOCUS_GAIN, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> when (lastKnownAudioFocusState) {
-                        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> if (wasPlayingWhenTransientLoss) {
-                            controls.play()
-                        }
-
-                        else -> controls.play()
+                    AudioManager.AUDIOFOCUS_GAIN,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK ->
+                        when (lastKnownAudioFocusState) {
+                            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
+                            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> if (wasPlayingWhenTransientLoss) controls.play()
+                            else -> controls.play()
                     }
-
                     AudioManager.AUDIOFOCUS_LOSS -> controls.pause()
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                         wasPlayingWhenTransientLoss = mediaPlayer.isPlaying
                         controls.pause()
                     }
@@ -90,46 +95,29 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intentId = startId
-        if (intent != null) {
+        intent?.let {
             try {
-                if (updateTask != null) {
-                    updateTask!!.cancel()
-                }
+                updateTask?.cancel()
 
-                val positionInTrackList = intent.getIntExtra(PlayActivity.INTENT_INDEX, 0)
-                bookId = intent.getSerializableExtra(
-                    PlayActivity.INTENT_AUDIOBOOK,
-                    String::class.java
-                )
-                checkNotNull(bookId)
-
-                val resumeIntent = Intent(this, PlayActivity::class.java)
-                resumeIntent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, bookId)
-                mediaSession.setSessionActivity(
-                    PendingIntent.getActivity(
-                        this,
-                        2,
-                        resumeIntent,
-                        PendingIntent.FLAG_IMMUTABLE
-                    )
-                )
-                var positionInTrack = dao.getPositionInTrack(bookId)
-                if (dao.getStatus(bookId) == AudioBook.STATUS_FINISHED) {
-                    updateStatus(AudioBook.STATUS_IN_PROGRESS)
-                } else {
-                    if (positionInTrackList != dao.getPositionInTrackList(bookId)) {
-                        positionInTrack = 1
-                        dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis())
+                val positionInTrackList = it.getIntExtra(PlayActivity.INTENT_INDEX, 0)
+                bookId = it.getSerializableExtra(PlayActivity.INTENT_AUDIOBOOK, String::class.java)
+                bookId?.let {
+                    val resumeIntent = Intent(this, PlayActivity::class.java)
+                    resumeIntent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, it)
+                    mediaSession.setSessionActivity(PendingIntent.getActivity(this, 2, resumeIntent, PendingIntent.FLAG_IMMUTABLE))
+                    var positionInTrack = dao.getPositionInTrack(it)
+                    if (dao.getStatus(it) == AudioBookStatus.FINISHED.value) {
+                        updateStatus(AudioBookStatus.IN_PROGRESS)
+                    } else {
+                        if (positionInTrackList != dao.getPositionInTrackList(it)) {
+                            positionInTrack = 1
+                            dao.updatePositionInTrack(it, 1, System.currentTimeMillis())
+                        }
                     }
+                    val state = stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, positionInTrack.toLong(), 1f).build()
+                    setPlaybackState(state)
+                    playTrack(positionInTrackList)
                 }
-                setPlaybackState(
-                    stateBuilder.setState(
-                        PlaybackStateCompat.STATE_PLAYING,
-                        positionInTrack.toLong(),
-                        1f
-                    ).build()
-                )
-                playTrack(positionInTrackList)
             } catch (e: Exception) {
                 onError()
                 throw e
@@ -140,11 +128,9 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
     private val onCompletionListener: OnCompletionListener = OnCompletionListener {
         val state = mediaSession.controller.playbackState.state
-        if (state != PlaybackStateCompat.STATE_SKIPPING_TO_NEXT && state != PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS) {
+        if (!listOf(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS).contains(state)) {
             mediaSession.controller.transportControls.pause()
-            if (updateTask != null) {
-                updateTask!!.cancel()
-            }
+            updateTask?.cancel()
             dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis())
             dao.getPositionInTrackList(bookId).plus(1).let { playTrack(it) }
         }
@@ -152,13 +138,11 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
     private val request: AudioFocusRequest?
         get() {
-            if (audioFocusRequest == null) {
-                audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                    .setAudioAttributes(audioAttributes!!)
-                    .setOnAudioFocusChangeListener(onAudioFocusChangeListener)
-                    .build()
-            }
-            return audioFocusRequest
+            return audioFocusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(audioAttributes!!)
+                .setOnAudioFocusChangeListener(onAudioFocusChangeListener)
+                .build()
+                .also { audioFocusRequest = it }
         }
 
     private fun getIsMediaPlayerPrepared(): Boolean {
@@ -169,24 +153,21 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         get() {
             return try {
                 mediaPlayer.isPlaying
-            } catch (e: IllegalStateException) {
+            } catch (_: IllegalStateException) {
                 false
             }
         }
 
     private val isPlaying: Boolean
         get() {
-            if (mediaSession.controller.playbackState == null) {
-                return false
-            }
-            return mediaSession.controller.playbackState
-                .state == PlaybackStateCompat.STATE_PLAYING
+            return mediaSession.controller.playbackState?.state == PlaybackStateCompat.STATE_PLAYING
         }
 
-    private fun updateStatus(status: Int) {
-        val book = dao.findByName(bookId)
-        book!!.setStatus(status)
-        dao.update(book)
+    private fun updateStatus(status: AudioBookStatus) {
+        dao.findByName(bookId)?.let {
+            it.setStatus(status)
+            dao.update(it)
+        }
     }
 
     private fun setPlaybackState(state: PlaybackStateCompat) {
@@ -207,35 +188,32 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         if (positionInTrackList < 0) {
             return
         }
-        val files = dao.findByName(
-            bookId
-        )!!.files
-        if (positionInTrackList >= files!!.size) {
-            updateStatus(AudioBook.STATUS_FINISHED)
-            mediaSession.controller.transportControls.sendCustomAction(EVENT_REACHED_END, null)
-            return
-        }
-        dao.updatePositionInTrackList(bookId, positionInTrackList)
-        val mediaItem = files[positionInTrackList]
-        mediaPlayer.reset()
-        isMediaPlayerPrepared = false
-        if (updateTask != null) {
-            updateTask!!.cancel()
-        }
-        mediaPlayer.setAudioAttributes(audioAttributes)
-        try {
-            mediaPlayer.setOnCompletionListener(onCompletionListener)
-            mediaPlayer.setDataSource(this, mediaItem.getUri())
-            mediaPlayer.prepare()
-            isMediaPlayerPrepared = true
-            mediaSession.setMetadata(trackToMetaData(mediaItem))
-            mediaSession.controller.transportControls.seekTo(
-                dao.getPositionInTrack(bookId).toLong()
-            )
-            mediaSession.controller.transportControls.play()
-        } catch (e: IOException) {
-            onError()
-            throw RuntimeException(e)
+        dao.findByName(bookId)?.files?.let { files ->
+            if (positionInTrackList >= files.size) {
+                updateStatus(AudioBookStatus.FINISHED)
+                mediaSession.controller.transportControls.sendCustomAction(EVENT_REACHED_END, null)
+                return
+            }
+            dao.updatePositionInTrackList(bookId, positionInTrackList)
+            val mediaItem = files[positionInTrackList]
+            mediaPlayer.reset()
+            isMediaPlayerPrepared = false
+            updateTask?.cancel()
+            mediaPlayer.setAudioAttributes(audioAttributes)
+            try {
+                mediaPlayer.setOnCompletionListener(onCompletionListener)
+                mediaPlayer.setDataSource(this, mediaItem.uri)
+                mediaPlayer.prepare()
+                isMediaPlayerPrepared = true
+                mediaSession.setMetadata(trackToMetaData(mediaItem))
+                mediaSession.controller.transportControls.seekTo(
+                    dao.getPositionInTrack(bookId).toLong()
+                )
+                mediaSession.controller.transportControls.play()
+            } catch (e: IOException) {
+                onError()
+                throw RuntimeException(e)
+            }
         }
     }
 
@@ -246,48 +224,48 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
     private fun trackToMetaData(item: MediaItem): MediaMetadataCompat? {
-        try {
+        return try {
             MediaMetadataRetriever().use { mmr ->
-                mmr.setDataSource(this, item.getUri())
+                mmr.setDataSource(this, item.uri)
                 val durationStr =
                     checkNotNull(mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION))
                 val duration = durationStr.toLong()
-                val book = dao.findByName(bookId)
-                metadataBuilder
-                    ?.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, item.toString())
-                    ?.putString(MediaMetadataCompat.METADATA_KEY_TITLE, book!!.displayName)
-                    ?.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, book.getAlbumArt(this))
-                    ?.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-                    ?.putLong(
-                        MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER,
-                        book.files!!.indexOf(item).toLong()
-                    )
-                    ?.putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, book.uniqueId)
-                return metadataBuilder!!.build()
+                dao.findByName(bookId)?.let { book ->
+                    metadataBuilder
+                        ?.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, item.toString())
+                        ?.putString(MediaMetadataCompat.METADATA_KEY_TITLE, book.displayName)
+                        ?.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, book.getAlbumArt(this))
+                        ?.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+                        ?.putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, book.uniqueId)
+                    book.files?.let { files ->
+                        metadataBuilder?.putLong(
+                            MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER,
+                            files.indexOf(item).toLong()
+                        )
+                    }
+                    return metadataBuilder!!.build()
+                }
             }
-        } catch (ignored: IOException) {
-            return null
+            null
+        } catch (_: IOException) {
+            null
         }
     }
 
     private fun initialiseTimer() {
-        if (updateTask != null) {
-            updateTask!!.cancel()
-        }
+        updateTask?.cancel()
         updateTask = Timer()
-        updateTask!!.schedule(object : TimerTask() {
+        updateTask?.schedule(object : TimerTask() {
             override fun run() {
                 try {
                     if (isMediaPlayerPlaying) {
                         val position = mediaPlayer.currentPosition
-                        if (position != 0) {
-                            val state = mediaSession.controller.playbackState
-                            stateBuilder.setState(state.state, position.toLong(), 1f)
-                            setPlaybackState(stateBuilder.build())
-                        }
+                        if (position == 0) return
+                        val state = mediaSession.controller.playbackState
+                        stateBuilder.setState(state.state, position.toLong(), 1f)
+                        setPlaybackState(stateBuilder.build())
                     }
-                } catch (ignored: Exception) {
-                }
+                } catch (_: Exception) {}
             }
         }, 0, 1000)
     }
@@ -317,21 +295,18 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         mediaSession.setCallback(MySessionCallback())
         sessionToken = mediaSession.sessionToken
 
-        dao = getInstance(this).audiobookDao()!!
+        dao = getInstance(this).audiobookDao()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (updateTask != null) {
-            updateTask!!.cancel()
-        }
+        updateTask?.cancel()
         mediaPlayer.release()
         mediaSession.release()
     }
 
     private fun updateNotification() {
-        val notification = notificationManager!!.updateNotification(isPlaying, bookId)
-        startForeground(2, notification)
+        notificationManager?.let { startForeground(2, it.updateNotification(isPlaying, bookId)) }
     }
 
     override fun onGetRoot(
@@ -371,15 +346,11 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
                 val result = request?.let { am.requestAudioFocus(it) }
                 if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
                     mediaSession.isActive = true
-                    if (dao.getStatus(bookId) == AudioBook.STATUS_NOT_BEGUN) {
-                        updateStatus(AudioBook.STATUS_IN_PROGRESS)
+                    if (dao.getStatus(bookId) == AudioBookStatus.NOT_BEGUN.value) {
+                        updateStatus(AudioBookStatus.IN_PROGRESS)
                     }
                     val newState = stateBuilder
-                        .setState(
-                            PlaybackStateCompat.STATE_PLAYING,
-                            dao.getPositionInTrack(bookId).toLong(),
-                            1f
-                        )
+                        .setState(PlaybackStateCompat.STATE_PLAYING, dao.getPositionInTrack(bookId).toLong(), 1f)
                         .build()
                     setPlaybackState(newState)
                     mediaPlayer.start()
@@ -400,23 +371,19 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
                         pos = (duration - 1).toLong()
                     }
                 }
-                setPlaybackState(
-                    stateBuilder
-                        .setState(mediaSession.controller.playbackState.state, pos, 1f)
-                        .build()
-                )
+                val newState = stateBuilder
+                    .setState(mediaSession.controller.playbackState.state, pos, 1f)
+                    .build()
+                setPlaybackState(newState)
                 mediaPlayer.seekTo(pos.toInt())
             }
         }
 
         override fun onPause() {
             if (getIsMediaPlayerPrepared() && isMediaPlayerPlaying) {
+                val pos = mediaPlayer.currentPosition.toLong()
                 val newState = stateBuilder
-                    .setState(
-                        PlaybackStateCompat.STATE_PAUSED,
-                        mediaPlayer.currentPosition.toLong(),
-                        1f
-                    )
+                    .setState(PlaybackStateCompat.STATE_PAUSED, pos, 1f)
                     .build()
                 setPlaybackState(newState)
                 mediaPlayer.pause()
@@ -428,9 +395,9 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
             unregisterReceiver(broadcastReceiver)
             if (getIsMediaPlayerPrepared()) {
                 val am = this@MediaPlaybackService.getSystemService(AUDIO_SERVICE) as AudioManager
-                am.abandonAudioFocusRequest(audioFocusRequest!!)
+                audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
                 mediaSession.isActive = false
-                updateTask!!.cancel()
+                updateTask?.cancel()
                 val newState = stateBuilder
                     .setState(PlaybackStateCompat.STATE_STOPPED, 0, 1f)
                     .build()
@@ -459,10 +426,10 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
             if (getIsMediaPlayerPrepared()) {
                 onPause()
                 dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis())
-                setPlaybackState(
-                    stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 1, 1f)
-                        .build()
-                )
+                val newState = stateBuilder
+                    .setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 1, 1f)
+                    .build()
+                setPlaybackState(newState)
                 playTrack(dao.getPositionInTrackList(bookId) + 1)
             }
         }
@@ -475,22 +442,13 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
                 } else {
                     onPause()
                     dao.updatePositionInTrack(bookId, 1, System.currentTimeMillis())
-                    setPlaybackState(
-                        stateBuilder
-                            .setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, 1, 1f)
-                            .build()
-                    )
+                    val newState = stateBuilder
+                        .setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, 1, 1f)
+                        .build()
+                    setPlaybackState(newState)
                     playTrack(dao.getPositionInTrackList(bookId) - 1)
                 }
             }
         }
-    }
-
-
-    companion object {
-        const val EVENT_REACHED_END: String = "EVENT_REACHED_END"
-        private const val EVENT_REWIND = "EVENT_REWIND"
-        private const val EVENT_FAST_FORWARD = "EVENT_FAST_FORWARD"
-        private const val TAG = "ASD"
     }
 }
