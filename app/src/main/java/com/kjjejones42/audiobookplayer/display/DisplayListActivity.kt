@@ -85,23 +85,23 @@ class DisplayListActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        searchView?.takeIf { !it.isIconified }?.let {
-            it.setQuery("", false)
-            it.clearFocus()
-            it.isIconified = true
+        searchView?.takeIf { !it.isIconified }?.apply {
+            setQuery("", false)
+            clearFocus()
+            isIconified = true
         } ?: super.onBackPressed()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu, menu)
         searchView = menu.findItem(R.id.app_bar_search).actionView as SearchView?
-        searchView?.let {
-            it.isSubmitButtonEnabled = false
-            it.setOnCloseListener {
+        searchView?.apply {
+            isSubmitButtonEnabled = false
+            setOnCloseListener {
                 mAdapter.filter(null)
                 false
             }
-            it.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(query: String): Boolean {
                     mAdapter.filter(query)
                     return false
@@ -151,11 +151,11 @@ class DisplayListActivity : AppCompatActivity() {
     }
 
     fun onFloatingActionButtonClick(@Suppress("unused") v: View?) {
-        controller?.let {
-            if (it.playbackState == null || it.playbackState.state != PlaybackStateCompat.STATE_PLAYING) {
+        controller?.apply {
+            if (playbackState == null || playbackState.state != PlaybackStateCompat.STATE_PLAYING) {
                 resumeMostRecentBook()
             } else {
-                it.transportControls.pause()
+                transportControls.pause()
             }
         }
     }

@@ -10,7 +10,7 @@ import java.io.ByteArrayInputStream
 import java.io.Serializable
 import java.util.Objects
 
-class MediaItem(uri: Uri, private val displayName: String, @JvmField val duration: Long) :
+class MediaItem(uri: Uri, private val displayName: String, val fileName: String, @JvmField val duration: Long) :
 Serializable, Comparable<MediaItem?> {
 
     private var _uri = uri.toString()
@@ -62,6 +62,6 @@ Serializable, Comparable<MediaItem?> {
 
     override fun compareTo(other: MediaItem?): Int {
         if (other == null) return 0
-        return displayName.compareTo(other.displayName)
+        return fileName.compareTo(other.fileName)
     }
 }

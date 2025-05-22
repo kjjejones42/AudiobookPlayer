@@ -164,9 +164,9 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         }
 
     private fun updateStatus(status: AudioBookStatus) {
-        dao.findByName(bookId)?.let {
-            it.setStatus(status)
-            dao.update(it)
+        dao.findByName(bookId)?.apply {
+            setStatus(status)
+            dao.update(this)
         }
     }
 

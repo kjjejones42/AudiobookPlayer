@@ -66,20 +66,24 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
                 MediaStore.Audio.Media.RELATIVE_PATH,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.DURATION,
+                MediaStore.MediaColumns.DISPLAY_NAME,
             )
             val where = "${MediaStore.Audio.Media.IS_AUDIOBOOK} != 0"
             applicationContext.contentResolver.query(uri, selection, where, null, null)?.use {
-                val dirs = HashMap<String, MutableList<MediaItem>>()
-                while (it.moveToNext()) {
-                    val id = it.getLong(0)
-                    val dir = it.getString(1)
-                    val title = it.getString(2)
-                    val duration = it.getInt(3)
-                    val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-                    val media = MediaItem(uri, title, duration.toLong())
-                    dirs.computeIfAbsent(dir) { ArrayList() }.add(media)
+                it.apply {
+                    val dirs = HashMap<String, MutableList<MediaItem>>()
+                    while (moveToNext()) {
+                        val id = getLong(getColumnIndex(MediaStore.Audio.Media._ID))
+                        val dir = getString(1)
+                        val title = getString(2)
+                        val duration = getInt(3)
+                        val fileName = getString(4)
+                        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+                        val media = MediaItem(uri, title, fileName, duration.toLong())
+                        dirs.computeIfAbsent(dir) { ArrayList() }.add(media)
+                    }
+                    return dirs.map { (key, value) -> parseBook(key, value) }
                 }
-                return dirs.map { (key, value) -> parseBook(key, value) }
             }
             return ArrayList()
         }

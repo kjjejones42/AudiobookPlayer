@@ -100,10 +100,10 @@ class PlayActivity : AppCompatActivity() {
                 if (MediaPlaybackService.EVENT_REACHED_END == event) {
                     var audioBook = model.audioBook.value
                     mediaBrowser.disconnect()
-                    audioBook?.let {
-                        audioBook = it
-                        it.setStatus(AudioBookStatus.FINISHED)
-                        audiobookDao.update(it)
+                    audioBook?.apply {
+                        setStatus(AudioBookStatus.FINISHED)
+                        audioBook = this
+                        audiobookDao.update(this)
                     }
                     onBackPressed()
                 }
@@ -269,13 +269,13 @@ class PlayActivity : AppCompatActivity() {
     }
 
     private fun onAudioBookSet(book: AudioBook?) {
-        book?.let {
-            setColorFromAlbumArt(it)
-            supportActionBar?.title = it.displayName
-            val positionInTrackList = it.positionInTrackList
-            it.files?.let {
+        book?.apply {
+            setColorFromAlbumArt(this)
+            supportActionBar?.title = displayName
+            val positionInTrackList = positionInTrackList
+            this.files?.let {
                 val sortedFiles = it.sorted().toList()
-                val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortedFiles)
+                val adapter = ArrayAdapter(this@PlayActivity, android.R.layout.simple_spinner_item, sortedFiles)
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 spinner.adapter = adapter
                 spinner.onItemSelectedListener = onItemSelectedListener
@@ -288,19 +288,19 @@ class PlayActivity : AppCompatActivity() {
     }
 
     private fun setColorFromAlbumArt(book: AudioBook?) {
-        book?.let {
-            setImage(it.getAlbumArt(this))
-            if (!it.isArtGenerated) {
-                book.getAlbumArtPalette(this)?.let {
+        book?.apply {
+            setImage(getAlbumArt(this@PlayActivity))
+            if (!isArtGenerated) {
+                book.getAlbumArtPalette(this@PlayActivity)?.apply {
                     val nightMode =
                         (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
                     val backColor = if (nightMode) {
-                        it.getDarkMutedColor(Color.TRANSPARENT)
+                        getDarkMutedColor(Color.TRANSPARENT)
                     } else {
-                        it.getLightMutedColor(Color.TRANSPARENT)
+                        getLightMutedColor(Color.TRANSPARENT)
                     }
                     findViewById<View>(R.id.playerBackground).setBackgroundColor(backColor)
-                    val color = it.getVibrantColor(resources.getColor(R.color.colorAccent, theme))
+                    val color = getVibrantColor(resources.getColor(R.color.colorAccent, theme))
                     updateButtonColor(color)
                     updateStatusBarColor(color)
                 }
@@ -323,9 +323,9 @@ class PlayActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         mediaBrowser.connect()
-        model.audioBook.value?.let {
-            model.setPosition(it.positionInTrack.toLong())
-            setDuration(it.durationOfMostRecentTrack)
+        model.audioBook.value?.apply {
+            model.setPosition(positionInTrack.toLong())
+            setDuration(durationOfMostRecentTrack)
         }
     }
 
@@ -334,9 +334,9 @@ class PlayActivity : AppCompatActivity() {
         val controller = checkNotNull(controller)
         MediaControllerCompat.setMediaController(this@PlayActivity, controller)
         buildTransportControls()
-        model.audioBook.value?.let{
-            if (it.uniqueId != controller.metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)) {
-                initialiseMediaSession(it.positionInTrackList)
+        model.audioBook.value?.apply {
+            if (uniqueId != controller.metadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)) {
+                initialiseMediaSession(positionInTrackList)
             } else {
                 model.setMetadata(controller.metadata)
                 model.setPosition(controller.playbackState.position)
