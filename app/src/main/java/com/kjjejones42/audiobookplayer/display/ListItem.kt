@@ -39,6 +39,10 @@ abstract class ListItem {
         override val category: Int = book.status
         override val timeStamp: Long = book.lastSavedTimestamp
         override val type: ListItemType = ListItemType.ITEM
+
+        override fun toString(): String {
+            return book.displayName
+        }
     }
 
     class Heading internal constructor(override val category: Int) : ListItem() {

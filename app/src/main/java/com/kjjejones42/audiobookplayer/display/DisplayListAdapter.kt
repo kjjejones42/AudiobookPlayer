@@ -41,7 +41,6 @@ class DisplayListAdapter internal constructor(
         val position = rcv.getChildLayoutPosition(it)
         model.listItems.value?.takeIf { it[position].type == ListItemType.ITEM }?.let {
             selectedPos = position
-            notifyItemChanged(position)
             startAudioBook((it[position] as AudioBookContainer).book)
         }
     }
@@ -67,13 +66,12 @@ class DisplayListAdapter internal constructor(
     }
 
     init {
+        model.listItems.value?.let { this.selectivelyNotify(it) }
         model.listItems.observe(activity) { this.selectivelyNotify(it) }
         setHasStableIds(true)
     }
 
     private fun startAudioBook(book: AudioBook) {
-//        AudiobookDatabase.getInstance(activity).audiobookDao()
-//                .getAllAndObserve().removeObservers(activity);
         val intent = Intent(activity, PlayActivity::class.java)
         intent.putExtra(DisplayListActivity.INTENT_PLAY_FILE, book.displayName)
         intent.putExtra(DisplayListActivity.INTENT_START_PLAYBACK, true)
@@ -90,26 +88,24 @@ class DisplayListAdapter internal constructor(
         }
         if (oldItems == null) {
             notifyItemRangeInserted(0, newItems.size)
-            return
-        }
-        if (oldItems.size == newItems.size) {
+        } else if (oldItems.size == newItems.size) {
             notifyDataSetChanged()
-            return
-        }
-        val remove = oldItems.size > newItems.size
-        val larger = if (remove) oldItems else newItems
-        val smaller = if (remove) newItems else oldItems
-        larger.indices
-            .filter { !smaller.contains(larger[it]) }
-            .sortedDescending()
-            .forEach {
-                if (remove) {
-                    notifyItemRemoved(it)
-                } else {
-                    notifyItemInserted(it)
+        } else {
+            val remove = oldItems.size > newItems.size
+            val larger = if (remove) oldItems else newItems
+            val smaller = if (remove) newItems else oldItems
+            larger.indices
+                .filter { !smaller.contains(larger[it]) }
+                .sortedDescending()
+                .forEach {
+                    if (remove) {
+                        notifyItemRemoved(it)
+                    } else {
+                        notifyItemInserted(it)
+                    }
                 }
-            }
-        rcv.scrollToPosition(0)
+            rcv.scrollToPosition(0)
+        }
     }
 
     private val items: List<ListItem>
