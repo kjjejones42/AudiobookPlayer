@@ -1,45 +1,61 @@
 package com.kjjejones42.audiobookplayer.display
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.database.AudiobookRepository
 import com.kjjejones42.audiobookplayer.display.ListItem.AudioBookContainer
 import com.kjjejones42.audiobookplayer.display.ListItem.Heading
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import java.util.UUID
+import javax.inject.Inject
 
-class DisplayListViewModel : ViewModel() {
-    private val _savedBooks = MutableLiveData<List<AudioBook>>(ArrayList())
-    val savedBooks: LiveData<List<AudioBook>>
-        get() = _savedBooks
+@HiltViewModel
+class DisplayListViewModel @Inject constructor(
+    audiobookRepository: AudiobookRepository
+) : ViewModel() {
 
-    private val _listItems = MutableLiveData<List<ListItem>>(ArrayList())
-    val listItems: LiveData<List<ListItem>>
-        get() = _listItems
+    val listItems = audiobookRepository
+        .allAndObserve()
+        .map { getItemsFromBooks(it) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
-    init {
-        _savedBooks.observeForever { setFilteredListItems(it) }
+    val workUuid = MutableStateFlow<UUID?>(null)
+
+    val workNeedsStarting = MutableStateFlow(false)
+
+    fun getWorkStateFlow(context: Context): Flow<WorkInfo?> {
+        val uuid = workUuid.value ?: return flowOf(null)
+        return WorkManager.getInstance(context).getWorkInfoByIdFlow(uuid)
     }
 
-    private fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
-        val list = books
-            .sortedBy { it.displayName }
-            .map { AudioBookContainer(it) }
-            .toMutableList<ListItem>()
+    companion object {
+        fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
+            val list = books
+                .sortedBy { it.displayName }
+                .map { AudioBookContainer(it) }
+                .toMutableList<ListItem>()
 
-        list.toList()
-            .map { it.category }
-            .distinct()
-            .map { Heading(it) }
-            .forEach{ list.add(it) }
+            list.toList()
+                .map { it.category }
+                .distinct()
+                .map { Heading(it) }
+                .forEach { list.add(it) }
 
-        return list.sortedWith(compareBy( {it.category}, {it.type.value}, {-it.timeStamp} ))
-    }
-
-    fun setFilteredListItems(items: List<AudioBook>) {
-        _listItems.value = getItemsFromBooks(items)
-    }
-
-    fun setBooks(bookList: List<AudioBook>) {
-        _savedBooks.value = bookList
+            return list.sortedWith(compareBy({ it.category }, { it.type.value }, { -it.timeStamp }))
+        }
     }
 }

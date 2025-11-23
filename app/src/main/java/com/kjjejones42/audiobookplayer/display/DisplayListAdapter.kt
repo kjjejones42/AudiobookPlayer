@@ -14,6 +14,7 @@ import com.kjjejones42.audiobookplayer.AudioBook
 import com.kjjejones42.audiobookplayer.AudioBookStatus
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
+import com.kjjejones42.audiobookplayer.databinding.DisplayListItemBinding
 import com.kjjejones42.audiobookplayer.display.DisplayListAdapter.MyViewHolder
 import com.kjjejones42.audiobookplayer.display.ListItem.AudioBookContainer
 import com.kjjejones42.audiobookplayer.display.ListItem.Heading
@@ -66,9 +67,9 @@ class DisplayListAdapter internal constructor(
     }
 
     init {
-        model.listItems.value?.let { this.selectivelyNotify(it) }
-        model.listItems.observe(activity) { this.selectivelyNotify(it) }
-        setHasStableIds(true)
+//        model.listItems.value?.let { this.selectivelyNotify(it) }
+//        model.listItems.observe(activity) { this.selectivelyNotify(it) }
+//        setHasStableIds(true)
     }
 
     private fun startAudioBook(book: AudioBook) {
@@ -123,14 +124,14 @@ class DisplayListAdapter internal constructor(
     }
 
 
-    fun filter(filterTerm: String?) {
-        model.savedBooks.value?.takeIf { filterTerm != null }?.let {
-            val filtered = it
-                .filter { it.toString().uppercase().contains(filterTerm!!.uppercase()) }
-                .toList()
-            model.setFilteredListItems(filtered)
-        }
-    }
+//    fun filter(filterTerm: String?) {
+//        model.savedBooks.value?.takeIf { filterTerm != null }?.let {
+//            val filtered = it
+//                .filter { it.toString().uppercase().contains(filterTerm!!.uppercase()) }
+//                .toList()
+//            model.setFilteredListItems(filtered)
+//        }
+//    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
         if (viewType == ListItemType.HEADING.value) {
@@ -184,10 +185,11 @@ class DisplayListAdapter internal constructor(
 
         init {
             if (isItem) {
-                textView = v.findViewById(R.id.listItemText)
-                image = v.findViewById(R.id.listImageView)
-                artist = v.findViewById(R.id.artist)
-                duration = v.findViewById(R.id.listItemDuration)
+                val binding = DisplayListItemBinding.bind(v)
+                textView = binding.listItemText
+                image = binding.listImageView
+                artist = binding.artist
+                duration = binding.listItemDuration
                 image!!.visibility = View.INVISIBLE
             } else {
                 textView = v as TextView

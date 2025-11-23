@@ -6,10 +6,12 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
+import com.kjjejones42.audiobookplayer.database.DataConverter
 import java.io.ByteArrayInputStream
 import java.io.Serializable
 import java.util.Objects
 
+@kotlinx.serialization.Serializable(with = DataConverter::class)
 class MediaItem(uri: Uri, private val displayName: String, val fileName: String, @JvmField val duration: Long) :
 Serializable, Comparable<MediaItem?> {
 
@@ -47,7 +49,7 @@ Serializable, Comparable<MediaItem?> {
         if (index == -1) {
             return displayName
         }
-        return displayName.substring(0, index)
+        return displayName.take(index)
     }
 
     override fun equals(other: Any?): Boolean {

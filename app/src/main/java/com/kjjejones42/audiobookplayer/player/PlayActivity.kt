@@ -16,12 +16,8 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
-import android.widget.Spinner
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
@@ -31,6 +27,7 @@ import com.kjjejones42.audiobookplayer.AudioBook
 import com.kjjejones42.audiobookplayer.AudioBookStatus
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
+import com.kjjejones42.audiobookplayer.databinding.ActivityPlayBinding
 import com.kjjejones42.audiobookplayer.display.DisplayListActivity
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -47,17 +44,9 @@ private fun msToMMSS(ms: Long): String {
 }
 
 class PlayActivity : AppCompatActivity() {
-    private lateinit var spinner: Spinner
-    private lateinit var prevButton: ImageButton
-    private lateinit var rewindButton: ImageButton
-    private lateinit var toggleButton: ImageButton
-    private lateinit var forwardButton: ImageButton
-    private lateinit var nextButton: ImageButton
-    private lateinit var progressText: TextView
-    private lateinit var durationText: TextView
+
+    private lateinit var binding: ActivityPlayBinding
     private lateinit var mediaBrowser: MediaBrowserCompat
-    private lateinit var seekBar: SeekBar
-    private lateinit var imView: ImageView
     private var controller: MediaControllerCompat? = null
     private lateinit var model: PlayerViewModel
     private val audiobookDao = getInstance(this).audiobookDao()
@@ -79,7 +68,7 @@ class PlayActivity : AppCompatActivity() {
     private val onItemSelectedListener: AdapterView.OnItemSelectedListener =
         object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View, position: Int, id: Long) {
-                if (spinner.tag as Int != position) {
+                if (binding.trackChooser.tag as Int != position) {
                     initialiseMediaSession(position)
                 }
             }
@@ -145,32 +134,22 @@ class PlayActivity : AppCompatActivity() {
     }
 
     private fun setImage(bitmap: Bitmap) {
-        imView.setImageBitmap(bitmap)
+        binding.albumArtView.setImageBitmap(bitmap)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_play)
-
         mediaBrowser = MediaBrowserCompat(this, ComponentName(this, MediaPlaybackService::class.java), connectionCallbacks, null)
 
-        prevButton = findViewById(R.id.prevButton)
-        rewindButton = findViewById(R.id.rewindButton)
-        toggleButton = findViewById(R.id.toggleButton)
-        forwardButton = findViewById(R.id.forwardButton)
-        nextButton = findViewById(R.id.nextButton)
-        progressText = findViewById(R.id.progress_text)
-        durationText = findViewById(R.id.duration_text)
-        seekBar = findViewById(R.id.seekBar)
-        spinner = findViewById(R.id.trackChooser)
-        imView = findViewById(R.id.albumArtView)
+        binding = ActivityPlayBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         model = ViewModelProvider(this)[PlayerViewModel::class.java]
         initializeModelObservers()
 
         setControlsEnabled(false)
-        seekBar.setOnSeekBarChangeListener(onSeekBarChangeListener)
+        binding.seekBar.setOnSeekBarChangeListener(onSeekBarChangeListener)
         intent?.let { onNewIntent(it) }
     }
 
@@ -194,30 +173,29 @@ class PlayActivity : AppCompatActivity() {
 
     private fun onIsPlayingSet(isPlaying: Boolean) {
         val image = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play
-        toggleButton.setImageResource(image)
+        binding.toggleButton.setImageResource(image)
     }
 
     private fun setDuration(duration: Long) {
         if (duration > 0) {
-            seekBar.max = duration.toInt()
-            durationText.text = msToMMSS(duration)
+            binding.seekBar.max = duration.toInt()
+            binding.durationText.text = msToMMSS(duration)
         }
     }
 
     private fun onPositionSet(position: Long) {
         if (position > 0) {
-            seekBar.progress = position.toInt()
-            progressText.text = msToMMSS(position)
+            binding.seekBar.progress = position.toInt()
+            binding.progressText.text = msToMMSS(position)
         }
     }
 
     private fun updateButtonColor(color: Int) {
-        val list = listOf(prevButton, rewindButton, toggleButton, nextButton, forwardButton)
-        list.forEach { it.background?.setTint(color) }
+        listOf(binding.prevButton, binding.rewindButton, binding.toggleButton, binding.nextButton, binding.forwardButton).forEach { it.background?.setTint(color) }
         supportActionBar?.setBackgroundDrawable(color.toDrawable())
         window.statusBarColor = ColorUtils.blendARGB(color, Color.BLACK, 0.25f)
-        seekBar.thumb.setTint(color)
-        seekBar.progressDrawable.setTint(color)
+        binding.seekBar.thumb.setTint(color)
+        binding.seekBar.progressDrawable.setTint(color)
     }
 
     private fun updateStatusBarColor(color: Int) {
@@ -231,8 +209,8 @@ class PlayActivity : AppCompatActivity() {
             setDuration(duration)
             setImage(metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART))
             val position = metadata.getLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER).toInt()
-            spinner.tag = position
-            spinner.setSelection(position)
+            binding.trackChooser.tag = position
+            binding.trackChooser.setSelection(position)
         }
     }
 
@@ -240,32 +218,32 @@ class PlayActivity : AppCompatActivity() {
         controller?.let {
             val controller = it
             it.registerCallback(controllerCallback)
-            toggleButton.setOnClickListener {
+            binding.toggleButton.setOnClickListener {
                 if (controller.playbackState.state == PlaybackStateCompat.STATE_PLAYING) {
                     controller.transportControls.pause()
                 } else {
                     controller.transportControls.play()
                 }
             }
-            prevButton.setOnClickListener { controller.transportControls.skipToPrevious() }
-            nextButton.setOnClickListener {
+            binding.prevButton.setOnClickListener { controller.transportControls.skipToPrevious() }
+            binding.nextButton.setOnClickListener {
                 controller.transportControls.skipToNext()
                 model.setPosition(0)
             }
-            rewindButton.setOnClickListener { controller.transportControls.rewind() }
-            forwardButton.setOnClickListener { controller.transportControls.fastForward() }
+            binding.rewindButton.setOnClickListener { controller.transportControls.rewind() }
+            binding.forwardButton.setOnClickListener { controller.transportControls.fastForward() }
             setControlsEnabled(true)
         }
     }
 
     private fun setControlsEnabled(on: Boolean) {
-        seekBar.visibility = if (on) View.VISIBLE else View.INVISIBLE
-        seekBar.isEnabled = on
-        nextButton.isEnabled = on
-        prevButton.isEnabled = on
-        toggleButton.isEnabled = on
-        rewindButton.isEnabled = on
-        forwardButton.isEnabled = on
+        binding.seekBar.visibility = if (on) View.VISIBLE else View.INVISIBLE
+        binding.seekBar.isEnabled = on
+        binding.nextButton.isEnabled = on
+        binding.prevButton.isEnabled = on
+        binding.toggleButton.isEnabled = on
+        binding.rewindButton.isEnabled = on
+        binding.forwardButton.isEnabled = on
     }
 
     private fun onAudioBookSet(book: AudioBook?) {
@@ -277,6 +255,7 @@ class PlayActivity : AppCompatActivity() {
                 val sortedFiles = it.sorted().toList()
                 val adapter = ArrayAdapter(this@PlayActivity, android.R.layout.simple_spinner_item, sortedFiles)
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                val spinner = binding.trackChooser
                 spinner.adapter = adapter
                 spinner.onItemSelectedListener = onItemSelectedListener
                 val position = min((sortedFiles.size - 1), positionInTrackList)
@@ -299,7 +278,7 @@ class PlayActivity : AppCompatActivity() {
                     } else {
                         getLightMutedColor(Color.TRANSPARENT)
                     }
-                    findViewById<View>(R.id.playerBackground).setBackgroundColor(backColor)
+                    binding.playerBackground.setBackgroundColor(backColor)
                     val color = getVibrantColor(resources.getColor(R.color.colorAccent, theme))
                     updateButtonColor(color)
                     updateStatusBarColor(color)

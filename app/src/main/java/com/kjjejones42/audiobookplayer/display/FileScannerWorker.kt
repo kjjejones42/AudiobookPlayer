@@ -57,47 +57,60 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         return AudioBook(directory, rel, imagePath, mediaFiles, author)
     }
 
-    @get:SuppressLint("Range")
-    private val list: List<AudioBook?>
-        get() {
-            val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            val selection = arrayOf(
-                MediaStore.Audio.Media._ID,
-                MediaStore.Audio.Media.RELATIVE_PATH,
-                MediaStore.Audio.Media.TITLE,
-                MediaStore.Audio.Media.DURATION,
-                MediaStore.MediaColumns.DISPLAY_NAME,
-            )
-            val where = "${MediaStore.Audio.Media.IS_AUDIOBOOK} != 0"
-            applicationContext.contentResolver.query(uri, selection, where, null, null)?.use {
+    @SuppressLint("Range")
+    private fun queryBooks(): List<AudioBook?> {
+        val result = ArrayList<AudioBook>()
+        val selection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.RELATIVE_PATH,
+            MediaStore.Files.FileColumns.TITLE,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.DURATION
+        )
+
+        val where = "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ?"
+        val selectionArgs = arrayOf("audio/%")
+
+        for (uri in listOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, MediaStore.Audio.Media.INTERNAL_CONTENT_URI)) {
+            val cursor = applicationContext.contentResolver.query(uri, selection, where, selectionArgs, null)
+            cursor?.use {
                 it.apply {
+                    val idColumn = getColumnIndex(MediaStore.Files.FileColumns._ID)
+                    val dirColumn = getColumnIndex(MediaStore.Files.FileColumns.RELATIVE_PATH)
+                    val titleColumn = getColumnIndex(MediaStore.Files.FileColumns.TITLE)
+                    val durationColumn = getColumnIndex(MediaStore.Files.FileColumns.DURATION)
+                    val fileNameColumn = getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+
                     val dirs = HashMap<String, MutableList<MediaItem>>()
                     while (moveToNext()) {
-                        val id = getLong(getColumnIndex(MediaStore.Audio.Media._ID))
-                        val dir = getString(1)
-                        val title = getString(2)
-                        val duration = getInt(3)
-                        val fileName = getString(4)
-                        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-                        val media = MediaItem(uri, title, fileName, duration.toLong())
+                        val id = getLong(idColumn)
+                        val dir = getString(dirColumn) ?: continue
+                        val title = getString(titleColumn)
+                        val duration = getInt(durationColumn)
+                        val fileName = getString(fileNameColumn)
+                        val mediaUri = ContentUris.withAppendedId(uri, id)
+                        val media = MediaItem(mediaUri, title, fileName, duration.toLong())
                         dirs.computeIfAbsent(dir) { ArrayList() }.add(media)
                     }
-                    return dirs.map { (key, value) -> parseBook(key, value) }
+                    val uriResult = dirs.map { (key, value) -> parseBook(key, value) }
+                    result.addAll(uriResult)
                 }
             }
-            return ArrayList()
         }
+        return result
+    }
 
     override fun doWork(): Result {
         return try {
-            val ids = list.filterNotNull().mapNotNull { it.baseDir }.toSet()
+            val books = queryBooks()
+            val ids = books.filterNotNull().mapNotNull { it.baseDir }.toSet()
             val dao = getInstance(applicationContext).audiobookDao()
             val dbIds: MutableSet<String?> = ArraySet(dao.allBaseDirs)
             dbIds.removeAll(ids)
             for (dbId in dbIds) {
                 dao.delete(dbId)
             }
-            dao.insertAll(list.filterNotNull())
+            dao.insertAll(books.filterNotNull())
             Result.success()
         } catch (e: Exception) {
             logError(e, "Error scanning files", applicationContext)

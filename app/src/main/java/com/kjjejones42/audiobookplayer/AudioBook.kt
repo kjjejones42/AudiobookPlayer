@@ -13,6 +13,7 @@ import androidx.palette.graphics.Palette
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -31,6 +32,7 @@ enum class AudioBookStatus(val value: Int, val displayName: String) {
     FINISHED(2, "Finished"),
 }
 
+@Serializable
 @Entity
 class AudioBook {
 
@@ -75,16 +77,20 @@ class AudioBook {
     var status = 0
 
     @Transient
+    @kotlinx.serialization.Transient
     var isArtGenerated: Boolean = false
         private set
 
     @Transient
+    @kotlinx.serialization.Transient
     private var thumbnail: Bitmap? = null
 
     @Transient
+    @kotlinx.serialization.Transient
     private var art: Bitmap? = null
 
     @Transient
+    @kotlinx.serialization.Transient
     private var albumArtPalette: Palette? = null
 
     constructor() {
@@ -110,6 +116,22 @@ class AudioBook {
 
     private fun generatePalette(bitmap: Bitmap?) {
         bitmap?.let { albumArtPalette = Palette.from(it).generate() }
+    }
+
+    fun getAlbumArtInit(context: Context): Bitmap? {
+        art?.let { return it }
+        return try {
+            imagePath?.takeIf { it.isNotEmpty() }?.let {
+                FileInputStream(it).use {
+                    BitmapFactory.decodeStream(it)
+                }
+            }
+        } catch (e: FileNotFoundException) {
+            logError(e, "Couldn't get album art", context)
+            null
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun getAlbumArt(context: Context): Bitmap {

@@ -1,17 +1,17 @@
 package com.kjjejones42.audiobookplayer.database
 
-import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.kjjejones42.audiobookplayer.AudioBook
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AudiobookDao {
     @get:Query("SELECT * FROM AudioBook")
-    val allAndObserve: LiveData<List<AudioBook>>
+    val allAndObserve: Flow<List<AudioBook>>
 
     @Update
     fun update(book: AudioBook)
@@ -42,6 +42,7 @@ interface AudiobookDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertAll(books: List<AudioBook>)
+
 
     @Query("DELETE FROM AudioBook WHERE baseDir = :baseDir")
     fun delete(baseDir: String?)

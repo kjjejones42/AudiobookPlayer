@@ -1,0 +1,519 @@
+kotlin version: 2.1.20
+error message: org.jetbrains.kotlin.backend.common.CompilationException: Back-end: Please report this problem https://kotl.in/issue
+C:/Users/Jonathan/StudioProjects/AudiobookPlayer/app/src/main/java/com/kjjejones42/audiobookplayer/AudioBook.kt:36:1
+Problem with `@Serializable
+@Entity
+class AudioBook {
+  companion object Companion {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    private var thumbnailSize: Int
+      field = 0
+      private get
+      private set
+
+    private fun getThumbnailSize(activity: Activity): Int {
+      when {
+        EQEQ(arg0 = <this>.<get-thumbnailSize>(), arg1 = 0) -> { // BLOCK
+          activity.getTheme().obtainStyledAttributes(p0 = intArrayOf(elements = [16842829])).use<@EnhancedNullability TypedArray, Unit>(block = local fun <anonymous>(it: @EnhancedNullability TypedArray) {
+            Companion.<set-thumbnailSize>(<set-?> = ceil(x = it.getDimension(p0 = 0, p1 = 0.0F).toDouble()).roundToInt())
+          }
+)
+        }
+      }
+      return <this>.<get-thumbnailSize>()
+    }
+
+    fun serializer(): KSerializer<AudioBook>
+
+    /* fake */ override operator fun equals(other: Any?): Boolean
+
+    /* fake */ override fun hashCode(): Int
+
+    /* fake */ override fun toString(): String
+
+  }
+
+  var displayName: String
+    get
+    set
+
+  var baseDir: String?
+    field = null
+    get
+    set
+
+  @Contextual
+  var files: List<MediaItem>?
+    field = null
+    get
+    set
+
+  var author: String?
+    field = null
+    get
+    set
+
+  var imagePath: String?
+    field = null
+    get
+    set
+
+  var lastSavedTimestamp: Long
+    field = 0L
+    get
+    set
+
+  var positionInTrack: Int
+    field = 0
+    get
+    set
+
+  var positionInTrackList: Int
+    field = 0
+    get
+    set
+
+  var status: Int
+    field = 0
+    get
+    set
+
+  var isArtGenerated: Boolean
+    field = false
+    get
+    private set
+
+  private var thumbnail: Bitmap?
+    field = null
+    private get
+    private set
+
+  private var art: Bitmap?
+    field = null
+    private get
+    private set
+
+  private var albumArtPalette: Palette?
+    field = null
+    private get
+    private set
+
+  constructor() {
+    super/*Any*/()
+    /* <init>() */
+
+    <this>.<set-displayName>(<set-?> = "")
+  }
+
+  constructor(name: String, baseDir: String?, imagePath: String?, files: List<MediaItem>?, author: String?) {
+    super/*Any*/()
+    /* <init>() */
+
+    { // BLOCK
+      val tmp0_safe_receiver: List<MediaItem>? = files
+      when {
+        EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+        else -> tmp0_safe_receiver.let<List<MediaItem>, Unit>(block = local fun <anonymous>(it: List<MediaItem>) {
+          sort<@FlexibleNullability MediaItem?>(p0 = it)
+        }
+)
+      }
+    } /*~> Unit */
+    <this>.<set-baseDir>(<set-?> = baseDir)
+    <this>.<set-imagePath>(<set-?> = imagePath)
+    <this>.<set-displayName>(<set-?> = name)
+    <this>.<set-files>(<set-?> = files)
+    <this>.<set-status>(<set-?> = AudioBookStatus.NOT_BEGUN.<get-value>())
+    <this>.<set-author>(<set-?> = { // BLOCK
+      val tmp1_elvis_lhs: String? = author
+      when {
+        EQEQ(arg0 = tmp1_elvis_lhs, arg1 = null) -> ""
+        else -> tmp1_elvis_lhs
+      }
+    })
+  }
+
+  fun getAlbumArtPalette(context: Context): Palette? {
+    when {
+      EQEQ(arg0 = <this>.<get-albumArtPalette>(), arg1 = null) -> { // BLOCK
+        <this>.generatePalette(bitmap = <this>.getAlbumArt(context = context))
+      }
+    }
+    return <this>.<get-albumArtPalette>()
+  }
+
+  private fun generatePalette(bitmap: Bitmap?) {
+    { // BLOCK
+      val tmp0_safe_receiver: Bitmap? = bitmap
+      when {
+        EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+        else -> tmp0_safe_receiver.let<Bitmap, Unit>(block = local fun <anonymous>(it: Bitmap) {
+          <this>.<set-albumArtPalette>(<set-?> = from(p0 = it).generate())
+        }
+)
+      }
+    } /*~> Unit */
+  }
+
+  fun getAlbumArt(context: Context): Bitmap {
+    { // BLOCK
+      val tmp0_safe_receiver: Bitmap? = <this>.<get-art>()
+      when {
+        EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+        else -> tmp0_safe_receiver.let<Bitmap, Nothing>(block = local fun <anonymous>(it: Bitmap): Nothing {
+          return it
+        }
+)
+      }
+    } /*~> Unit */
+    val result: Bitmap = { // BLOCK
+      val tmp5_elvis_lhs: Bitmap? = { // BLOCK
+        val tmp3_elvis_lhs: Bitmap? = try { // BLOCK
+          { // BLOCK
+            val tmp2_safe_receiver: String? = { // BLOCK
+              val tmp1_safe_receiver: String? = <this>.<get-imagePath>()
+              when {
+                EQEQ(arg0 = tmp1_safe_receiver, arg1 = null) -> null
+                else -> tmp1_safe_receiver.takeIf<String>(predicate = local fun <anonymous>(it: String): Boolean {
+                  return it.isNotEmpty()
+                }
+)
+              }
+            }
+            when {
+              EQEQ(arg0 = tmp2_safe_receiver, arg1 = null) -> null
+              else -> tmp2_safe_receiver.let<String, @FlexibleNullability Bitmap?>(block = local fun <anonymous>(it: String): @FlexibleNullability Bitmap? {
+                return FileInputStream(p0 = it).use<FileInputStream, @FlexibleNullability Bitmap?>(block = local fun <anonymous>(it: FileInputStream): @FlexibleNullability Bitmap? {
+                  return decodeStream(p0 = it)
+                }
+)
+              }
+)
+            }
+          }
+        }
+        catch (e: FileNotFoundException){ // BLOCK
+          logError(e = e, message = "Couldn't get album art", context = context)
+          null
+        }
+        catch (<unused var>: Exception){ // BLOCK
+          null
+        }
+
+        when {
+          EQEQ(arg0 = tmp3_elvis_lhs, arg1 = null) -> { // BLOCK
+            val tmp4_safe_receiver: List<MediaItem>? = <this>.<get-files>()
+            when {
+              EQEQ(arg0 = tmp4_safe_receiver, arg1 = null) -> null
+              else -> tmp4_safe_receiver.firstNotNullOfOrNull<MediaItem, Bitmap>(transform = local fun <anonymous>(it: MediaItem): Bitmap? {
+                return it.getEmbeddedPicture(context = context)
+              }
+)
+            }
+          }
+          else -> tmp3_elvis_lhs
+        }
+      }
+      when {
+        EQEQ(arg0 = tmp5_elvis_lhs, arg1 = null) -> <this>.getGeneratedAlbumArt(text = <this>.<get-displayName>().first().toString())
+        else -> tmp5_elvis_lhs
+      }
+    }
+    <this>.<set-art>(<set-?> = result)
+    <this>.generatePalette(bitmap = result)
+    return result
+  }
+
+  private fun getGeneratedAlbumArt(text: String): Bitmap {
+    val paint: Paint = Paint(p0 = 1)
+    paint.setTextSize(p0 = 600.0F)
+    paint.setColor(p0 = -7829368)
+    paint.setTextAlign(p0 = Align.LEFT)
+    val baseline: Float = paint.ascent().unaryMinus()
+    val width: Int = paint.measureText(p0 = text).plus(other = 0.5F).toInt()
+    val height: Int = baseline.plus(other = paint.descent()).plus(other = 0.5F).toInt()
+    val size: Int = max(a = width.toDouble(), b = height.toDouble()).toInt()
+    val image: Bitmap = createBitmap(width = size, height = size)
+    val canvas: Canvas = Canvas(p0 = image)
+    canvas.drawColor(p0 = 0)
+    canvas.drawText(p0 = text, p1 = size.minus(other = width).div(other = 2.0F), p2 = baseline, p3 = paint)
+    <this>.<set-isArtGenerated>(<set-?> = true)
+    return image
+  }
+
+  fun getThumbnail(activity: Activity): Bitmap? {
+    Companion.getThumbnailSize(activity = activity) /*~> Unit */
+    return { // BLOCK
+      val tmp1_elvis_lhs: Bitmap? = { // BLOCK
+        val tmp0_elvis_lhs: Bitmap? = <this>.<get-thumbnail>()
+        when {
+          EQEQ(arg0 = tmp0_elvis_lhs, arg1 = null) -> <this>.loadThumbnail(context = activity)
+          else -> tmp0_elvis_lhs
+        }
+      }
+      when {
+        EQEQ(arg0 = tmp1_elvis_lhs, arg1 = null) -> <this>.generateThumbnailFromAlbumArt(activity = activity, bitmap = <this>.getAlbumArt(context = activity)).also<Bitmap>(block = local fun <anonymous>(it: Bitmap) {
+          <this>.<set-thumbnail>(<set-?> = it)
+        }
+)
+        else -> tmp1_elvis_lhs
+      }
+    }
+  }
+
+  private fun getThumbnailFile(context: Context): File {
+    return File(p0 = context.getCacheDir(), p1 = <this>.<get-uniqueId>() + ".thumbnail")
+  }
+
+  private fun generateThumbnailFromAlbumArt(activity: Activity, bitmap: Bitmap): Bitmap {
+    val size: Int = Companion.getThumbnailSize(activity = activity)
+    val thumbnail: @FlexibleNullability Bitmap? = extractThumbnail(p0 = bitmap, p1 = size, p2 = size)
+    <this>.saveThumbnailToFile(context = activity, thumbnail = thumbnail /*!! Bitmap */)
+    return thumbnail /*!! Bitmap */
+  }
+
+  private fun loadThumbnail(context: Context): Bitmap? {
+    try { // BLOCK
+      val file: File = <this>.getThumbnailFile(context = context)
+      FileInputStream(p0 = file).use<FileInputStream, Nothing>(block = local fun <anonymous>(it: FileInputStream): Nothing {
+        return decodeStream(p0 = it)
+      }
+)
+    }
+    catch (<unused var>: FileNotFoundException){ // BLOCK
+    }
+    catch (e: Exception){ // BLOCK
+      logError(e = e, message = "Couldn't load thumbnail", context = context)
+    }
+
+    return null
+  }
+
+  private fun saveThumbnailToFile(context: Context, thumbnail: Bitmap) {
+    try { // BLOCK
+      val file: File = <this>.getThumbnailFile(context = context)
+      FileOutputStream(p0 = file).use<FileOutputStream, Boolean>(block = local fun <anonymous>(it: FileOutputStream): Boolean {
+        return thumbnail.compress(p0 = CompressFormat.PNG, p1 = 100, p2 = it)
+      }
+)
+    }
+    catch (e: Exception){ // BLOCK
+      logError(e = e, message = "Couldn't save thumbnail", context = context)
+    }
+ /*~> Unit */
+  }
+
+  fun setStatus(status: AudioBookStatus) {
+    <this>.<set-status>(<set-?> = status.<get-value>())
+    { // BLOCK
+      val tmp0_subject: AudioBookStatus = status
+      when {
+        EQEQ(arg0 = tmp0_subject, arg1 = AudioBookStatus.IN_PROGRESS) -> { // BLOCK
+        }
+        EQEQ(arg0 = tmp0_subject, arg1 = AudioBookStatus.NOT_BEGUN) -> { // BLOCK
+          <this>.<set-lastSavedTimestamp>(<set-?> = 0L)
+          <this>.<set-positionInTrackList>(<set-?> = 0)
+          <this>.<set-positionInTrack>(<set-?> = 0)
+        }
+        EQEQ(arg0 = tmp0_subject, arg1 = AudioBookStatus.FINISHED) -> { // BLOCK
+          <this>.<set-positionInTrackList>(<set-?> = 0)
+          <this>.<set-positionInTrack>(<set-?> = 0)
+        }
+        else -> noWhenBranchMatchedException()
+      }
+    }
+  }
+
+  val durationOfMostRecentTrack: Long
+    get(): Long {
+      return { // BLOCK
+        val tmp2_elvis_lhs: Long? = { // BLOCK
+          val tmp1_safe_receiver: MediaItem? = { // BLOCK
+            val tmp0_safe_receiver: List<MediaItem>? = <this>.<get-files>()
+            when {
+              EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+              else -> tmp0_safe_receiver.get(index = <this>.<get-positionInTrackList>())
+            }
+          }
+          when {
+            EQEQ(arg0 = tmp1_safe_receiver, arg1 = null) -> null
+            else -> tmp1_safe_receiver.<get-duration>()
+          }
+        }
+        when {
+          EQEQ(arg0 = tmp2_elvis_lhs, arg1 = null) -> 0L
+          else -> tmp2_elvis_lhs
+        }
+      }
+    }
+
+  val totalDuration: Long
+    get(): Long {
+      return { // BLOCK
+        val tmp1_elvis_lhs: Long? = { // BLOCK
+          val tmp0_safe_receiver: List<MediaItem>? = <this>.<get-files>()
+          when {
+            EQEQ(arg0 = tmp0_safe_receiver, arg1 = null) -> null
+            else -> tmp0_safe_receiver.sumOf<MediaItem>(selector = local fun <anonymous>(it: MediaItem): Long {
+              return it.<get-duration>()
+            }
+)
+          }
+        }
+        when {
+          EQEQ(arg0 = tmp1_elvis_lhs, arg1 = null) -> 0L
+          else -> tmp1_elvis_lhs
+        }
+      }
+    }
+
+  override operator fun equals(other: Any?): Boolean {
+    return when {
+      other is AudioBook -> { // BLOCK
+        EQEQ(arg0 = <this>.<get-uniqueId>(), arg1 = other /*as AudioBook */.<get-uniqueId>())
+      }
+      else -> { // BLOCK
+        super<Any>.equals(other = other)
+      }
+    }
+  }
+
+  val uniqueId: String
+    get(): String {
+      try { // BLOCK
+        return encode(p0 = <this>.<get-displayName>(), p1 = "UTF-8") /*!! String */
+      }
+      catch (e: UnsupportedEncodingException){ // BLOCK
+        throw RuntimeException(p0 = e)
+      }
+
+    }
+
+  override fun toString(): String {
+    return <this>.<get-displayName>() + " " + <this>.<get-author>()
+  }
+
+  override fun hashCode(): Int {
+    return <this>.<get-javaClass><AudioBook>().hashCode()
+  }
+
+  @Deprecated(message = "This synthesized declaration should not be used directly", level = DeprecationLevel.HIDDEN)
+  object $serializer : GeneratedSerializer<AudioBook> {
+    private constructor() /* primary */ {
+      super/*Any*/()
+      /* <init>() */
+
+    }
+
+    override fun serialize(encoder: Encoder, value: AudioBook)
+
+    override fun deserialize(decoder: Decoder): AudioBook
+
+    override val descriptor: SerialDescriptor
+      override get
+
+    override fun childSerializers(): Array<KSerializer<*>>
+
+    /* fake */ override fun typeParametersSerializers(): Array<KSerializer<*>>
+
+    /* fake */ override operator fun equals(other: Any?): Boolean
+
+    /* fake */ override fun hashCode(): Int
+
+    /* fake */ override fun toString(): String
+
+  }
+
+  @JvmStatic
+  internal /* static */ fun write$Self(self: AudioBook, output: CompositeEncoder, serialDesc: SerialDescriptor)
+
+  internal constructor(seen0: Int, displayName: String?, baseDir: String?, files: List<MediaItem>?, author: String?, imagePath: String?, lastSavedTimestamp: Long, positionInTrack: Int, positionInTrackList: Int, status: Int, isArtGenerated: Boolean, thumbnail: Bitmap?, art: Bitmap?, albumArtPalette: Palette?, serializationConstructorMarker: SerializationConstructorMarker?)
+
+}
+
+`
+Details: kotlinx.serialization compiler plugin internal error: unable to transform declaration, see cause
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializerClassLowering.lower(SerializationLoweringExtension.kt:230)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitClass(SerializationLoweringExtension.kt:46)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid$DefaultImpls.visitClass(IrElementVisitorVoid.kt:55)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitClass(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitClass(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlin.ir.declarations.IrClass.accept(IrClass.kt:72)
+	at org.jetbrains.kotlin.ir.declarations.IrFile.acceptChildren(IrFile.kt:34)
+	at org.jetbrains.kotlin.ir.visitors.IrVisitorsKt.acceptChildrenVoid(IrVisitors.kt:19)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitElement(SerializationLoweringExtension.kt:42)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid$DefaultImpls.visitPackageFragment(IrElementVisitorVoid.kt:187)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitPackageFragment(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid$DefaultImpls.visitFile(IrElementVisitorVoid.kt:203)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitFile(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid$DefaultImpls.visitFile(IrElementVisitorVoid.kt:199)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitFile(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt$runOnFileInOrder$1.visitFile(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlin.ir.declarations.IrFile.accept(IrFile.kt:28)
+	at org.jetbrains.kotlin.ir.visitors.IrVisitorsKt.acceptVoid(IrVisitors.kt:14)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtensionKt.runOnFileInOrder(SerializationLoweringExtension.kt:40)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializationLoweringExtension.generate(SerializationLoweringExtension.kt:194)
+	at org.jetbrains.kotlin.fir.pipeline.ConvertToIrKt.applyIrGenerationExtensions(convertToIr.kt:472)
+	at org.jetbrains.kotlin.fir.pipeline.Fir2IrPipeline.runActualizationPipeline(convertToIr.kt:241)
+	at org.jetbrains.kotlin.fir.pipeline.Fir2IrPipeline.convertToIrAndActualize(convertToIr.kt:130)
+	at org.jetbrains.kotlin.fir.pipeline.ConvertToIrKt.convertToIrAndActualize(convertToIr.kt:100)
+	at org.jetbrains.kotlin.fir.pipeline.ConvertToIrKt.convertToIrAndActualize$default(convertToIr.kt:75)
+	at org.jetbrains.kotlin.cli.jvm.compiler.legacy.pipeline.JvmCompilerPipelineKt.convertToIrAndActualizeForJvm(jvmCompilerPipeline.kt:108)
+	at org.jetbrains.kotlin.cli.pipeline.jvm.JvmFir2IrPipelinePhase.executePhase(JvmFir2IrPipelinePhase.kt:26)
+	at org.jetbrains.kotlin.cli.pipeline.jvm.JvmFir2IrPipelinePhase.executePhase(JvmFir2IrPipelinePhase.kt:17)
+	at org.jetbrains.kotlin.cli.pipeline.PipelinePhase.phaseBody(PipelinePhase.kt:68)
+	at org.jetbrains.kotlin.cli.pipeline.PipelinePhase.phaseBody(PipelinePhase.kt:58)
+	at org.jetbrains.kotlin.config.phaser.SimpleNamedCompilerPhase.phaseBody(CompilerPhase.kt:215)
+	at org.jetbrains.kotlin.config.phaser.NamedCompilerPhase.invoke(CompilerPhase.kt:111)
+	at org.jetbrains.kotlin.backend.common.phaser.CompositePhase.invoke(PhaseBuilders.kt:28)
+	at org.jetbrains.kotlin.config.phaser.CompilerPhaseKt.invokeToplevel(CompilerPhase.kt:62)
+	at org.jetbrains.kotlin.cli.pipeline.AbstractCliPipeline.runPhasedPipeline(AbstractCliPipeline.kt:106)
+	at org.jetbrains.kotlin.cli.pipeline.AbstractCliPipeline.execute(AbstractCliPipeline.kt:65)
+	at org.jetbrains.kotlin.cli.jvm.K2JVMCompiler.doExecutePhased(K2JVMCompiler.kt:61)
+	at org.jetbrains.kotlin.cli.jvm.K2JVMCompiler.doExecutePhased(K2JVMCompiler.kt:36)
+	at org.jetbrains.kotlin.cli.common.CLICompiler.execImpl(CLICompiler.kt:80)
+	at org.jetbrains.kotlin.cli.common.CLICompiler.exec(CLICompiler.kt:337)
+	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner.runCompiler(IncrementalJvmCompilerRunner.kt:466)
+	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner.runCompiler(IncrementalJvmCompilerRunner.kt:75)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.doCompile(IncrementalCompilerRunner.kt:514)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compileImpl(IncrementalCompilerRunner.kt:431)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.tryCompileIncrementally$lambda$10$compile(IncrementalCompilerRunner.kt:258)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.tryCompileIncrementally(IncrementalCompilerRunner.kt:276)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compile(IncrementalCompilerRunner.kt:128)
+	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.execIncrementalCompiler(CompileServiceImpl.kt:678)
+	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.access$execIncrementalCompiler(CompileServiceImpl.kt:92)
+	at org.jetbrains.kotlin.daemon.CompileServiceImpl.compile(CompileServiceImpl.kt:1805)
+	at jdk.internal.reflect.GeneratedMethodAccessor17.invoke(Unknown Source)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.rmi/sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:360)
+	at java.rmi/sun.rmi.transport.Transport$1.run(Transport.java:200)
+	at java.rmi/sun.rmi.transport.Transport$1.run(Transport.java:197)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:712)
+	at java.rmi/sun.rmi.transport.Transport.serviceCall(Transport.java:196)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:587)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:828)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.lambda$run$0(TCPTransport.java:705)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:399)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:704)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+Caused by: java.lang.IllegalStateException: Serializer for element of type com.kjjejones42.audiobookplayer.MediaItem has not been found
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.SerializerSearchUtilKt.findTypeSerializerOrContext(SerializerSearchUtil.kt:85)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.BaseIrGenerator.serializerInstance(BaseIrGenerator.kt:715)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.BaseIrGenerator.serializerInstance$instantiate(BaseIrGenerator.kt:548)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.BaseIrGenerator.serializerInstance(BaseIrGenerator.kt:591)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.BaseIrGenerator.cacheableChildSerializerInstance(BaseIrGenerator.kt:482)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.BaseIrGenerator.createCachedChildSerializers(BaseIrGenerator.kt:469)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.SerializableIrGenerator.<init>(SerializableIrGenerator.kt:60)
+	at org.jetbrains.kotlinx.serialization.compiler.backend.ir.SerializableIrGenerator$Companion.generate(SerializableIrGenerator.kt:399)
+	at org.jetbrains.kotlinx.serialization.compiler.extensions.SerializerClassLowering.lower(SerializationLoweringExtension.kt:146)
+	... 65 more
+
+
