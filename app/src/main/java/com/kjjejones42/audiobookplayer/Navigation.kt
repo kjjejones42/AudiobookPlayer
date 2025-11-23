@@ -6,9 +6,9 @@ import androidx.media3.session.MediaController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
-import com.kjjejones42.audiobookplayer.display.DisplayListScreen
-import com.kjjejones42.audiobookplayer.display.PlayerComposable
+import androidx.navigation.navDeepLink
+import com.kjjejones42.audiobookplayer.display.DisplayListComposable
+import com.kjjejones42.audiobookplayer.player.PlayerComposable
 import kotlinx.serialization.Serializable
 
 
@@ -16,7 +16,9 @@ import kotlinx.serialization.Serializable
 object DisplayListNavItem
 
 @Serializable
-data class PlayerNavItem(val audiobookId: String)
+object PlayerNavItem {
+    const val URI = "https://com.kjjejones42.audiobookplayer/player/"
+}
 
 @Composable
 fun AppNavHost(
@@ -30,15 +32,15 @@ fun AppNavHost(
         startDestination = DisplayListNavItem
     ) {
         composable<DisplayListNavItem> {
-            DisplayListScreen(
+            DisplayListComposable(
                 mediaController = mediaController,
-                onBookClick = { book -> navController.navigate(PlayerNavItem(book.displayName)) }
+                onBookClick = { navController.navigate(PlayerNavItem) }
             )
         }
-        composable<PlayerNavItem> { backStackEntry ->
-            val book: PlayerNavItem = backStackEntry.toRoute()
+        composable<PlayerNavItem>(
+            deepLinks = listOf(navDeepLink{ uriPattern = PlayerNavItem.URI })
+        ) {
             PlayerComposable(
-                audioBookId = book.audiobookId,
                 onBack = { navController.navigate(DisplayListNavItem) },
                 mediaController = mediaController
             )

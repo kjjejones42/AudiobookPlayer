@@ -1,5 +1,6 @@
 package com.kjjejones42.audiobookplayer.display
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.database.models.AudioBook
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -30,25 +31,27 @@ import java.util.concurrent.TimeUnit
 fun ListItemComposablePreview() {
     val book = AudioBook("TEST TEST", "", "", emptyList(), "Author McAuthor")
     val item = ListItem.AudioBookContainer(book)
-    AudioBookContainer(item) { }
+    AudioBookContainer(item, {}, {})
 }
 
 @Composable
-fun ListItemComposable(item: ListItem, onClick: (AudioBook) -> Unit) {
+fun ListItemComposable(item: ListItem, onClick: (AudioBook) -> Unit, onLongClick: (AudioBook) -> Unit) {
     if (item is ListItem.AudioBookContainer) {
-        AudioBookContainer(item, onClick)
+        AudioBookContainer(item, onClick, onLongClick)
     } else if (item is ListItem.Heading) {
         Heading(item)
     }
 }
 @Composable
-fun AudioBookContainer(item: ListItem.AudioBookContainer, onClick: (AudioBook) -> Unit) {
+fun AudioBookContainer(item: ListItem.AudioBookContainer, onClick: (AudioBook) -> Unit, onLongClick: (AudioBook) -> Unit) {
     val audiobook = item.book
-
     Card(
-        onClick = { onClick(audiobook) },
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .combinedClickable(
+                onLongClick = { onLongClick(audiobook) },
+                onClick = { onClick(audiobook) }
+            ),
         elevation = elevatedCardElevation()
     ) {
         Row(
@@ -58,27 +61,22 @@ fun AudioBookContainer(item: ListItem.AudioBookContainer, onClick: (AudioBook) -
                 .padding(end = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!audiobook.imagePath.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(100.dp),
+                contentAlignment = Alignment.Center
+            ){
+                Text(
+                    style = MaterialTheme.typography.displayLarge,
+                    text = audiobook.displayName.first().toString()
+                )
                 AsyncImage(
-                    model = audiobook.imagePath,
+                    model = audiobook.imagePath ?: audiobook.files?.get(0),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .width(100.dp)
-                        .height(100.dp)
+                    modifier = Modifier.matchParentSize()
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .width(100.dp)
-                        .height(100.dp),
-                    contentAlignment = Alignment.Center
-                ){
-                    Text(
-                        style = MaterialTheme.typography.displayLarge,
-                        text=audiobook.displayName.first().toString()
-                    )
-                }
             }
             Column(modifier = Modifier
                 .weight(1f)

@@ -5,8 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.kjjejones42.audiobookplayer.AudioBook
 import com.kjjejones42.audiobookplayer.database.AudiobookRepository
+import com.kjjejones42.audiobookplayer.database.models.AudioBook
+import com.kjjejones42.audiobookplayer.database.models.AudioBookStatus
 import com.kjjejones42.audiobookplayer.display.ListItem.AudioBookContainer
 import com.kjjejones42.audiobookplayer.display.ListItem.Heading
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,7 +22,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DisplayListViewModel @Inject constructor(
-    audiobookRepository: AudiobookRepository
+    private val audiobookRepository: AudiobookRepository
 ) : ViewModel() {
 
     val listItems = audiobookRepository
@@ -35,11 +36,21 @@ class DisplayListViewModel @Inject constructor(
 
     val workUuid = MutableStateFlow<UUID?>(null)
 
+    val categorySelectBook = MutableStateFlow<AudioBook?>(null)
+
     val workNeedsStarting = MutableStateFlow(false)
 
     fun getWorkStateFlow(context: Context): Flow<WorkInfo?> {
         val uuid = workUuid.value ?: return flowOf(null)
         return WorkManager.getInstance(context).getWorkInfoByIdFlow(uuid)
+    }
+
+    fun updateBookStatus(book: AudioBook, status: AudioBookStatus) {
+        audiobookRepository.updateStatus(book.displayName, status)
+    }
+
+    fun getMostRecentBook(): AudioBook? {
+        return audiobookRepository.mostRecentBook()
     }
 
     companion object {

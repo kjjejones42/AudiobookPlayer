@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.kjjejones42.audiobookplayer.AudioBook
+import com.kjjejones42.audiobookplayer.database.models.AudioBook
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -16,6 +16,9 @@ interface AudiobookDao {
     @Update
     fun update(book: AudioBook)
 
+    @Query("UPDATE AudioBook SET status = :status, lastSavedTimestamp = :currentTimeStamp WHERE displayName = :displayName")
+    fun updateStatus(displayName: String, status: Int, currentTimeStamp: Long)
+
     @Query("SELECT * FROM AudioBook WHERE displayName = :displayName LIMIT 1")
     fun findByName(displayName: String?): AudioBook?
 
@@ -24,6 +27,9 @@ interface AudiobookDao {
 
     @Query("UPDATE AudioBook SET positionInTrackList = :positionInTrackList WHERE displayName = :displayName")
     fun updatePositionInTrackList(displayName: String?, positionInTrackList: Int)
+
+    @Query("UPDATE AudioBook SET positionInTrackList = :positionInTrackList, positionInTrack = :positionInTrack, lastSavedTimestamp = :currentTimeStamp WHERE displayName = :displayName")
+    fun updatePositions(displayName: String?, positionInTrackList: Int, positionInTrack: Int, currentTimeStamp: Long)
 
     @Query("SELECT positionInTrack FROM AudioBook WHERE displayName = :displayName LIMIT 1")
     fun getPositionInTrack(displayName: String?): Int
@@ -42,7 +48,6 @@ interface AudiobookDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertAll(books: List<AudioBook>)
-
 
     @Query("DELETE FROM AudioBook WHERE baseDir = :baseDir")
     fun delete(baseDir: String?)

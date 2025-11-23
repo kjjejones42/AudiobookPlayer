@@ -1,22 +1,18 @@
 package com.kjjejones42.audiobookplayer.display
 
-import android.Manifest
 import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,17 +20,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -49,36 +47,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import androidx.navigation.compose.rememberNavController
+import androidx.media3.ui.compose.state.PlayPauseButtonState
+import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.kjjejones42.PlaybackService
-import com.kjjejones42.audiobookplayer.AppNavHost
-import com.kjjejones42.audiobookplayer.AudioBook
-import com.kjjejones42.audiobookplayer.AudioBookStatus
+import com.kjjejones42.audiobookplayer.MainActivity
 import com.kjjejones42.audiobookplayer.R
-import com.kjjejones42.audiobookplayer.database.AudiobookDatabase
-import com.kjjejones42.audiobookplayer.player.MediaPlaybackService
-import com.kjjejones42.audiobookplayer.player.PlayActivity
+import com.kjjejones42.audiobookplayer.database.models.AudioBook
+import com.kjjejones42.audiobookplayer.database.models.AudioBookStatus
+import com.kjjejones42.audiobookplayer.player.PlaybackService
 import com.kjjejones42.audiobookplayer.ui.AudiobookPlayerTheme
-import dagger.hilt.android.AndroidEntryPoint
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DisplayListScreen(
+fun DisplayListComposable(
     viewModel: DisplayListViewModel = hiltViewModel(),
-    onBookClick: (AudioBook) -> Unit = {},
+    onBookClick: () -> Unit = {},
     mediaController: MediaController? = null,
 ) {
     val context = LocalContext.current
@@ -86,6 +81,7 @@ fun DisplayListScreen(
     val items: List<ListItem> by viewModel.listItems.collectAsStateWithLifecycle()
     val workUUID by viewModel.workUuid.collectAsStateWithLifecycle()
     val workInfo by viewModel.getWorkStateFlow(LocalContext.current).collectAsState(null)
+    val categorySelectBook by viewModel.categorySelectBook.collectAsStateWithLifecycle()
 
     val workNeedsStarting by viewModel.workNeedsStarting.collectAsStateWithLifecycle()
 
@@ -102,7 +98,9 @@ fun DisplayListScreen(
 
     LaunchedEffect(workNeedsStarting) {
         if (workNeedsStarting && viewModel.workUuid.value == null) {
-            val workUuid = startFileScanning(context)
+            val request = OneTimeWorkRequestBuilder<FileScannerWorker>().build()
+            WorkManager.getInstance(context).enqueue(request)
+            val workUuid = request.id
             viewModel.workUuid.value = workUuid
             viewModel.workNeedsStarting.value = false
         }
@@ -111,57 +109,54 @@ fun DisplayListScreen(
     // Request permissions on first launch
     LaunchedEffect(viewModel) {
         if (workUUID == null) {
-            permissionLauncher.launch(DisplayListActivity.PERMISSIONS)
+            permissionLauncher.launch(MainActivity.PERMISSIONS)
         }
     }
 
-    fun onBookClickIN(book: AudioBook) {
-        mediaController?.let {
-            val mediaItem = book.toMediaItem()
-            if (mediaController!!.currentMediaItem?.mediaId != mediaItem.mediaId) {
-                it.setMediaItem(mediaItem)
-                it.prepare()
-            }
-            it.seekTo(book.positionInTrack.toLong())
-            it.play()
-        }
-        onBookClick(book)
-    }
+    val playState: PlayPauseButtonState? = if (mediaController != null) {
+        rememberPlayPauseButtonState(mediaController)
+    } else null
 
+    val isPlaying = !(playState?.showPlay ?: true)
 
     DisplayListScreenBase(
         items = items,
-        workInfo = workInfo,
-        onBookClick = { onBookClickIN(it) },
-        isPlaying = mediaController?.isPlaying ?: false
+        onBookClick = { startBook(it, mediaController, onBookClick) },
+        isPlaying = isPlaying,
+        categorySelectBook = categorySelectBook,
+        setCategorySelectBook = { viewModel.categorySelectBook.value = it },
+        updateBookStatus = viewModel::updateBookStatus,
+        onFABClick = {
+            if (isPlaying) {
+                mediaController?.pause()
+                return@DisplayListScreenBase
+            } else {
+                val book = viewModel.getMostRecentBook() ?: return@DisplayListScreenBase
+                startBook(book, mediaController, onBookClick)
+            }
+        }
     )
 }
 
-private fun AudioBook.toMediaItem(): MediaItem {
-    val metadataBuilder = MediaMetadata.Builder()
-        .setArtworkUri(android.net.Uri.parse(imagePath))
-        .setTitle(displayName)
-        .setArtist(author)
-    val builder = MediaItem.Builder()
-        .setMediaId(displayName)
-    files?.get(positionInTrackList)?.let {
-        builder.setUri(it.uri)
-        metadataBuilder.setDurationMs(it.duration)
+fun startBook(book: AudioBook, mediaController: MediaController?, onBookClick: () -> Unit) {
+    mediaController?.let {
+        val bundle = Bundle().apply{ putString(PlaybackService.INTENT_AUDIOBOOK, book.displayName) }
+        mediaController.sendCustomCommand(PlaybackService.PLAY_BOOK_COMMAND, bundle)
     }
-    builder.setMediaMetadata(metadataBuilder.build())
-    return builder.build()
-
+    onBookClick()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DisplayListScreenBase(
     items: List<ListItem>,
-    workInfo: WorkInfo? = null,
     onBookClick: (AudioBook) -> Unit = {},
     listState: LazyListState = rememberLazyListState(),
     isPlaying: Boolean = false,
-    onFABClick: () -> Unit = {}
+    onFABClick: () -> Unit = {},
+    categorySelectBook: AudioBook? = null,
+    setCategorySelectBook: (AudioBook?) -> Unit = {},
+    updateBookStatus: (AudioBook, AudioBookStatus) -> Unit = { _, _ -> }
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -188,12 +183,23 @@ fun DisplayListScreenBase(
         floatingActionButton = {
             FloatingActionButton(onClick = onFABClick) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Default.AddCircle else Icons.Default.PlayArrow,
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = stringResource(R.string.play_button)
                 )
             }
         }
     ) { paddingValues ->
+
+        categorySelectBook?.let { categorySelectBook ->
+            MinimalDialog(
+                book = categorySelectBook,
+                onDismissRequest = { setCategorySelectBook(null) },
+                updateBookStatus = { book, status ->
+                    setCategorySelectBook(null)
+                    updateBookStatus(book, status)
+                }
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -210,14 +216,6 @@ fun DisplayListScreenBase(
                 )
             }
             when {
-//                workInfo != null && workInfo.state == WorkInfo.State.RUNNING -> {
-//                    Box(
-//                        modifier = Modifier.fillMaxSize(),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        CircularProgressIndicator()
-//                    }
-//                }
                 filteredItems.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -238,9 +236,58 @@ fun DisplayListScreenBase(
                         items(filteredItems, key = { it.id }) { item ->
                             ListItemComposable(
                                 item = item,
-                                onClick = onBookClick
+                                onClick = onBookClick,
+                                onLongClick = { setCategorySelectBook(it) }
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MinimalDialog(
+    book: AudioBook,
+    onDismissRequest: () -> Unit,
+    updateBookStatus: (AudioBook, AudioBookStatus) -> Unit
+) {
+    Dialog(onDismissRequest = { onDismissRequest() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp), // Add some padding inside the column
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Choose this book's status.",
+                    textAlign = TextAlign.Center,
+                )
+                AudioBookStatus.entries.forEach { status ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                onClick = { updateBookStatus(book, status) }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+
+                    ){
+                        RadioButton(
+                            selected = status.value == book.status,
+                            onClick = { updateBookStatus(book, status) }
+                        )
+                        Text(text = status.displayName)
                     }
                 }
             }
@@ -254,77 +301,11 @@ fun filterItems(
 ): List<ListItem> {
     return items.filter { item ->
             if (item is ListItem.AudioBookContainer) {
-                return@filter item.book.displayName.contains(searchQuery, ignoreCase = true)
-                        || (item.book.author ?: "").contains(searchQuery, ignoreCase = true)
+                return@filter item.book.toString().contains(searchQuery, ignoreCase = true)
             }
             return@filter false
         }.sortedBy { it.id }
         .toList()
-}
-
-private fun startFileScanning(context: Context): UUID {
-    val request = OneTimeWorkRequestBuilder<FileScannerWorker>().build()
-    WorkManager.getInstance(context).enqueue(request)
-    return request.id
-}
-
-private fun resumeMostRecentBook(context: Context) {
-    AudiobookDatabase.getInstance(context)
-        .audiobookDao()
-        .mostRecentBook
-        ?.takeIf { it.lastSavedTimestamp > 0 }
-        ?.let {
-            val intent = Intent(context, MediaPlaybackService::class.java)
-            intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, it.displayName)
-            intent.putExtra(PlayActivity.INTENT_INDEX, it.positionInTrackList)
-            context.startService(intent)
-        }
-}
-
-@Composable
-private fun BackHandler(enabled: Boolean, onBack: () -> Unit) {
-    BackHandler(enabled = enabled, onBack = onBack)
-}
-
-private fun startBook(context: Context, book: AudioBook) {
-    val intent = Intent(context, MediaPlaybackService::class.java)
-    intent.putExtra(PlayActivity.INTENT_AUDIOBOOK, book.displayName)
-    intent.putExtra(PlayActivity.INTENT_INDEX, book.positionInTrackList)
-    context.startService(intent)
-}
-
-@AndroidEntryPoint
-class DisplayListActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
-
-        val intent = Intent(this, PlaybackService::class.java)
-        ContextCompat.startForegroundService(this, intent)
-
-        setContent {
-            MediaControllerContainer { mediaController ->
-                AudiobookPlayerTheme {
-                    Surface(modifier = Modifier.fillMaxSize()) {
-                        AppNavHost(
-                            navController = rememberNavController(),
-                            mediaController = mediaController
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    companion object {
-        val PERMISSIONS = arrayOf(
-            Manifest.permission.READ_MEDIA_IMAGES,
-            Manifest.permission.READ_MEDIA_AUDIO,
-//            Manifest.permission.READ_EXTERNAL_STORAGE
-        )
-        const val INTENT_PLAY_FILE: String = "com.kjjejones42.audiobookplayer.PLAY"
-        const val INTENT_START_PLAYBACK: String = "com.kjjejones42.audiobookplayer.start"
-    }
 }
 
 @Composable

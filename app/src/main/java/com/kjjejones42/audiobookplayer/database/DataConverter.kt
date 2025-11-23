@@ -1,7 +1,8 @@
 package com.kjjejones42.audiobookplayer.database
 
+import android.util.Log
 import androidx.room.TypeConverter
-import com.kjjejones42.audiobookplayer.MediaItem
+import com.kjjejones42.audiobookplayer.database.models.AudioBookFile
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -14,10 +15,10 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.util.Base64
 
-class DataConverter : KSerializer<MediaItem> {
+class DataConverter : KSerializer<AudioBookFile> {
     override val descriptor: SerialDescriptor = SerialDescriptor("MediaItem", String.serializer().descriptor)
     @TypeConverter
-    fun fromMediaItemList(list: List<MediaItem?>?): String? {
+    fun fromMediaItemList(list: List<AudioBookFile?>?): String? {
         return try {
             if (list == null) return null
             val byteStream = ByteArrayOutputStream()
@@ -30,33 +31,35 @@ class DataConverter : KSerializer<MediaItem> {
 
     @TypeConverter
     @Suppress("UNCHECKED_CAST")
-    fun toMediaItemList(string: String?): List<MediaItem>? {
+    fun toMediaItemList(string: String?): List<AudioBookFile>? {
         return try {
             if (string == null) return null
             val data = Base64.getDecoder().decode(string)
             ObjectInputStream(ByteArrayInputStream(data)).use {
-                it.readObject() as List<MediaItem>
+                it.readObject() as List<AudioBookFile>
             }
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            Log.e("DataConverter", "Error deserializing media items ${e.stackTraceToString()}")
             null
-        } catch (_: ClassNotFoundException) {
+        } catch (e: ClassNotFoundException) {
+            Log.e("DataConverter", "Error deserializing media items ${e.stackTraceToString()}")
             null
         }
     }
 
-    override fun serialize(encoder: Encoder, value: MediaItem) {
+    override fun serialize(encoder: Encoder, value: AudioBookFile) {
         val byteStream = ByteArrayOutputStream()
         ObjectOutputStream(byteStream).use { it.writeObject(value) }
         val string = Base64.getEncoder().encodeToString(byteStream.toByteArray())
         encoder.encodeString(string)
     }
 
-    override fun deserialize(decoder: Decoder): MediaItem {
+    override fun deserialize(decoder: Decoder): AudioBookFile {
         val string = decoder.decodeString()
         return try {
             val data = Base64.getDecoder().decode(string)
             ObjectInputStream(ByteArrayInputStream(data)).use {
-                it.readObject() as MediaItem
+                it.readObject() as AudioBookFile
             }
         } catch (e: Exception) {
             throw RuntimeException(e)

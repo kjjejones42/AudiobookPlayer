@@ -1,7 +1,7 @@
 package com.kjjejones42.audiobookplayer.display
 
-import com.kjjejones42.audiobookplayer.AudioBook
-import com.kjjejones42.audiobookplayer.AudioBookStatus
+import com.kjjejones42.audiobookplayer.database.models.AudioBook
+import com.kjjejones42.audiobookplayer.database.models.AudioBookStatus
 
 enum class ListItemType(val value: Int) {
     HEADING(0),

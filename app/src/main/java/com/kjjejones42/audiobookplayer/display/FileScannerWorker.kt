@@ -8,9 +8,9 @@ import android.provider.MediaStore
 import android.util.ArraySet
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.kjjejones42.audiobookplayer.AudioBook
-import com.kjjejones42.audiobookplayer.MediaItem
 import com.kjjejones42.audiobookplayer.database.AudiobookDatabase.Companion.getInstance
+import com.kjjejones42.audiobookplayer.database.models.AudioBook
+import com.kjjejones42.audiobookplayer.database.models.AudioBookFile
 import com.kjjejones42.audiobookplayer.logError
 import java.io.File
 
@@ -50,7 +50,7 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         return null
     }
 
-    private fun parseBook(rel: String, mediaFiles: List<MediaItem>): AudioBook {
+    private fun parseBook(rel: String, mediaFiles: List<AudioBookFile>): AudioBook {
         val directory = File(rel).name
         val imagePath = findImage(rel)
         val author = mediaFiles.firstNotNullOfOrNull { getFileAuthor(it.uri) } ?: ""
@@ -68,8 +68,8 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
             MediaStore.Files.FileColumns.DURATION
         )
 
-        val where = "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ?"
-        val selectionArgs = arrayOf("audio/%")
+        val where = "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ? AND ${MediaStore.Files.FileColumns.RELATIVE_PATH} LIKE ?"
+        val selectionArgs = arrayOf("audio/%", "Audiobooks/%")
 
         for (uri in listOf(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, MediaStore.Audio.Media.INTERNAL_CONTENT_URI)) {
             val cursor = applicationContext.contentResolver.query(uri, selection, where, selectionArgs, null)
@@ -81,7 +81,7 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
                     val durationColumn = getColumnIndex(MediaStore.Files.FileColumns.DURATION)
                     val fileNameColumn = getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
 
-                    val dirs = HashMap<String, MutableList<MediaItem>>()
+                    val dirs = HashMap<String, MutableList<AudioBookFile>>()
                     while (moveToNext()) {
                         val id = getLong(idColumn)
                         val dir = getString(dirColumn) ?: continue
@@ -89,7 +89,7 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
                         val duration = getInt(durationColumn)
                         val fileName = getString(fileNameColumn)
                         val mediaUri = ContentUris.withAppendedId(uri, id)
-                        val media = MediaItem(mediaUri, title, fileName, duration.toLong())
+                        val media = AudioBookFile(mediaUri, title, fileName, duration.toLong())
                         dirs.computeIfAbsent(dir) { ArrayList() }.add(media)
                     }
                     val uriResult = dirs.map { (key, value) -> parseBook(key, value) }

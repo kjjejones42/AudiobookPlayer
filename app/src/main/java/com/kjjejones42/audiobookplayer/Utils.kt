@@ -7,7 +7,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import android.widget.Toast
 import java.io.FileNotFoundException
 import java.io.PrintWriter
 import java.text.SimpleDateFormat
@@ -38,7 +37,6 @@ private fun writeToFile(e: Throwable, message: String, context: Context?) {
         e.printStackTrace(printWriter)
         printWriter.write("\n--------------------\n")
         printWriter.close()
-        Toast.makeText(tempContext, "Uncaught exception written to log", Toast.LENGTH_SHORT).show()
     } catch (ex: FileNotFoundException) {
         throw RuntimeException(ex)
     }

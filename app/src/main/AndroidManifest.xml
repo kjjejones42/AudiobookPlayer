@@ -11,19 +11,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme"
+        android:theme="@style/Theme.MyApplication"
         android:allowBackup="false"
         android:name="com.kjjejones42.audiobookplayer.AppApplication"
         tools:ignore="DataExtractionRules">
         <activity
-            android:name=".player.PlayActivity"
-            android:parentActivityName=".display.DisplayListActivity"
-            android:launchMode="singleTask">
-        </activity>
-        <activity
-            android:name=".display.DisplayListActivity"
+            android:name=".MainActivity"
             android:launchMode="singleTask"
-            android:theme="@style/Launcher"
+            android:theme="@style/Theme.MyApplication"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,15 +26,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".player.MediaPlaybackService"
-            android:foregroundServiceType="mediaPlayback"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
-        </service>
-
-        <service android:name="com.kjjejones42.PlaybackService"
+        <service android:name=".player.PlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
