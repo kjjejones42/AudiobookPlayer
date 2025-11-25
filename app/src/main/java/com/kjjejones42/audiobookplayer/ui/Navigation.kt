@@ -1,4 +1,4 @@
-package com.kjjejones42.audiobookplayer
+package com.kjjejones42.audiobookplayer.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -7,8 +7,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
-import com.kjjejones42.audiobookplayer.display.DisplayListComposable
-import com.kjjejones42.audiobookplayer.player.PlayerComposable
 import kotlinx.serialization.Serializable
 
 

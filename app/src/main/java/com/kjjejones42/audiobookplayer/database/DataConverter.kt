@@ -24,7 +24,8 @@ class DataConverter : KSerializer<AudioBookFile> {
             val byteStream = ByteArrayOutputStream()
             ObjectOutputStream(byteStream).use { it.writeObject(list) }
             Base64.getEncoder().encodeToString(byteStream.toByteArray())
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            Log.e("DataConverter", "Error serializing media items ${e.stackTraceToString()}")
             null
         }
     }

@@ -9,8 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
-import com.kjjejones42.audiobookplayer.display.MediaControllerContainer
-import com.kjjejones42.audiobookplayer.ui.AudiobookPlayerTheme
+import com.kjjejones42.audiobookplayer.ui.AppNavHost
+import com.kjjejones42.audiobookplayer.ui.MediaControllerContainer
+import com.kjjejones42.audiobookplayer.ui.theme.AudiobookPlayerTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -38,7 +39,5 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_MEDIA_IMAGES,
             Manifest.permission.READ_MEDIA_AUDIO
         )
-        const val INTENT_PLAY_FILE: String = "com.kjjejones42.audiobookplayer.PLAY"
-        const val INTENT_START_PLAYBACK: String = "com.kjjejones42.audiobookplayer.start"
     }
 }

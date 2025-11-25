@@ -15,6 +15,7 @@
         android:allowBackup="false"
         android:name="com.kjjejones42.audiobookplayer.AppApplication"
         tools:ignore="DataExtractionRules">
+
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTask"
@@ -26,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".player.PlaybackService"
+        <service android:name=".services.PlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>

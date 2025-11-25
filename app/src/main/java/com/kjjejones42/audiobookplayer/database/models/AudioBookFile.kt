@@ -26,8 +26,8 @@ java.io.Serializable, Comparable<AudioBookFile?> {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other == null || javaClass != other.javaClass) return false
-        return uri == (other as AudioBookFile).uri
+        if (other !is AudioBookFile) return false
+        return uri == other.uri
     }
 
     override fun hashCode(): Int {

@@ -1,4 +1,4 @@
-package com.kjjejones42.audiobookplayer.display
+package com.kjjejones42.audiobookplayer.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -7,13 +7,14 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.kjjejones42.audiobookplayer.database.AudiobookRepository
 import com.kjjejones42.audiobookplayer.database.models.AudioBook
-import com.kjjejones42.audiobookplayer.database.models.AudioBookStatus
-import com.kjjejones42.audiobookplayer.display.ListItem.AudioBookContainer
-import com.kjjejones42.audiobookplayer.display.ListItem.Heading
+import com.kjjejones42.audiobookplayer.ui.ListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -25,10 +26,7 @@ class DisplayListViewModel @Inject constructor(
     private val audiobookRepository: AudiobookRepository
 ) : ViewModel() {
 
-    val listItems = audiobookRepository
-        .allAndObserve()
-        .map { getItemsFromBooks(it) }
-        .stateIn(
+    val listItems = audiobookRepository.allAndObserve().map { getItemsFromBooks(it) }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
@@ -36,37 +34,48 @@ class DisplayListViewModel @Inject constructor(
 
     val workUuid = MutableStateFlow<UUID?>(null)
 
-    val categorySelectBook = MutableStateFlow<AudioBook?>(null)
+    private val _categorySelectBookId = MutableStateFlow<String?>(null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val categorySelectBook: StateFlow<AudioBook?> = _categorySelectBookId.flatMapLatest { id ->
+            if (id == null) flowOf(null)
+            else audiobookRepository.findByNameAndObserve(id)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     val workNeedsStarting = MutableStateFlow(false)
+
+    fun setCategorySelectBook(bookId: String?) {
+        _categorySelectBookId.value = bookId
+    }
 
     fun getWorkStateFlow(context: Context): Flow<WorkInfo?> {
         val uuid = workUuid.value ?: return flowOf(null)
         return WorkManager.getInstance(context).getWorkInfoByIdFlow(uuid)
     }
 
-    fun updateBookStatus(book: AudioBook, status: AudioBookStatus) {
+    fun updateBookStatus(book: AudioBook, status: AudioBook.Status) {
         audiobookRepository.updateStatus(book.displayName, status)
     }
 
-    fun getMostRecentBook(): AudioBook? {
-        return audiobookRepository.mostRecentBook()
-    }
+    fun getMostRecentBook(): AudioBook? = audiobookRepository.mostRecentBook()
 
     companion object {
+
         fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
-            val list = books
-                .sortedBy { it.displayName }
-                .map { AudioBookContainer(it) }
+            val list = books.sortedBy { it.displayName }.map { ListItem.AudioBookContainer(it) }
                 .toMutableList<ListItem>()
 
-            list.toList()
-                .map { it.category }
-                .distinct()
-                .map { Heading(it) }
+            list.toList().map { it.category }.distinct().map { ListItem.Heading(it) }
                 .forEach { list.add(it) }
 
-            return list.sortedWith(compareBy({ it.category }, { it.type.value }, { -it.timeStamp }))
+            return list.sortedWith(compareBy(
+                { it.category },
+                { it.sortPriority },
+                { -it.timeStamp }))
         }
     }
 }

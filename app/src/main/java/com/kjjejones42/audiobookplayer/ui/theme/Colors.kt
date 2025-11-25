@@ -1,4 +1,4 @@
-package com.kjjejones42.audiobookplayer.ui
+package com.kjjejones42.audiobookplayer.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

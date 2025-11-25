@@ -1,4 +1,4 @@
-package com.kjjejones42.audiobookplayer.player
+package com.kjjejones42.audiobookplayer.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,7 +24,7 @@ class PlayerViewModel @Inject constructor(
         .map { audiobookRepository.getAudioBook(it!!) }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Companion.WhileSubscribed(5000),
             initialValue = null
         )
 
@@ -32,6 +32,7 @@ class PlayerViewModel @Inject constructor(
         if (audioBookId == null) return
         _audioBookId.value = audioBookId
     }
+
     fun setTrackNo(trackNo: Int?) {
         this.trackNo.value = trackNo
     }

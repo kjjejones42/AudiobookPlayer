@@ -1,6 +1,5 @@
-package com.kjjejones42.audiobookplayer.display
+package com.kjjejones42.audiobookplayer.services
 
-import android.annotation.SuppressLint
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
@@ -33,7 +32,6 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         return null
     }
 
-    @SuppressLint("Range")
     private fun findImage(directory: String): String? {
         val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         val selection = arrayOf(MediaStore.Images.Media.DATA)
@@ -57,7 +55,6 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         return AudioBook(directory, rel, imagePath, mediaFiles, author)
     }
 
-    @SuppressLint("Range")
     private fun queryBooks(): List<AudioBook?> {
         val result = ArrayList<AudioBook>()
         val selection = arrayOf(

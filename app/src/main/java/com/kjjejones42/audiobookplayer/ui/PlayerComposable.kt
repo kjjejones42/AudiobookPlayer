@@ -1,8 +1,8 @@
-package com.kjjejones42.audiobookplayer.player
+package com.kjjejones42.audiobookplayer.ui
 
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,14 +49,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberProgressStateWithTickInterval
@@ -68,7 +71,9 @@ import coil3.request.ImageRequest
 import com.kjjejones42.audiobookplayer.R
 import com.kjjejones42.audiobookplayer.database.models.AudioBook
 import com.kjjejones42.audiobookplayer.database.models.AudioBookFile
-import com.kjjejones42.audiobookplayer.ui.AudiobookPlayerTheme
+import com.kjjejones42.audiobookplayer.services.PlaybackService
+import com.kjjejones42.audiobookplayer.ui.theme.AudiobookPlayerTheme
+import com.kjjejones42.audiobookplayer.viewmodels.PlayerViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -84,6 +89,7 @@ private fun msToMMSS(ms: Long): String {
     return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun PlayerComposable(
     viewModel: PlayerViewModel = hiltViewModel(),
@@ -91,7 +97,7 @@ fun PlayerComposable(
     mediaController: MediaController? = null,
 ) {
     if (mediaController == null) return
-    val mediaController = mediaController!!
+    val mediaController: MediaController = mediaController
     val playPauseState = rememberPlayPauseButtonState(mediaController)
     val positionState = rememberProgressStateWithTickInterval(mediaController)
 
@@ -119,7 +125,7 @@ fun PlayerComposable(
     audiobook?.let { audiobook ->
         PlayerComposableBase(
             audiobook.displayName,
-            imageRequestData =  audiobook.imagePath ?: audiobook.files?.get(0),
+            imageRequestData = audiobook.imagePath ?: audiobook.files?.get(0),
             onBack = onBack,
             currentPositionMs = positionState.currentPositionMs,
             durationMs = positionState.durationMs,
@@ -128,26 +134,27 @@ fun PlayerComposable(
             onPlayPauseClick = { playPauseState.onClick() },
             files = audiobook.files ?: emptyList(),
             currentTrackIndex = trackNo ?: audiobook.positionInTrackList,
-            playTrack = { index -> playTrack(mediaController, audiobook, index) },
+            playTrack = { index -> mediaController.seekTo(index, 0L) },
             onNext = { mediaController.seekToNext() },
             onPrev = { mediaController.seekToPrevious() },
-            onBackThirty = { mediaController.sendCustomCommand(PlaybackService.BACK_THIRTY_COMMAND, Bundle.EMPTY) },
-            onForwardThirty = { mediaController.sendCustomCommand(PlaybackService.FORWARD_THIRTY_COMMAND, Bundle.EMPTY) }
-        )
+            onBackThirty = {
+                mediaController.sendCustomCommand(
+                    PlaybackService.BACK_THIRTY_COMMAND,
+                    Bundle.EMPTY
+                )
+            },
+            onForwardThirty = {
+                mediaController.sendCustomCommand(
+                    PlaybackService.FORWARD_THIRTY_COMMAND,
+                    Bundle.EMPTY
+                )
+            })
     }
-}
-
-fun playTrack(controller: MediaController, book: AudioBook, index: Int) {
-    val bundle = Bundle().apply {
-        putString(PlaybackService.INTENT_AUDIOBOOK, book.displayName)
-        putInt(PlaybackService.INTENT_INDEX, index)
-    }
-    controller.sendCustomCommand(PlaybackService.PLAY_TRACK_COMMAND, bundle)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerComposableBase(
+private fun PlayerComposableBase(
     displayName: String,
     imageRequestData: Any?,
     onBack: () -> Unit = {},
@@ -185,152 +192,190 @@ fun PlayerComposableBase(
     LaunchedEffect(imageRequestData) {
         bitmap = null
         theme = null
-        if (canHaveTheme) {
-            scope.launch {
+        scope.launch {
+            if (canHaveTheme) {
                 val request = ImageRequest.Builder(context).data(imageRequestData).build()
                 val image = context.imageLoader.enqueue(request).job.await().image
-                if (image is BitmapImage) { bitmap = image }
+                if (image is BitmapImage) { bitmap = image } else { theme = currentTheme }
+            } else {
+                theme = currentTheme
             }
         }
     }
 
-//    val themeLoaded = theme != null
-//    if (canHaveTheme && !themeLoaded && !LocalInspectionMode.current) return
+    if (canHaveTheme && theme == null && !LocalInspectionMode.current) return
 
     MaterialTheme(theme ?: MaterialTheme.colorScheme) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(displayName) },
-                    navigationIcon = {
-                        IconButton(onBack) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                        }
-                    }
-                )
-            }
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = imageRequestData,
-                        contentDescription = "",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .matchParentSize()
-                            .blur(30.dp)
-                    )
-                    AsyncImage(
-                        model = imageRequestData,
-                        contentDescription = "",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ){
-                    TextButton(
-                        onClick = { expanded = true },
-                        modifier = Modifier.align(Alignment.Center)
-                    ) {
-                        Text(
-                            text = files[currentTrackIndex].fileName,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
+                TopAppBar(title = { Text(displayName) }, navigationIcon = {
+                    IconButton(onBack) {
                         Icon(
-                            Icons.Filled.MoreVert, contentDescription = null
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                    ) {
-                        files.forEachIndexed { index, file ->
-                            DropdownMenuItem(
-                                text = { Text(file.fileName) },
-                                onClick = {
-                                    expanded = false
-                                    playTrack(index)
-                                }
-                            )
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = msToMMSS(currentPositionMs),
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Slider(
-                        value = currentPositionMs.toFloat(),
-                        onValueChange = { seekTo(it.toLong()) },
-                        valueRange = 0.0f..durationMs.toFloat(),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = msToMMSS(durationMs),
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    PlayerButton(
-                        image = Icons.Filled.SkipPrevious,
-                        onClick = onPrev
-                    )
-                    PlayerButton(
-                        image = ImageVector.vectorResource(id = R.drawable.ic_replay_30),
-                        onClick = onBackThirty
-                    )
-                    FilledIconButton(
-                        modifier = Modifier.size(64.dp),
-                        onClick = { onPlayPauseClick() },
-                    ) {
-                        Icon(imageVector = if (showPlay) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null
                         )
                     }
-                    PlayerButton(
-                        image = ImageVector.vectorResource(id = R.drawable.ic_forward_30),
-                        onClick = onForwardThirty
-                    )
-                    PlayerButton(
-                        image = Icons.Filled.SkipNext,
-                        onClick = onNext
-                    )
+                })
+            }) { paddingValues ->
 
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize(),
+            ) {
+                AsyncImage(
+                    model = imageRequestData,
+                    contentDescription = "",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .blur(30.dp)
+                )
+                Column(
+                    modifier = Modifier.matchParentSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = imageRequestData,
+                            contentDescription = "",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.9f))
+                    ) {
+                        PlayerControlPane(
+                            files,
+                            currentTrackIndex,
+                            playTrack,
+                            currentPositionMs,
+                            seekTo,
+                            durationMs,
+                            onPrev,
+                            onBackThirty,
+                            onPlayPauseClick,
+                            showPlay,
+                            onForwardThirty,
+                            onNext,
+                            { expanded = it },
+                            expanded,
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
 @Composable
-fun PlayerButton(
+private fun PlayerControlPane(
+    files: List<AudioBookFile>,
+    currentTrackIndex: Int,
+    playTrack: (Int) -> Unit,
+    currentPositionMs: Long,
+    seekTo: (Long) -> Unit,
+    durationMs: Long,
+    onPrev: () -> Unit,
+    onBackThirty: () -> Unit,
+    onPlayPauseClick: () -> Unit,
+    showPlay: Boolean,
+    onForwardThirty: () -> Unit,
+    onNext: () -> Unit,
+    setExpanded: (Boolean) -> Unit,
+    expanded: Boolean,
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        TextButton(
+            onClick = { setExpanded(true) }, modifier = Modifier.align(Alignment.Center)
+        ) {
+            Text(
+                text = files[currentTrackIndex].fileName,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Filled.MoreVert, contentDescription = null
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { setExpanded(false) },
+        ) {
+            files.forEachIndexed { index, file ->
+                DropdownMenuItem(text = { Text(file.fileName) }, onClick = {
+                    setExpanded(false)
+                    playTrack(index)
+                })
+            }
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = msToMMSS(currentPositionMs), fontFamily = FontFamily.Monospace
+        )
+        Slider(
+            value = currentPositionMs.toFloat(),
+            onValueChange = { seekTo(it.toLong()) },
+            valueRange = 0.0f..durationMs.toFloat(),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = msToMMSS(durationMs), fontFamily = FontFamily.Monospace
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlayerButton(
+            image = Icons.Filled.SkipPrevious, onClick = onPrev
+        )
+        PlayerButton(
+            image = ImageVector.vectorResource(id = R.drawable.ic_replay_30), onClick = onBackThirty
+        )
+        FilledIconButton(
+            modifier = Modifier.size(64.dp),
+            onClick = { onPlayPauseClick() },
+        ) {
+            Icon(
+                imageVector = if (showPlay) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                contentDescription = null
+            )
+        }
+        PlayerButton(
+            image = ImageVector.vectorResource(id = R.drawable.ic_forward_30),
+            onClick = onForwardThirty
+        )
+        PlayerButton(
+            image = Icons.Filled.SkipNext, onClick = onNext
+        )
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+}
+
+@Composable
+private fun PlayerButton(
     image: ImageVector,
     onClick: () -> Unit = {},
 ) {
@@ -339,7 +384,11 @@ fun PlayerButton(
     }
 }
 
-fun extractColorPalette(bitmap: BitmapImage?, isDarkMode: Boolean, currentTheme: ColorScheme): ColorScheme {
+private fun extractColorPalette(
+    bitmap: BitmapImage?,
+    isDarkMode: Boolean,
+    currentTheme: ColorScheme
+): ColorScheme {
     bitmap ?: return currentTheme
     val palette = Palette.from(bitmap.bitmap.copy(Bitmap.Config.ARGB_8888, true)).generate()
     val swatch: Palette.Swatch? = if (isDarkMode) {
@@ -358,19 +407,19 @@ fun extractColorPalette(bitmap: BitmapImage?, isDarkMode: Boolean, currentTheme:
 
 @Composable
 @Preview
-fun PlayerComposablePreview() {
+private fun PlayerComposablePreview() {
     val book = AudioBook("Title", "", "", emptyList(), "Author")
     val files: List<AudioBookFile> = listOf(
-        AudioBookFile(Uri.parse(""), "A", "D", 1),
-        AudioBookFile(Uri.parse(""), "B", "E", 1),
-        AudioBookFile(Uri.parse(""), "C", "F", 1)
+        AudioBookFile("".toUri(), "A", "D", 1),
+        AudioBookFile("".toUri(), "B", "E", 1),
+        AudioBookFile("".toUri(), "C", "F", 1)
     )
     AudiobookPlayerTheme(inDarkTheme = false) {
         PlayerComposableBase(
             book.displayName,
-             null,
+            R.drawable.test,
             durationMs = 75 * 1000,
-            currentPositionMs = 3500,
+            currentPositionMs = 75/2 * 1000,
             files = files
         )
     }

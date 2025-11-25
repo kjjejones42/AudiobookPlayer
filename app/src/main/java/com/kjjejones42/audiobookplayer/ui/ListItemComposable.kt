@@ -1,4 +1,4 @@
-package com.kjjejones42.audiobookplayer.display
+package com.kjjejones42.audiobookplayer.ui
 
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,29 +28,30 @@ import java.util.concurrent.TimeUnit
 
 @Composable
 @Preview
-fun ListItemComposablePreview() {
+private fun ListItemComposablePreview() {
     val book = AudioBook("TEST TEST", "", "", emptyList(), "Author McAuthor")
     val item = ListItem.AudioBookContainer(book)
     AudioBookContainer(item, {}, {})
 }
 
 @Composable
-fun ListItemComposable(item: ListItem, onClick: (AudioBook) -> Unit, onLongClick: (AudioBook) -> Unit) {
+fun ListItemComposable(modifier: Modifier = Modifier, item: ListItem, onClick: (String) -> Unit, onLongClick: (String) -> Unit) {
     if (item is ListItem.AudioBookContainer) {
-        AudioBookContainer(item, onClick, onLongClick)
+        AudioBookContainer(item, onClick, onLongClick, modifier)
     } else if (item is ListItem.Heading) {
-        Heading(item)
+        Heading(modifier, item)
     }
 }
 @Composable
-fun AudioBookContainer(item: ListItem.AudioBookContainer, onClick: (AudioBook) -> Unit, onLongClick: (AudioBook) -> Unit) {
+private fun AudioBookContainer(item: ListItem.AudioBookContainer, onClick: (String) -> Unit, onLongClick: (String) -> Unit, modifier: Modifier = Modifier, ) {
     val audiobook = item.book
+    val bookId = audiobook.displayName
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
-                onLongClick = { onLongClick(audiobook) },
-                onClick = { onClick(audiobook) }
+                onLongClick = { onLongClick(bookId) },
+                onClick = { onClick(bookId) }
             ),
         elevation = elevatedCardElevation()
     ) {
@@ -104,14 +105,14 @@ fun AudioBookContainer(item: ListItem.AudioBookContainer, onClick: (AudioBook) -
 }
 
 @Composable
-fun Heading(item: ListItem.Heading) {
+private fun Heading(modifier: Modifier = Modifier, item: ListItem.Heading) {
     Text(
         style = MaterialTheme.typography.headlineMedium,
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth(),
         textAlign = TextAlign.Start,
-        text = item.headingTitle ?: ""
+        text = item.headingTitle
     )
 }
 

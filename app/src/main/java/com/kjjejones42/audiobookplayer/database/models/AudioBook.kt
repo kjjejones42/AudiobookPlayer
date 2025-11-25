@@ -50,7 +50,7 @@ class AudioBook {
         this.imagePath = imagePath
         this.displayName = name
         this.files = files
-        this.status = AudioBookStatus.NOT_BEGUN.value
+        this.status = Status.NOT_BEGUN.value
         this.author = author ?: ""
     }
 
@@ -59,16 +59,16 @@ class AudioBook {
             return files?.sumOf { it.duration } ?: 0
         }
 
-    fun setStatus(status: AudioBookStatus) {
+    fun setStatus(status: Status) {
         this.status = status.value
         when (status) {
-            AudioBookStatus.IN_PROGRESS -> {}
-            AudioBookStatus.NOT_BEGUN -> {
+            Status.IN_PROGRESS -> {}
+            Status.NOT_BEGUN -> {
                 lastSavedTimestamp = 0L
                 positionInTrackList = 0
                 positionInTrack = 0
             }
-            AudioBookStatus.FINISHED -> {
+            Status.FINISHED -> {
                 positionInTrackList = 0
                 positionInTrack = 0
             }
@@ -99,4 +99,11 @@ class AudioBook {
     override fun hashCode(): Int {
         return javaClass.hashCode()
     }
+
+    enum class Status(val value: Int, val displayName: String) {
+        IN_PROGRESS(0, "In Progress"),
+        NOT_BEGUN(1, "Not Begun"),
+        FINISHED(2, "Finished"),
+    }
+
 }
