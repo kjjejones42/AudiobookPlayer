@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <attribution android:label="@string/appApplication" android:tag="AppApplication" />
+    <attribution android:label="@string/dataConverter" android:tag="DataConverter" />
+    <attribution android:label="@string/displayListScreen" android:tag="DisplayListScreen" />
+    <attribution android:label="@string/mediaControllerContainer" android:tag="MediaControllerContainer" />
     <application
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

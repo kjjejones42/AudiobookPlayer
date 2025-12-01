@@ -11,7 +11,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.common.listen
+import androidx.media3.common.listenTo
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -30,6 +30,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 
@@ -44,7 +45,6 @@ class PlaybackService : MediaSessionService() {
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
 
-    // Create your player and media session in the onCreate lifecycle event
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
@@ -63,15 +63,20 @@ class PlaybackService : MediaSessionService() {
         player.addListener(Listener(this))
 
         serviceScope.launch {
-            player.listen {
+            player.listenTo(Player.EVENT_IS_PLAYING_CHANGED) {
                 val currentItem = player.currentMediaItem
-                val currentTrackIndex = player.currentMediaItemIndex
-                val position = player.currentPosition
+                val positionInTrackList = player.currentMediaItemIndex
+                val positionInTrack = player.currentPosition
 
-                if (currentItem != null) {
+                currentItem?.let { currentItem ->
                     val audiobookId = currentItem.mediaMetadata.extras?.getString(INTENT_AUDIOBOOK)
-                    if (audiobookId != null) {
-                        audiobookRepository.updatePositions(audiobookId, currentTrackIndex, position.toInt())
+                    audiobookId?.let { audiobookId ->
+                        launch {
+                            audiobookRepository.updatePositions(
+                                audiobookId,
+                                positionInTrackList,
+                                positionInTrack.toInt())
+                        }
                     }
                 }
             }
@@ -111,10 +116,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     fun playBook(audioBookId: String) {
-        val audioBook = audiobookRepository.getAudioBook(audioBookId)
+        val audioBook = runBlocking { audiobookRepository.getAudioBook(audioBookId) }
         mediaSession?.let { session ->
             audioBook?.let { book ->
-                val player = session.player
                 val mediaItems = book.toMediaItems()
                 if (mediaItems.isEmpty()) return
                 val startTrackIndex = book.positionInTrackList
@@ -123,10 +127,12 @@ class PlaybackService : MediaSessionService() {
                 } else {
                     0L
                 }
-                audiobookRepository.updatePositionInBook(audioBookId, startTrackIndex)
+
+                val player = session.player
                 player.setMediaItems(mediaItems, startTrackIndex, startPosition)
                 player.prepare()
                 player.play()
+                serviceScope.launch { audiobookRepository.updatePositionInBook(audioBookId, startTrackIndex) }
             }
         }
     }
@@ -135,13 +141,13 @@ class PlaybackService : MediaSessionService() {
         val extras = mediaItem.mediaMetadata.extras ?: return
         val audiobookId = extras.getString(INTENT_AUDIOBOOK)
         val trackNo = extras.getInt(INTENT_INDEX)
-        audiobookRepository.updatePositionInTrackList(audiobookId, trackNo)
+        serviceScope.launch { audiobookRepository.updatePositionInTrackList(audiobookId, trackNo) }
     }
 
     fun handlePlaybackEnded() {
         val audioBookId = mediaSession?.player?.currentMediaItem?.mediaMetadata?.extras?.getString(INTENT_AUDIOBOOK)
-        if (audioBookId != null) {
-            audiobookRepository.updateStatus(audioBookId, AudioBook.Status.FINISHED)
+        audioBookId?.let { audioBookId ->
+            serviceScope.launch { audiobookRepository.updateStatus(audioBookId, AudioBook.Status.FINISHED) }
         }
     }
 
@@ -194,17 +200,13 @@ private fun AudioBookFile.toMediaItem(book: AudioBook, trackNo: Int): MediaItem 
 private fun AudioBook.toMediaItems(): List<MediaItem> {
     return files
         ?.mapIndexed { index, trackFile -> trackFile.toMediaItem(this, index) }
-        ?.filter { true }
-        ?.map { it }
         ?.toList() ?: emptyList()
 }
 
 private class Listener(private val service: PlaybackService) : Player.Listener {
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        if (mediaItem != null) {
-            service.onMediaItemTransition(mediaItem)
-        }
+        mediaItem?.let { mediaItem -> service.onMediaItemTransition(mediaItem) }
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -222,14 +224,14 @@ private class Callback(private val service: PlaybackService) : MediaSession.Call
         controller: MediaSession.ControllerInfo
     ): MediaSession.ConnectionResult {
         val connectionResult = super.onConnect(session, controller)
-        val availableSessionCommands = connectionResult.availableSessionCommands.buildUpon()
+        val availableCommands = connectionResult.availableSessionCommands.buildUpon()
 
-        availableSessionCommands.add(PlaybackService.PLAY_BOOK_COMMAND)
-        availableSessionCommands.add(PlaybackService.BACK_THIRTY_COMMAND)
-        availableSessionCommands.add(PlaybackService.FORWARD_THIRTY_COMMAND)
+        availableCommands.add(PlaybackService.PLAY_BOOK_COMMAND)
+        availableCommands.add(PlaybackService.BACK_THIRTY_COMMAND)
+        availableCommands.add(PlaybackService.FORWARD_THIRTY_COMMAND)
 
         return MediaSession.ConnectionResult.accept(
-            availableSessionCommands.build(),
+            availableCommands.build(),
             connectionResult.availablePlayerCommands
         )
     }
@@ -245,9 +247,7 @@ private class Callback(private val service: PlaybackService) : MediaSession.Call
 
             PlaybackService.PLAY_BOOK_COMMAND.customAction -> {
                 val audioBookId = args.getString(PlaybackService.INTENT_AUDIOBOOK)
-                if (audioBookId != null) {
-                    service.playBook(audioBookId)
-                }
+                audioBookId?.let { audioBookId -> service.playBook(audioBookId) }
             }
 
             PlaybackService.FORWARD_THIRTY_COMMAND.customAction -> {

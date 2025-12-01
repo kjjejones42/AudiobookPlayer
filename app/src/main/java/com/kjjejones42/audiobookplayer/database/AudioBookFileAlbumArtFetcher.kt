@@ -20,14 +20,13 @@ class AudioBookFileAlbumArtFetcher(
         val retriever = MediaMetadataRetriever()
 
         try {
-            options.context.contentResolver.openAssetFileDescriptor(data.uri, "r")?.use { afd ->
+            val afd = options.context.contentResolver.openAssetFileDescriptor(data.uri, "r")
+            afd?.use { afd ->
                 retriever.setDataSource(afd.fileDescriptor)
-                val embeddedPicture = retriever.embeddedPicture
-                if (embeddedPicture != null) {
-                    val buffer = Buffer().write(embeddedPicture)
+                retriever.embeddedPicture?.let { embeddedPicture ->
                     return SourceFetchResult(
                         source = ImageSource(
-                            source = buffer,
+                            source = Buffer().write(embeddedPicture),
                             fileSystem = FileSystem.SYSTEM,
                             metadata = null
                         ),

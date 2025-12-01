@@ -20,7 +20,8 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         val selection = authorFields
         val where = "${MediaStore.Audio.Media._ID} = ?"
         val args = arrayOf(filename.lastPathSegment)
-        applicationContext.contentResolver.query(uri, selection, where, args, null)?.use { cursor ->
+        val cursor = applicationContext.contentResolver.query(uri, selection, where, args, null)
+        cursor?.use { cursor ->
             while (cursor.moveToNext()) {
                 for (i in 0..<cursor.columnCount) {
                     cursor.getString(i)
@@ -37,12 +38,12 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         val selection = arrayOf(MediaStore.Images.Media.DATA)
         val where = "${MediaStore.Images.Media.RELATIVE_PATH} = ?"
         val args = arrayOf(directory)
-        applicationContext.contentResolver.query(uri, selection, where, args, null)?.use {
+        val cursor = applicationContext.contentResolver.query(uri, selection, where, args, null)
+        cursor?.use {
             while (it.moveToNext()) {
                 val columnIndex = it.getColumnIndex(MediaStore.Images.Media.DATA)
-                it.getString(columnIndex)?.let {
-                    return it
-                }
+                val imagePath = it.getString(columnIndex)
+                if (imagePath != null) return imagePath
             }
         }
         return null

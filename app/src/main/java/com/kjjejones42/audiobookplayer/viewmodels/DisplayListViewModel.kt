@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 import javax.inject.Inject
 
@@ -58,10 +60,12 @@ class DisplayListViewModel @Inject constructor(
     }
 
     fun updateBookStatus(book: AudioBook, status: AudioBook.Status) {
-        audiobookRepository.updateStatus(book.displayName, status)
+        viewModelScope.launch {
+            audiobookRepository.updateStatus(book.displayName, status)
+        }
     }
 
-    fun getMostRecentBook(): AudioBook? = audiobookRepository.mostRecentBook()
+    fun getMostRecentBook(): AudioBook? = runBlocking { audiobookRepository.mostRecentBook() }
 
     companion object {
 

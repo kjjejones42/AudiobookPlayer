@@ -178,15 +178,7 @@ private fun PlayerComposableBase(
     var theme: ColorScheme? by remember { mutableStateOf(null) }
     var expanded by remember { mutableStateOf(false) }
 
-    val currentTheme = MaterialTheme.colorScheme
-    val isDarkMode = isSystemInDarkTheme()
-    LaunchedEffect(bitmap) {
-        if (bitmap != null) {
-            scope.launch {
-                theme = extractColorPalette(bitmap, isDarkMode, currentTheme)
-            }
-        }
-    }
+    val defaultTheme = MaterialTheme.colorScheme
 
     val canHaveTheme = imageRequestData != null
     LaunchedEffect(imageRequestData) {
@@ -196,9 +188,18 @@ private fun PlayerComposableBase(
             if (canHaveTheme) {
                 val request = ImageRequest.Builder(context).data(imageRequestData).build()
                 val image = context.imageLoader.enqueue(request).job.await().image
-                if (image is BitmapImage) { bitmap = image } else { theme = currentTheme }
+                if (image is BitmapImage) { bitmap = image } else { theme = defaultTheme }
             } else {
-                theme = currentTheme
+                theme = defaultTheme
+            }
+        }
+    }
+
+    val isDarkMode = isSystemInDarkTheme()
+    LaunchedEffect(bitmap) {
+        if (bitmap != null) {
+            scope.launch {
+                theme = extractColorPalette(bitmap, isDarkMode, defaultTheme)
             }
         }
     }

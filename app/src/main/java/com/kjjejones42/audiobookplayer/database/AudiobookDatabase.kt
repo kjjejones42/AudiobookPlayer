@@ -21,15 +21,14 @@ abstract class AudiobookDatabase : RoomDatabase() {
         @Volatile
         private var instance: AudiobookDatabase? = null
 
-        private fun buildDatabase(context: Context): AudiobookDatabase {
-            return databaseBuilder(context, AudiobookDatabase::class.java, "audiobook_database")
-                .allowMainThreadQueries()
+//                .allowMainThreadQueries()
 //                .setQueryCallback({
 //                    sqlQuery, bindArgs ->
 //                    println("SQL Query: $sqlQuery SQL Args: $bindArgs")
 //                }, executor = Executors.newSingleThreadExecutor())
-                .build()
-        }
+
+        private fun buildDatabase(context: Context) =
+            databaseBuilder(context, AudiobookDatabase::class.java, "audiobook_database").build()
 
         fun getInstance(context: Context): AudiobookDatabase =
             instance ?: synchronized(this) {
@@ -46,16 +45,10 @@ abstract class AudiobookDatabase : RoomDatabase() {
 
         @Provides
         @Singleton
-        fun provideDatabase(
-            @ApplicationContext context: Context
-        ): AudiobookDatabase {
-            return AudiobookDatabase.getInstance(context)
-        }
+        fun provideDatabase(@ApplicationContext context: Context): AudiobookDatabase = getInstance(context)
 
         @Provides
-        fun provideAudiobookDao(database: AudiobookDatabase): AudiobookDao {
-            return database.audiobookDao()
-        }
+        fun provideAudiobookDao(database: AudiobookDatabase): AudiobookDao = database.audiobookDao()
 
     }
 

@@ -12,4 +12,8 @@
     <string name="nextButtonImageDescriptor">Next Track</string>
     <string name="_00_00_00">00:00:00</string>
     <string name="play_button">Play Button</string>
+    <string name="appApplication">AppApplication</string>
+    <string name="dataConverter">DataConverter</string>
+    <string name="displayListScreen">DisplayListScreen</string>
+    <string name="mediaControllerContainer">MediaControllerContainer</string>
 </resources>
