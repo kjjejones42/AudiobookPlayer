@@ -1,0 +1,75 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "442c203b43a7da2c6376d14a3f8926eb",
+    "entities": [
+      {
+        "tableName": "AudioBook",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`displayName` TEXT NOT NULL, `baseDir` TEXT, `files` TEXT, `author` TEXT, `imagePath` TEXT, `lastSavedTimestamp` INTEGER NOT NULL, `positionInTrack` INTEGER NOT NULL, `positionInTrackList` INTEGER NOT NULL, `status` INTEGER NOT NULL, PRIMARY KEY(`displayName`))",
+        "fields": [
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseDir",
+            "columnName": "baseDir",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "files",
+            "columnName": "files",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "author",
+            "columnName": "author",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "imagePath",
+            "columnName": "imagePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSavedTimestamp",
+            "columnName": "lastSavedTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionInTrack",
+            "columnName": "positionInTrack",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionInTrackList",
+            "columnName": "positionInTrackList",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "displayName"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '442c203b43a7da2c6376d14a3f8926eb')"
+    ]
+  }
+}

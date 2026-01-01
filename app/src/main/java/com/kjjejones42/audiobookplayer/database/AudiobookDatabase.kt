@@ -16,7 +16,6 @@ import javax.inject.Singleton
 @Database(entities = [AudioBook::class], version = 1)
 @TypeConverters(DataConverter::class)
 abstract class AudiobookDatabase : RoomDatabase() {
-
     companion object {
         @Volatile
         private var instance: AudiobookDatabase? = null
@@ -27,8 +26,7 @@ abstract class AudiobookDatabase : RoomDatabase() {
 //                    println("SQL Query: $sqlQuery SQL Args: $bindArgs")
 //                }, executor = Executors.newSingleThreadExecutor())
 
-        private fun buildDatabase(context: Context) =
-            databaseBuilder(context, AudiobookDatabase::class.java, "audiobook_database").build()
+        private fun buildDatabase(context: Context) = databaseBuilder(context, AudiobookDatabase::class.java, "audiobook_database").build()
 
         fun getInstance(context: Context): AudiobookDatabase =
             instance ?: synchronized(this) {
@@ -38,19 +36,16 @@ abstract class AudiobookDatabase : RoomDatabase() {
 
     abstract fun audiobookDao(): AudiobookDao
 
-
     @Module
     @InstallIn(SingletonComponent::class)
     object DatabaseModule {
-
         @Provides
         @Singleton
-        fun provideDatabase(@ApplicationContext context: Context): AudiobookDatabase = getInstance(context)
+        fun provideDatabase(
+            @ApplicationContext context: Context,
+        ): AudiobookDatabase = getInstance(context)
 
         @Provides
         fun provideAudiobookDao(database: AudiobookDatabase): AudiobookDao = database.audiobookDao()
-
     }
-
 }
-

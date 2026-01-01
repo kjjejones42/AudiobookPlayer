@@ -7,8 +7,13 @@ import kotlinx.serialization.Serializable
 import java.util.Objects
 
 @Serializable(with = DataConverter::class)
-class AudioBookFile(uri: Uri, private val displayName: String, val fileName: String, @JvmField val duration: Long) :
-java.io.Serializable, Comparable<AudioBookFile?> {
+class AudioBookFile(
+    uri: Uri,
+    private val displayName: String,
+    val fileName: String,
+    @JvmField val duration: Long,
+) : java.io.Serializable,
+    Comparable<AudioBookFile?> {
     private var _uri = uri.toString()
     var uri: Uri
         get() = _uri.toUri()
@@ -30,9 +35,7 @@ java.io.Serializable, Comparable<AudioBookFile?> {
         return uri == other.uri
     }
 
-    override fun hashCode(): Int {
-        return Objects.hash(uri, displayName, duration)
-    }
+    override fun hashCode(): Int = Objects.hash(uri, displayName, duration)
 
     override fun compareTo(other: AudioBookFile?): Int {
         if (other == null) return 0

@@ -12,29 +12,30 @@ import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
-class PlayerViewModel @Inject constructor(
-    audiobookRepository: AudiobookRepository
-) : ViewModel() {
+class PlayerViewModel
+    @Inject
+    constructor(
+        audiobookRepository: AudiobookRepository,
+    ) : ViewModel() {
+        private val _audioBookId = MutableStateFlow<String?>(null)
+        val trackNo = MutableStateFlow<Int?>(null)
 
-    private val _audioBookId = MutableStateFlow<String?>(null)
-    val trackNo = MutableStateFlow<Int?>(null)
+        val audioBook =
+            _audioBookId
+                .filter { it != null }
+                .map { audiobookRepository.getAudioBook(it!!) }
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.Companion.WhileSubscribed(5000),
+                    initialValue = null,
+                )
 
-    val audioBook = _audioBookId
-        .filter { it != null }
-        .map { audiobookRepository.getAudioBook(it!!) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Companion.WhileSubscribed(5000),
-            initialValue = null
-        )
+        fun setAudioBook(audioBookId: String?) {
+            if (audioBookId == null) return
+            _audioBookId.value = audioBookId
+        }
 
-    fun setAudioBook(audioBookId: String?) {
-        if (audioBookId == null) return
-        _audioBookId.value = audioBookId
+        fun setTrackNo(trackNo: Int?) {
+            this.trackNo.value = trackNo
+        }
     }
-
-    fun setTrackNo(trackNo: Int?) {
-        this.trackNo.value = trackNo
-    }
-
-}

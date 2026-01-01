@@ -8,11 +8,9 @@ import java.io.UnsupportedEncodingException
 import java.net.URLEncoder
 import java.util.Collections
 
-
 @Serializable
 @Entity
 class AudioBook {
-
     @PrimaryKey
     var displayName: String
 
@@ -63,11 +61,13 @@ class AudioBook {
         this.status = status.value
         when (status) {
             Status.IN_PROGRESS -> {}
+
             Status.NOT_BEGUN -> {
                 lastSavedTimestamp = 0L
                 positionInTrackList = 0
                 positionInTrack = 0
             }
+
             Status.FINISHED -> {
                 positionInTrackList = 0
                 positionInTrack = 0
@@ -75,13 +75,12 @@ class AudioBook {
         }
     }
 
-    override fun equals(other: Any?): Boolean {
-        return if (other is AudioBook) {
+    override fun equals(other: Any?): Boolean =
+        if (other is AudioBook) {
             this.uniqueId == other.uniqueId
         } else {
             super.equals(other)
         }
-    }
 
     val uniqueId: String
         get() {
@@ -92,18 +91,16 @@ class AudioBook {
             }
         }
 
-    override fun toString(): String {
-        return "$displayName $author"
-    }
+    override fun toString(): String = "$displayName $author"
 
-    override fun hashCode(): Int {
-        return javaClass.hashCode()
-    }
+    override fun hashCode(): Int = javaClass.hashCode()
 
-    enum class Status(val value: Int, val displayName: String) {
+    enum class Status(
+        val value: Int,
+        val displayName: String,
+    ) {
         IN_PROGRESS(0, "In Progress"),
         NOT_BEGUN(1, "Not Begun"),
         FINISHED(2, "Finished"),
     }
-
 }

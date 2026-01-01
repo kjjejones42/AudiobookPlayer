@@ -10,35 +10,37 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val darkTheme = darkColorScheme(
-    primary = primaryDark,
-    primaryContainer = colorAccent,
-    surface = primaryDark
-)
-private val lightTheme = lightColorScheme(
-    primary = primary,
-    primaryContainer = colorAccent,
-    surface = primary
-)
+private val darkTheme =
+	darkColorScheme(
+		primary = primaryDark,
+		primaryContainer = colorAccent,
+		surface = primaryDark,
+	)
+private val lightTheme =
+	lightColorScheme(
+		primary = primary,
+		primaryContainer = colorAccent,
+		surface = primary,
+	)
 
 @Composable
 fun AudiobookPlayerTheme(
-    inDarkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+	inDarkTheme: Boolean = isSystemInDarkTheme(),
+	content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (inDarkTheme) darkTheme else lightTheme
-    val view = LocalView.current
-    if (!view.isInEditMode && view.context is Activity) {
-        val window = (view.context as Activity).window
-        DisposableEffect(inDarkTheme) {
-            val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = !inDarkTheme
-            onDispose {}
-        }
-    }
+	val colorScheme = if (inDarkTheme) darkTheme else lightTheme
+	val view = LocalView.current
+	if (!view.isInEditMode && view.context is Activity) {
+		val window = (view.context as Activity).window
+		DisposableEffect(inDarkTheme) {
+			val controller = WindowCompat.getInsetsController(window, view)
+			controller.isAppearanceLightStatusBars = !inDarkTheme
+			onDispose {}
+		}
+	}
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+	MaterialTheme(
+		colorScheme = colorScheme,
+		content = content,
+	)
 }

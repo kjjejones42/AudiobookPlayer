@@ -84,16 +84,17 @@ fun DisplayListComposable(
     val categorySelectBook by viewModel.categorySelectBook.collectAsStateWithLifecycle(null)
     val workNeedsStarting by viewModel.workNeedsStarting.collectAsStateWithLifecycle()
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions.values.all{it}) {
-            viewModel.workNeedsStarting.value = true
-        } else {
-            Log.e("DisplayListScreen", "Not all permissions granted")
-            Toast.makeText(context, "Not all permissions granted", Toast.LENGTH_LONG).show()
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { permissions ->
+            if (permissions.values.all { it }) {
+                viewModel.workNeedsStarting.value = true
+            } else {
+                Log.e("DisplayListScreen", "Not all permissions granted")
+                Toast.makeText(context, "Not all permissions granted", Toast.LENGTH_LONG).show()
+            }
         }
-    }
 
     LaunchedEffect(workNeedsStarting) {
         if (workNeedsStarting && viewModel.workUuid.value == null) {
@@ -112,9 +113,12 @@ fun DisplayListComposable(
         }
     }
 
-    val playState: PlayPauseButtonState? = if (mediaController != null) {
-        rememberPlayPauseButtonState(mediaController)
-    } else null
+    val playState: PlayPauseButtonState? =
+        if (mediaController != null) {
+            rememberPlayPauseButtonState(mediaController)
+        } else {
+            null
+        }
 
     val isPlaying = !(playState?.showPlay ?: true)
 
@@ -123,9 +127,9 @@ fun DisplayListComposable(
         onBookClick = { bookId -> startBook(bookId, mediaController, onBookClick) },
         isPlaying = isPlaying,
         categorySelectBook = categorySelectBook,
-        setCategorySelectBook = { bookId -> viewModel.setCategorySelectBook(bookId)},
+        setCategorySelectBook = { bookId -> viewModel.setCategorySelectBook(bookId) },
         updateBookStatus = { book, status -> viewModel.updateBookStatus(book, status) },
-        workIsRunning =  workInfo?.state == WorkInfo.State.RUNNING,
+        workIsRunning = workInfo?.state == WorkInfo.State.RUNNING,
         onFABClick = {
             if (isPlaying) {
                 mediaController?.pause()
@@ -134,13 +138,17 @@ fun DisplayListComposable(
                     startBook(book.displayName, mediaController, onBookClick)
                 }
             }
-        }
+        },
     )
 }
 
-private fun startBook(bookId: String?, mediaController: MediaController?, onBookClick: () -> Unit) {
+private fun startBook(
+    bookId: String?,
+    mediaController: MediaController?,
+    onBookClick: () -> Unit,
+) {
     mediaController?.let {
-        val bundle = Bundle().apply{ putString(PlaybackService.INTENT_AUDIOBOOK, bookId) }
+        val bundle = Bundle().apply { putString(PlaybackService.INTENT_AUDIOBOOK, bookId) }
         mediaController.sendCustomCommand(PlaybackService.PLAY_BOOK_COMMAND, bundle)
     }
     onBookClick()
@@ -157,7 +165,7 @@ private fun DisplayListScreenBase(
     categorySelectBook: AudioBook? = null,
     setCategorySelectBook: (String?) -> Unit = {},
     updateBookStatus: (AudioBook, AudioBook.Status) -> Unit = { _, _ -> },
-    workIsRunning: Boolean = false
+    workIsRunning: Boolean = false,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
@@ -178,17 +186,17 @@ private fun DisplayListScreenBase(
                     IconButton(onClick = { isSearchActive = !isSearchActive }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
-                }
+                },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onFABClick) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = stringResource(R.string.play_button)
+                    contentDescription = stringResource(R.string.play_button),
                 )
             }
-        }
+        },
     ) { paddingValues ->
 
         categorySelectBook?.let { categorySelectBook ->
@@ -198,20 +206,21 @@ private fun DisplayListScreenBase(
                 updateBookStatus = { book, status ->
                     setCategorySelectBook(null)
                     updateBookStatus(book, status)
-                }
+                },
             )
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
         ) {
             AnimatedVisibility(
-                visible = workIsRunning
+                visible = workIsRunning,
             ) {
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -219,35 +228,37 @@ private fun DisplayListScreenBase(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
             when {
                 filteredItems.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = stringResource(R.string.no_data_available),
                         )
                     }
                 }
+
                 else -> {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.padding(horizontal = 8.dp),
                         contentPadding = PaddingValues(vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(filteredItems, key = { it.id }) { item ->
                             ListItemComposable(
                                 modifier = Modifier.animateItem(),
                                 item = item,
                                 onClick = onBookClick,
-                                onLongClick = { setCategorySelectBook(it) }
+                                onLongClick = { setCategorySelectBook(it) },
                             )
                         }
                     }
@@ -262,22 +273,24 @@ private fun DisplayListScreenBase(
 private fun MinimalDialog(
     book: AudioBook,
     onDismissRequest: () -> Unit,
-    updateBookStatus: (AudioBook, AudioBook.Status) -> Unit
+    updateBookStatus: (AudioBook, AudioBook.Status) -> Unit,
 ) {
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
-
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp), // Add some padding inside the column
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                // Add some padding inside the column
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
                     text = "Choose this book's status.",
@@ -285,17 +298,17 @@ private fun MinimalDialog(
                 )
                 AudioBook.Status.entries.forEach { status ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                onClick = { updateBookStatus(book, status) }
-                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    onClick = { updateBookStatus(book, status) },
+                                ),
                         verticalAlignment = Alignment.CenterVertically,
-
-                    ){
+                    ) {
                         RadioButton(
                             selected = status.value == book.status,
-                            onClick = { updateBookStatus(book, status) }
+                            onClick = { updateBookStatus(book, status) },
                         )
                         Text(text = status.displayName)
                     }
@@ -307,22 +320,22 @@ private fun MinimalDialog(
 
 private fun filterItems(
     items: List<ListItem>,
-    searchQuery: String
-): List<ListItem> {
-    return items
+    searchQuery: String,
+): List<ListItem> =
+    items
         .filter { item -> item.matchesSearchTerm(searchQuery) }
         .sortedBy { it.id }
         .toList()
-}
 
 @Composable
 @Preview
-private fun Preview () {
-    val books: List<AudioBook> = listOf(
-        AudioBook("TITLE TITLE TITLE A", "", "", emptyList(), "Author McAuthor").apply { status = AudioBook.Status.IN_PROGRESS.value },
-        AudioBook("TITLE TITLE TITLE B", "", "", emptyList(), "Author McAuthor"),
-        AudioBook("TITLE TITLE TITLE C", "", "", emptyList(), "Author McAuthor")
-    )
+private fun Preview() {
+    val books: List<AudioBook> =
+        listOf(
+            AudioBook("TITLE TITLE TITLE A", "", "", emptyList(), "Author McAuthor").apply { status = AudioBook.Status.IN_PROGRESS.value },
+            AudioBook("TITLE TITLE TITLE B", "", "", emptyList(), "Author McAuthor"),
+            AudioBook("TITLE TITLE TITLE C", "", "", emptyList(), "Author McAuthor"),
+        )
     val workInfo = WorkInfo(id = UUID.randomUUID(), state = WorkInfo.State.RUNNING, tags = emptySet())
     val items = DisplayListViewModel.Companion.getItemsFromBooks(books)
     AudiobookPlayerTheme(inDarkTheme = false) {

@@ -24,62 +24,81 @@ import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
-class DisplayListViewModel @Inject constructor(
-    private val audiobookRepository: AudiobookRepository
-) : ViewModel() {
+class DisplayListViewModel
+    @Inject
+    constructor(
+        private val audiobookRepository: AudiobookRepository,
+    ) : ViewModel() {
+        val listItems =
+            audiobookRepository.allAndObserve().map { getItemsFromBooks(it) }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList(),
+            )
 
-    val listItems = audiobookRepository.allAndObserve().map { getItemsFromBooks(it) }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+        val workUuid = MutableStateFlow<UUID?>(null)
 
-    val workUuid = MutableStateFlow<UUID?>(null)
+        private val _categorySelectBookId = MutableStateFlow<String?>(null)
 
-    private val _categorySelectBookId = MutableStateFlow<String?>(null)
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val categorySelectBook: StateFlow<AudioBook?> =
+            _categorySelectBookId
+                .flatMapLatest { id ->
+                    if (id == null) {
+                        flowOf(null)
+                    } else {
+                        audiobookRepository.findByNameAndObserve(id)
+                    }
+                }.stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5000),
+                    initialValue = null,
+                )
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val categorySelectBook: StateFlow<AudioBook?> = _categorySelectBookId.flatMapLatest { id ->
-            if (id == null) flowOf(null)
-            else audiobookRepository.findByNameAndObserve(id)
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+        val workNeedsStarting = MutableStateFlow(false)
 
-    val workNeedsStarting = MutableStateFlow(false)
+        fun setCategorySelectBook(bookId: String?) {
+            _categorySelectBookId.value = bookId
+        }
 
-    fun setCategorySelectBook(bookId: String?) {
-        _categorySelectBookId.value = bookId
-    }
+        fun getWorkStateFlow(context: Context): Flow<WorkInfo?> {
+            val uuid = workUuid.value ?: return flowOf(null)
+            return WorkManager.getInstance(context).getWorkInfoByIdFlow(uuid)
+        }
 
-    fun getWorkStateFlow(context: Context): Flow<WorkInfo?> {
-        val uuid = workUuid.value ?: return flowOf(null)
-        return WorkManager.getInstance(context).getWorkInfoByIdFlow(uuid)
-    }
+        fun updateBookStatus(
+            book: AudioBook,
+            status: AudioBook.Status,
+        ) {
+            viewModelScope.launch {
+                audiobookRepository.updateStatus(book.displayName, status)
+            }
+        }
 
-    fun updateBookStatus(book: AudioBook, status: AudioBook.Status) {
-        viewModelScope.launch {
-            audiobookRepository.updateStatus(book.displayName, status)
+        fun getMostRecentBook(): AudioBook? = runBlocking { audiobookRepository.mostRecentBook() }
+
+        companion object {
+            fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
+                val list =
+                    books
+                        .sortedBy { it.displayName }
+                        .map { ListItem.AudioBookContainer(it) }
+                        .toMutableList<ListItem>()
+
+                list
+                    .toList()
+                    .map { it.category }
+                    .distinct()
+                    .map { ListItem.Heading(it) }
+                    .forEach { list.add(it) }
+
+                return list.sortedWith(
+                    compareBy(
+                        { it.category },
+                        { it.sortPriority },
+                        { -it.timeStamp },
+                    ),
+                )
+            }
         }
     }
-
-    fun getMostRecentBook(): AudioBook? = runBlocking { audiobookRepository.mostRecentBook() }
-
-    companion object {
-
-        fun getItemsFromBooks(books: List<AudioBook>): List<ListItem> {
-            val list = books.sortedBy { it.displayName }.map { ListItem.AudioBookContainer(it) }
-                .toMutableList<ListItem>()
-
-            list.toList().map { it.category }.distinct().map { ListItem.Heading(it) }
-                .forEach { list.add(it) }
-
-            return list.sortedWith(compareBy(
-                { it.category },
-                { it.sortPriority },
-                { -it.timeStamp }))
-        }
-    }
-}

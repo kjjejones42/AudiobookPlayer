@@ -9,7 +9,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
 import kotlinx.serialization.Serializable
 
-
 @Serializable
 object DisplayListNavItem
 
@@ -22,27 +21,26 @@ object PlayerNavItem {
 fun AppNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController,
-    mediaController: MediaController?
+    mediaController: MediaController?,
 ) {
     NavHost(
         modifier = modifier,
         navController = navController,
-        startDestination = DisplayListNavItem
+        startDestination = DisplayListNavItem,
     ) {
         composable<DisplayListNavItem> {
             DisplayListComposable(
                 mediaController = mediaController,
-                onBookClick = { navController.navigate(PlayerNavItem) }
+                onBookClick = { navController.navigate(PlayerNavItem) },
             )
         }
         composable<PlayerNavItem>(
-            deepLinks = listOf(navDeepLink{ uriPattern = PlayerNavItem.URI })
+            deepLinks = listOf(navDeepLink { uriPattern = PlayerNavItem.URI }),
         ) {
             PlayerComposable(
                 onBack = { navController.navigate(DisplayListNavItem) },
-                mediaController = mediaController
+                mediaController = mediaController,
             )
         }
-
     }
 }

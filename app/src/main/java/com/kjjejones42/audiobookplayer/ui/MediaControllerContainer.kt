@@ -15,18 +15,17 @@ import androidx.media3.session.SessionToken
 import com.kjjejones42.audiobookplayer.services.PlaybackService
 
 @Composable
-fun MediaControllerContainer(
-    content: @Composable (MediaController?) -> Unit
-) {
+fun MediaControllerContainer(content: @Composable (MediaController?) -> Unit) {
     val context = LocalContext.current
 
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
 
     DisposableEffect(context) {
-        val sessionToken = SessionToken(
-            context,
-            ComponentName(context, PlaybackService::class.java)
-        )
+        val sessionToken =
+            SessionToken(
+                context,
+                ComponentName(context, PlaybackService::class.java),
+            )
 
         val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
 

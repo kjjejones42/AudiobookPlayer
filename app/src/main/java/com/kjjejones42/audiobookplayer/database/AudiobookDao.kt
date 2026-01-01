@@ -13,7 +13,11 @@ interface AudiobookDao {
     val allAndObserve: Flow<List<AudioBook>>
 
     @Query("UPDATE AudioBook SET status = :status, lastSavedTimestamp = :currentTimeStamp WHERE displayName = :displayName")
-    suspend fun updateStatus(displayName: String, status: Int, currentTimeStamp: Long)
+    suspend fun updateStatus(
+        displayName: String,
+        status: Int,
+        currentTimeStamp: Long,
+    )
 
     @Query("SELECT * FROM AudioBook WHERE displayName = :displayName LIMIT 1")
     suspend fun findByName(displayName: String?): AudioBook?
@@ -22,10 +26,20 @@ interface AudiobookDao {
     fun findByNameAndObserve(displayName: String?): Flow<AudioBook?>
 
     @Query("UPDATE AudioBook SET positionInTrackList = :positionInTrackList WHERE displayName = :displayName")
-    suspend fun updatePositionInTrackList(displayName: String?, positionInTrackList: Int)
+    suspend fun updatePositionInTrackList(
+        displayName: String?,
+        positionInTrackList: Int,
+    )
 
-    @Query("UPDATE AudioBook SET positionInTrackList = :positionInTrackList, positionInTrack = :positionInTrack, lastSavedTimestamp = :currentTimeStamp WHERE displayName = :displayName")
-    suspend fun updatePositions(displayName: String?, positionInTrackList: Int, positionInTrack: Int, currentTimeStamp: Long)
+    @Query(
+        "UPDATE AudioBook SET positionInTrackList = :positionInTrackList, positionInTrack = :positionInTrack, lastSavedTimestamp = :currentTimeStamp WHERE displayName = :displayName",
+    )
+    suspend fun updatePositions(
+        displayName: String?,
+        positionInTrackList: Int,
+        positionInTrack: Int,
+        currentTimeStamp: Long,
+    )
 
     @Query("SELECT * FROM AudioBook ORDER BY lastSavedTimestamp DESC LIMIT 1")
     suspend fun getMostRecentBook(): AudioBook?

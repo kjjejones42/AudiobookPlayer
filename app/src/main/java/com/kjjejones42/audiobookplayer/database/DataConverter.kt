@@ -17,6 +17,7 @@ import java.util.Base64
 
 class DataConverter : KSerializer<AudioBookFile> {
     override val descriptor: SerialDescriptor = SerialDescriptor("MediaItem", String.serializer().descriptor)
+
     @TypeConverter
     fun fromMediaItemList(list: List<AudioBookFile?>?): String? {
         return try {
@@ -48,7 +49,10 @@ class DataConverter : KSerializer<AudioBookFile> {
         }
     }
 
-    override fun serialize(encoder: Encoder, value: AudioBookFile) {
+    override fun serialize(
+        encoder: Encoder,
+        value: AudioBookFile,
+    ) {
         val byteStream = ByteArrayOutputStream()
         ObjectOutputStream(byteStream).use { it.writeObject(value) }
         val string = Base64.getEncoder().encodeToString(byteStream.toByteArray())

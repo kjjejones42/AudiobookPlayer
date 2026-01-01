@@ -13,8 +13,10 @@ import com.kjjejones42.audiobookplayer.database.models.AudioBookFile
 import com.kjjejones42.audiobookplayer.logError
 import java.io.File
 
-class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
-    Worker(context, workerParams) {
+class FileScannerWorker(
+    context: Context,
+    workerParams: WorkerParameters,
+) : Worker(context, workerParams) {
     private fun getFileAuthor(filename: Uri): String? {
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val selection = authorFields
@@ -24,8 +26,9 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         cursor?.use { cursor ->
             while (cursor.moveToNext()) {
                 for (i in 0..<cursor.columnCount) {
-                    cursor.getString(i)
-                        ?.takeIf { it.isNotEmpty() && (it != "<unknown>")  }
+                    cursor
+                        .getString(i)
+                        ?.takeIf { it.isNotEmpty() && (it != "<unknown>") }
                         ?.let { return it }
                 }
             }
@@ -49,7 +52,10 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         return null
     }
 
-    private fun parseBook(rel: String, mediaFiles: List<AudioBookFile>): AudioBook {
+    private fun parseBook(
+        rel: String,
+        mediaFiles: List<AudioBookFile>,
+    ): AudioBook {
         val directory = File(rel).name
         val imagePath = findImage(rel)
         val author = mediaFiles.firstNotNullOfOrNull { getFileAuthor(it.uri) } ?: ""
@@ -58,13 +64,14 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
 
     private fun queryBooks(): List<AudioBook?> {
         val result = ArrayList<AudioBook>()
-        val selection = arrayOf(
-            MediaStore.Files.FileColumns._ID,
-            MediaStore.Files.FileColumns.RELATIVE_PATH,
-            MediaStore.Files.FileColumns.TITLE,
-            MediaStore.Files.FileColumns.DISPLAY_NAME,
-            MediaStore.Files.FileColumns.DURATION
-        )
+        val selection =
+            arrayOf(
+                MediaStore.Files.FileColumns._ID,
+                MediaStore.Files.FileColumns.RELATIVE_PATH,
+                MediaStore.Files.FileColumns.TITLE,
+                MediaStore.Files.FileColumns.DISPLAY_NAME,
+                MediaStore.Files.FileColumns.DURATION,
+            )
 
         val where = "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ? AND ${MediaStore.Files.FileColumns.RELATIVE_PATH} LIKE ?"
         val selectionArgs = arrayOf("audio/%", "Audiobooks/%")
@@ -98,8 +105,8 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
         return result
     }
 
-    override fun doWork(): Result {
-        return try {
+    override fun doWork(): Result =
+        try {
             val books = queryBooks()
             val ids = books.filterNotNull().mapNotNull { it.baseDir }.toSet()
             val dao = getInstance(applicationContext).audiobookDao()
@@ -114,7 +121,6 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
             logError(e, "Error scanning files", applicationContext)
             Result.failure()
         }
-    }
 
     companion object {
         private val authorFields by lazy {
@@ -123,9 +129,8 @@ class FileScannerWorker(context: Context, workerParams: WorkerParameters) :
                 MediaStore.Audio.Media.ALBUM_ARTIST,
                 MediaStore.Audio.Media.AUTHOR,
                 MediaStore.Audio.Media.COMPOSER,
-                MediaStore.Audio.Media.WRITER
+                MediaStore.Audio.Media.WRITER,
             )
         }
     }
 }
-

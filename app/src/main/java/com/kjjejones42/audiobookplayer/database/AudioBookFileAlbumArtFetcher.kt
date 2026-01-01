@@ -13,9 +13,8 @@ import okio.FileSystem
 
 class AudioBookFileAlbumArtFetcher(
     private val data: AudioBookFile,
-    private val options: Options
+    private val options: Options,
 ) : Fetcher {
-
     override suspend fun fetch(): FetchResult? {
         val retriever = MediaMetadataRetriever()
 
@@ -24,14 +23,16 @@ class AudioBookFileAlbumArtFetcher(
             afd?.use { afd ->
                 retriever.setDataSource(afd.fileDescriptor)
                 retriever.embeddedPicture?.let { embeddedPicture ->
-                    return SourceFetchResult(
-                        source = ImageSource(
+                    val source =
+                        ImageSource(
                             source = Buffer().write(embeddedPicture),
                             fileSystem = FileSystem.SYSTEM,
-                            metadata = null
-                        ),
+                            metadata = null,
+                        )
+                    return SourceFetchResult(
+                        source = source,
                         mimeType = "image/jpeg",
-                        dataSource = DataSource.DISK
+                        dataSource = DataSource.DISK,
                     )
                 }
             }
@@ -47,7 +48,7 @@ class AudioBookFileAlbumArtFetcher(
         override fun create(
             data: AudioBookFile,
             options: Options,
-            imageLoader: coil3.ImageLoader
+            imageLoader: coil3.ImageLoader,
         ): Fetcher = AudioBookFileAlbumArtFetcher(data, options)
     }
 }

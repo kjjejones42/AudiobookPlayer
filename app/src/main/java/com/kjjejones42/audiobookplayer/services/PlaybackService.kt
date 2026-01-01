@@ -33,10 +33,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
-
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
-
     @Inject
     lateinit var audiobookRepository: AudiobookRepository
 
@@ -49,15 +47,19 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
-            .build();
+        val audioAttributes =
+            AudioAttributes
+                .Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_SPEECH)
+                .build()
 
-        val player = ExoPlayer.Builder(this)
-            .setHandleAudioBecomingNoisy(true)
-            .setAudioAttributes(audioAttributes, true)
-            .build()
+        val player =
+            ExoPlayer
+                .Builder(this)
+                .setHandleAudioBecomingNoisy(true)
+                .setAudioAttributes(audioAttributes, true)
+                .build()
 
         player.playWhenReady = false
         player.addListener(Listener(this))
@@ -75,30 +77,35 @@ class PlaybackService : MediaSessionService() {
                             audiobookRepository.updatePositions(
                                 audiobookId,
                                 positionInTrackList,
-                                positionInTrack.toInt())
+                                positionInTrack.toInt(),
+                            )
                         }
                     }
                 }
             }
         }
 
-        val deepLinkIntent = Intent(
-            Intent.ACTION_VIEW,
-            PlayerNavItem.URI.toUri(),
-            this,
-            MainActivity::class.java
-        )
+        val deepLinkIntent =
+            Intent(
+                Intent.ACTION_VIEW,
+                PlayerNavItem.URI.toUri(),
+                this,
+                MainActivity::class.java,
+            )
 
-        val pendingIntent: PendingIntent = TaskStackBuilder.create(this).run {
-            addNextIntentWithParentStack(deepLinkIntent)
-            val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            getPendingIntent(0, flags)!!
-        }
+        val pendingIntent: PendingIntent =
+            TaskStackBuilder.create(this).run {
+                addNextIntentWithParentStack(deepLinkIntent)
+                val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                getPendingIntent(0, flags)!!
+            }
 
-        mediaSession = MediaSession.Builder(this, player)
-            .setSessionActivity(pendingIntent)
-            .setCallback(Callback(this))
-            .build()
+        mediaSession =
+            MediaSession
+                .Builder(this, player)
+                .setSessionActivity(pendingIntent)
+                .setCallback(Callback(this))
+                .build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -122,11 +129,12 @@ class PlaybackService : MediaSessionService() {
                 val mediaItems = book.toMediaItems()
                 if (mediaItems.isEmpty()) return
                 val startTrackIndex = book.positionInTrackList
-                val startPosition = if (startTrackIndex >= 0 && startTrackIndex < mediaItems.size) {
-                    book.positionInTrack.toLong()
-                } else {
-                    0L
-                }
+                val startPosition =
+                    if (startTrackIndex >= 0 && startTrackIndex < mediaItems.size) {
+                        book.positionInTrack.toLong()
+                    } else {
+                        0L
+                    }
 
                 val player = session.player
                 player.setMediaItems(mediaItems, startTrackIndex, startPosition)
@@ -145,7 +153,13 @@ class PlaybackService : MediaSessionService() {
     }
 
     fun handlePlaybackEnded() {
-        val audioBookId = mediaSession?.player?.currentMediaItem?.mediaMetadata?.extras?.getString(INTENT_AUDIOBOOK)
+        val audioBookId =
+            mediaSession
+                ?.player
+                ?.currentMediaItem
+                ?.mediaMetadata
+                ?.extras
+                ?.getString(INTENT_AUDIOBOOK)
         audioBookId?.let { audioBookId ->
             serviceScope.launch { audiobookRepository.updateStatus(audioBookId, AudioBook.Status.FINISHED) }
         }
@@ -174,38 +188,49 @@ class PlaybackService : MediaSessionService() {
     }
 }
 
-private fun AudioBookFile.toMediaItem(book: AudioBook, trackNo: Int): MediaItem {
+private fun AudioBookFile.toMediaItem(
+    book: AudioBook,
+    trackNo: Int,
+): MediaItem {
     val bookTitle = book.displayName
     val bookAuthor = book.author
 
-    val metadataBuilder = MediaMetadata.Builder()
-        .setTitle(bookTitle)
-        .setArtist(bookAuthor)
-        .setSubtitle(fileName)
-        .setDurationMs(duration)
-        .setExtras(Bundle().apply {
-            putInt(PlaybackService.INTENT_INDEX, trackNo)
-            putString(PlaybackService.INTENT_AUDIOBOOK, book.displayName)
-        })
+    val metadataBuilder =
+        MediaMetadata
+            .Builder()
+            .setTitle(bookTitle)
+            .setArtist(bookAuthor)
+            .setSubtitle(fileName)
+            .setDurationMs(duration)
+            .setExtras(
+                Bundle().apply {
+                    putInt(PlaybackService.INTENT_INDEX, trackNo)
+                    putString(PlaybackService.INTENT_AUDIOBOOK, book.displayName)
+                },
+            )
 
     book.imagePath?.let { metadataBuilder.setArtworkUri(it.toUri()) }
 
-    return MediaItem.Builder()
+    return MediaItem
+        .Builder()
         .setMediaId("$bookTitle-$trackNo")
         .setUri(uri)
         .setMediaMetadata(metadataBuilder.build())
         .build()
 }
 
-private fun AudioBook.toMediaItems(): List<MediaItem> {
-    return files
+private fun AudioBook.toMediaItems(): List<MediaItem> =
+    files
         ?.mapIndexed { index, trackFile -> trackFile.toMediaItem(this, index) }
         ?.toList() ?: emptyList()
-}
 
-private class Listener(private val service: PlaybackService) : Player.Listener {
-
-    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+private class Listener(
+    private val service: PlaybackService,
+) : Player.Listener {
+    override fun onMediaItemTransition(
+        mediaItem: MediaItem?,
+        reason: Int,
+    ) {
         mediaItem?.let { mediaItem -> service.onMediaItemTransition(mediaItem) }
     }
 
@@ -214,14 +239,14 @@ private class Listener(private val service: PlaybackService) : Player.Listener {
             service.handlePlaybackEnded()
         }
     }
-
 }
 
-private class Callback(private val service: PlaybackService) : MediaSession.Callback {
-
+private class Callback(
+    private val service: PlaybackService,
+) : MediaSession.Callback {
     override fun onConnect(
         session: MediaSession,
-        controller: MediaSession.ControllerInfo
+        controller: MediaSession.ControllerInfo,
     ): MediaSession.ConnectionResult {
         val connectionResult = super.onConnect(session, controller)
         val availableCommands = connectionResult.availableSessionCommands.buildUpon()
@@ -232,7 +257,7 @@ private class Callback(private val service: PlaybackService) : MediaSession.Call
 
         return MediaSession.ConnectionResult.accept(
             availableCommands.build(),
-            connectionResult.availablePlayerCommands
+            connectionResult.availablePlayerCommands,
         )
     }
 
@@ -240,11 +265,9 @@ private class Callback(private val service: PlaybackService) : MediaSession.Call
         session: MediaSession,
         controller: MediaSession.ControllerInfo,
         customCommand: SessionCommand,
-        args: Bundle
+        args: Bundle,
     ): ListenableFuture<SessionResult> {
-
         when (customCommand.customAction) {
-
             PlaybackService.PLAY_BOOK_COMMAND.customAction -> {
                 val audioBookId = args.getString(PlaybackService.INTENT_AUDIOBOOK)
                 audioBookId?.let { audioBookId -> service.playBook(audioBookId) }
@@ -258,7 +281,9 @@ private class Callback(private val service: PlaybackService) : MediaSession.Call
                 service.onBackThirtyCommand()
             }
 
-            else -> return super.onCustomCommand(session, controller, customCommand, args)
+            else -> {
+                return super.onCustomCommand(session, controller, customCommand, args)
+            }
         }
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
     }

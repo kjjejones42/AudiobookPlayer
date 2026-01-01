@@ -78,7 +78,6 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-
 private fun msToMMSS(ms: Long): String {
     val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
     val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60
@@ -111,11 +110,14 @@ fun PlayerComposable(
     val audiobook: AudioBook? by viewModel.audioBook.collectAsStateWithLifecycle()
 
     DisposableEffect(mediaController) {
-        val listener = object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) { onBack() }
+        val listener =
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_ENDED) {
+                        onBack()
+                    }
+                }
             }
-        }
         mediaController.addListener(listener)
         onDispose {
             mediaController.removeListener(listener)
@@ -140,15 +142,16 @@ fun PlayerComposable(
             onBackThirty = {
                 mediaController.sendCustomCommand(
                     PlaybackService.BACK_THIRTY_COMMAND,
-                    Bundle.EMPTY
+                    Bundle.EMPTY,
                 )
             },
             onForwardThirty = {
                 mediaController.sendCustomCommand(
                     PlaybackService.FORWARD_THIRTY_COMMAND,
-                    Bundle.EMPTY
+                    Bundle.EMPTY,
                 )
-            })
+            },
+        )
     }
 }
 
@@ -169,7 +172,7 @@ private fun PlayerComposableBase(
     onNext: () -> Unit = {},
     onPrev: () -> Unit = {},
     onForwardThirty: () -> Unit = {},
-    onBackThirty: () -> Unit = {}
+    onBackThirty: () -> Unit = {},
 ) {
     val durationMs = durationMs.coerceAtLeast(0)
     val context = LocalContext.current
@@ -187,8 +190,17 @@ private fun PlayerComposableBase(
         scope.launch {
             if (canHaveTheme) {
                 val request = ImageRequest.Builder(context).data(imageRequestData).build()
-                val image = context.imageLoader.enqueue(request).job.await().image
-                if (image is BitmapImage) { bitmap = image } else { theme = defaultTheme }
+                val image =
+                    context.imageLoader
+                        .enqueue(request)
+                        .job
+                        .await()
+                        .image
+                if (image is BitmapImage) {
+                    bitmap = image
+                } else {
+                    theme = defaultTheme
+                }
             } else {
                 theme = defaultTheme
             }
@@ -207,52 +219,55 @@ private fun PlayerComposableBase(
     if (canHaveTheme && theme == null && !LocalInspectionMode.current) return
 
     MaterialTheme(theme ?: MaterialTheme.colorScheme) {
-        Scaffold(
-            topBar = {
-                TopAppBar(title = { Text(displayName) }, navigationIcon = {
-                    IconButton(onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null
-                        )
-                    }
-                })
-            }) { paddingValues ->
+        Scaffold(topBar = {
+            TopAppBar(title = { Text(displayName) }, navigationIcon = {
+                IconButton(onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                    )
+                }
+            })
+        }) { paddingValues ->
 
             Box(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize(),
+                modifier =
+                    Modifier
+                        .padding(paddingValues)
+                        .fillMaxSize(),
             ) {
                 AsyncImage(
                     model = imageRequestData,
                     contentDescription = "",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(30.dp)
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .blur(30.dp),
                 )
                 Column(
                     modifier = Modifier.matchParentSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                        contentAlignment = Alignment.Center,
                     ) {
                         AsyncImage(
                             model = imageRequestData,
                             contentDescription = "",
                             contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.9f))
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.9f)),
                     ) {
                         PlayerControlPane(
                             files,
@@ -295,20 +310,22 @@ private fun PlayerControlPane(
     expanded: Boolean,
 ) {
     Box(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         TextButton(
-            onClick = { setExpanded(true) }, modifier = Modifier.align(Alignment.Center)
+            onClick = { setExpanded(true) },
+            modifier = Modifier.align(Alignment.Center),
         ) {
             Text(
                 text = files[currentTrackIndex].fileName,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             Icon(
-                Icons.Filled.MoreVert, contentDescription = null
+                Icons.Filled.MoreVert,
+                contentDescription = null,
             )
         }
         DropdownMenu(
@@ -324,36 +341,41 @@ private fun PlayerControlPane(
         }
     }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = msToMMSS(currentPositionMs), fontFamily = FontFamily.Monospace
+            text = msToMMSS(currentPositionMs),
+            fontFamily = FontFamily.Monospace,
         )
         Slider(
             value = currentPositionMs.toFloat(),
             onValueChange = { seekTo(it.toLong()) },
             valueRange = 0.0f..durationMs.toFloat(),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         )
         Text(
-            text = msToMMSS(durationMs), fontFamily = FontFamily.Monospace
+            text = msToMMSS(durationMs),
+            fontFamily = FontFamily.Monospace,
         )
     }
     Spacer(Modifier.height(8.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         PlayerButton(
-            image = Icons.Filled.SkipPrevious, onClick = onPrev
+            image = Icons.Filled.SkipPrevious,
+            onClick = onPrev,
         )
         PlayerButton(
-            image = ImageVector.vectorResource(id = R.drawable.ic_replay_30), onClick = onBackThirty
+            image = ImageVector.vectorResource(id = R.drawable.ic_replay_30),
+            onClick = onBackThirty,
         )
         FilledIconButton(
             modifier = Modifier.size(64.dp),
@@ -361,15 +383,16 @@ private fun PlayerControlPane(
         ) {
             Icon(
                 imageVector = if (showPlay) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                contentDescription = null
+                contentDescription = null,
             )
         }
         PlayerButton(
             image = ImageVector.vectorResource(id = R.drawable.ic_forward_30),
-            onClick = onForwardThirty
+            onClick = onForwardThirty,
         )
         PlayerButton(
-            image = Icons.Filled.SkipNext, onClick = onNext
+            image = Icons.Filled.SkipNext,
+            onClick = onNext,
         )
     }
     Spacer(modifier = Modifier.height(16.dp))
@@ -388,15 +411,16 @@ private fun PlayerButton(
 private fun extractColorPalette(
     bitmap: BitmapImage?,
     isDarkMode: Boolean,
-    currentTheme: ColorScheme
+    currentTheme: ColorScheme,
 ): ColorScheme {
     bitmap ?: return currentTheme
     val palette = Palette.from(bitmap.bitmap.copy(Bitmap.Config.ARGB_8888, true)).generate()
-    val swatch: Palette.Swatch? = if (isDarkMode) {
-        palette.darkVibrantSwatch ?: palette.darkMutedSwatch
-    } else {
-        palette.lightVibrantSwatch ?: palette.lightMutedSwatch
-    }
+    val swatch: Palette.Swatch? =
+        if (isDarkMode) {
+            palette.darkVibrantSwatch ?: palette.darkMutedSwatch
+        } else {
+            palette.lightVibrantSwatch ?: palette.lightMutedSwatch
+        }
     swatch ?: return currentTheme
     val seedColor = Color(swatch.rgb)
     return currentTheme.copy(
@@ -410,18 +434,19 @@ private fun extractColorPalette(
 @Preview
 private fun PlayerComposablePreview() {
     val book = AudioBook("Title", "", "", emptyList(), "Author")
-    val files: List<AudioBookFile> = listOf(
-        AudioBookFile("".toUri(), "A", "D", 1),
-        AudioBookFile("".toUri(), "B", "E", 1),
-        AudioBookFile("".toUri(), "C", "F", 1)
-    )
+    val files: List<AudioBookFile> =
+        listOf(
+            AudioBookFile("".toUri(), "A", "D", 1),
+            AudioBookFile("".toUri(), "B", "E", 1),
+            AudioBookFile("".toUri(), "C", "F", 1),
+        )
     AudiobookPlayerTheme(inDarkTheme = false) {
         PlayerComposableBase(
             book.displayName,
             R.drawable.test,
             durationMs = 75 * 1000,
-            currentPositionMs = 75/2 * 1000,
-            files = files
+            currentPositionMs = 75 / 2 * 1000,
+            files = files,
         )
     }
 }
